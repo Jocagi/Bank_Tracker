@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Mi App{% endblock %}</title>
+
+  <!-- Bootstrap CSS -->
+  <link 
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" 
+    rel="stylesheet" 
+    integrity="sha384-…" 
+    crossorigin="anonymous">
+
+  <!-- Select2 CSS -->
+  <link 
+    href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" 
+    rel="stylesheet" />
+
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="{{ url_for('main.index') }}">Bank Tracker</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+              data-bs-target="#navbarNav" aria-controls="navbarNav"
+              aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('main.index') }}">Movimientos</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('main.sin_clasificar') }}">Sin Clasificar</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('main.upload') }}">Cargar Archivo</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('main.dashboard') }}">Dashboard</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('main.list_comercios') }}">Comercios</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('main.list_categorias') }}">Categorías</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('main.list_archivos') }}">Archivos</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('main.list_tipos_cambio') }}">Tipos de Cambio</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, msg in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- jQuery -->
+  <script
+    src="https://code.jquery.com/jquery-3.6.0.min.js"
+    integrity="sha256-/xUj+3OJ+YATq+k+6hJ0Z6gP4U3xmQ2R+7y0wo6G8eI="
+    crossorigin="anonymous"></script>
+
+  <!-- Bootstrap JS Bundle -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-…"
+    crossorigin="anonymous"></script>
+
+  <!-- Select2 JS -->
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Inicialización global (ej. Select2 para sin_clasificar) -->
+  <script>
+    $(document).ready(function() {
+      // Select2 en cualquier select que tenga esta clase
+      $('.select-comercio').select2({
+        placeholder: 'Buscar comercio...',
+        allowClear: true,
+        minimumResultsForSearch: 0
+      });
+    });
+  </script>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

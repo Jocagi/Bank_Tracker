@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Tipos de Cambio{% endblock %}
+{% block content %}
+<h1>Tipos de Cambio</h1>
+<a href="{{ url_for('main.add_tipo_cambio') }}" class="btn btn-primary mb-3">Agregar Tipo de Cambio</a>
+<table class="table table-striped">
+  <thead>
+    <tr><th>Moneda</th><th>Valor (GTQ)</th><th>Última actualización</th><th>Acciones</th></tr>
+  </thead>
+  <tbody>
+    {% for tc in tipos %}
+    <tr>
+      <td>{{ tc.moneda }}</td>
+      <td>Q{{ tc.valor }}</td>
+      <td>{{ tc.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+      <td>
+        <a href="{{ url_for('main.edit_tipo_cambio', tc_id=tc.id) }}" class="btn btn-sm btn-secondary">Editar</a>
+        <form method="post" action="{{ url_for('main.delete_tipo_cambio', tc_id=tc.id) }}" style="display:inline" onsubmit="return confirm('¿Eliminar este tipo de cambio?');">
+          <button class="btn btn-sm btn-danger">Eliminar</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

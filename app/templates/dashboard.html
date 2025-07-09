@@ -1,0 +1,214 @@
+{# templates/dashboard.html #}
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<h1>Dashboard de Movimientos</h1>
+
+<form method="get" class="row g-3 mb-4">
+  <div class="col-md-4">
+    <label for="start_date" class="form-label">Desde</label>
+    <input type="date" id="start_date" name="start_date"
+           class="form-control" value="{{ start_date }}">
+  </div>
+  <div class="col-md-4">
+    <label for="end_date" class="form-label">Hasta</label>
+    <input type="date" id="end_date" name="end_date"
+           class="form-control" value="{{ end_date }}">
+  </div>
+  <div class="col-md-4">
+    <label for="category_id" class="form-label">Categoría</label>
+    <select id="category_id" name="category_id" class="form-select">
+      <option value="">-- Todas --</option>
+      {% for cat in categorias %}
+        <option value="{{ cat.id }}"
+          {% if cat.id|string == selected_cat %}selected{% endif %}>
+          {{ cat.nombre }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-12 text-end">
+    <button type="submit" class="btn btn-primary">Aplicar filtros</button>
+  </div>
+</form>
+
+<div class="row mb-4">
+  <!-- Gastos por Comercio -->
+  <div class="col-md-4">
+    <h5>Gastos por Comercio (GTQ)</h5>
+    <table class="table table-sm table-bordered">
+      <thead>
+        <tr>
+          <th>Comercio</th>
+          <th class="text-end">Total Q</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for label, total in commerce_table %}
+        <tr>
+          <td>{{ label }}</td>
+          <td class="text-end">{{ '%.2f'|format(total) }}</td>
+        </tr>
+        {% endfor %}
+        {% if not commerce_table %}
+        <tr><td colspan="2" class="text-center text-muted">Sin datos</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Gastos por Categoría -->
+  <div class="col-md-4">
+    <h5>Gastos por Categoría (GTQ)</h5>
+    <table class="table table-sm table-bordered">
+      <thead>
+        <tr>
+          <th>Categoría</th>
+          <th class="text-end">Total Q</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for label, total in category_table %}
+        <tr>
+          <td>{{ label }}</td>
+          <td class="text-end">{{ '%.2f'|format(total) }}</td>
+        </tr>
+        {% endfor %}
+        {% if not category_table %}
+        <tr><td colspan="2" class="text-center text-muted">Sin datos</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Ingresos por Comercio -->
+  <div class="col-md-4">
+    <h5>Ingresos por Comercio (GTQ)</h5>
+    <table class="table table-sm table-bordered">
+      <thead>
+        <tr>
+          <th>Comercio</th>
+          <th class="text-end">Total Q</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for label, total in income_table %}
+        <tr>
+          <td>{{ label }}</td>
+          <td class="text-end">{{ '%.2f'|format(total) }}</td>
+        </tr>
+        {% endfor %}
+        {% if not income_table %}
+        <tr><td colspan="2" class="text-center text-muted">Sin datos</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="row mb-4">
+  <div class="col-md-6">
+    <h5>Gastos por Comercio</h5>
+    <canvas id="chartCommerce"></canvas>
+  </div>
+  <div class="col-md-6">
+    <h5>Gastos por Categoría</h5>
+    <canvas id="chartCategory"></canvas>
+  </div>
+</div>
+
+<div class="row mb-4">
+  <div class="col-md-12">
+    <h5>Evolución Mensual de Gastos</h5>
+    <canvas id="chartMonthly"></canvas>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    // Datos para los gráficos
+    const commerceLabels  = {{ commerce_labels  | tojson }};
+    const commerceValues  = {{ commerce_values  | tojson }};
+    const categoryLabels  = {{ cat_labels       | tojson }};
+    const categoryValues  = {{ cat_values       | tojson }};
+    const monthLabels     = {{ month_labels     | tojson }};
+    const monthValues     = {{ month_values     | tojson }};
+
+    // Pie chart: Gastos por Comercio
+    new Chart(document.getElementById('chartCommerce'), {
+      type: 'pie',
+      data: {
+        labels: commerceLabels,
+        datasets: [{ data: commerceValues }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const v = Math.abs(ctx.parsed).toLocaleString(undefined, { minimumFractionDigits: 2 });
+                return `${ctx.label}: Q${v}`;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Pie chart: Gastos por Categoría
+    new Chart(document.getElementById('chartCategory'), {
+      type: 'pie',
+      data: {
+        labels: categoryLabels,
+        datasets: [{ data: categoryValues }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const v = Math.abs(ctx.parsed).toLocaleString(undefined, { minimumFractionDigits: 2 });
+                return `${ctx.label}: Q${v}`;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Línea: Evolución Mensual de Gastos
+    new Chart(document.getElementById('chartMonthly'), {
+      type: 'line',
+      data: {
+        labels: monthLabels,
+        datasets: [{
+          label: 'Gastos Q',
+          data: monthValues,
+          fill: false,
+          tension: 0.1
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const v = Math.abs(ctx.parsed.y).toLocaleString(undefined, { minimumFractionDigits: 2 });
+                return `Q${v}`;
+              }
+            }
+          }
+        },
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+  </script>
+{% endblock %}

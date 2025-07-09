@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Editar Categoría{% endblock %}
+{% block content %}
+<h1>Editar Categoría</h1>
+<form method="post">
+  <div class="mb-3">
+    <label class="form-label">Nombre</label>
+    <input class="form-control"
+           name="nombre"
+           value="{{ categoria.nombre }}"
+           required>
+  </div>
+  <button class="btn btn-primary">Guardar cambios</button>
+  <a href="{{ url_for('main.list_categorias') }}" class="btn btn-secondary ms-2">Cancelar</a>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, msg in messages %}
+        <div class="alert alert-{{ category }} mt-3">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+</form>
+{% endblock %}

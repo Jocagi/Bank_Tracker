@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Cargar Archivo{% endblock %}
+{% block content %}
+<h1>Cargar Archivo</h1>
+<form method="post" enctype="multipart/form-data">
+  <div class="mb-3">
+    <label for="tipo_archivo" class="form-label">Tipo Archivo</label>
+    <select class="form-select" name="tipo_archivo" id="tipo_archivo" required>
+      <option value="monet-aho-gyt">Monetaria/Ahorro GYT</option>
+      <option value="tc-gyt">Tarjeta de Crédito GYT</option>
+      <option value="monet-bi">Monetaria BI</option>
+      <option value="tc-bi">Tarjeta de Crédito BI</option>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label for="file" class="form-label">Archivo</label>
+    <input class="form-control" type="file" name="file" id="file" accept=".csv,.txt,.xls,.xlsx,.pdf" required>
+  </div>
+  <button class="btn btn-primary">Cargar</button>
+</form>
+{% endblock %}

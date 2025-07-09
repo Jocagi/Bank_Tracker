@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block title %}Editar Comercio{% endblock %}
+{% block content %}
+<h1>Editar Comercio</h1>
+<form method="post">
+  <div class="mb-3">
+    <label class="form-label">Nombre</label>
+    <input class="form-control" name="nombre" value="{{ comercio.nombre }}" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Categoría</label>
+    <select class="form-select" name="categoria_id" required>
+      {% for cat in categorias %}
+      <option value="{{ cat.id }}" {% if cat.id == comercio.categoria_id %}selected{% endif %}>
+        {{ cat.nombre }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+  <label class="form-label">Tipo de contabilización</label>
+  <select name="tipo_contabilizacion" class="form-select" required>
+    <option value="ingresos"
+      {% if comercio is defined and comercio.tipo_contabilizacion=='ingresos' %}selected{% endif %}>
+      Ingresos
+    </option>
+    <option value="gastos"
+      {% if comercio is defined and comercio.tipo_contabilizacion=='gastos' %}selected{% endif %}>
+      Gastos
+    </option>
+    <option value="transferencias"
+      {% if comercio is defined and comercio.tipo_contabilizacion=='transferencias' %}selected{% endif %}>
+      Transferencias
+    </option>
+  </select>
+</div>
+
+  <div id="reglas-container">
+    <label class="form-label">Reglas de Clasificación</label>
+    {% if comercio.reglas %}
+      {% for regla in comercio.reglas %}
+      <div class="regla-row mb-2">
+        <input name="reg_descripcion"
+               placeholder="Descripción"
+               class="form-control d-inline w-50"
+               required
+               value="{{ regla.descripcion }}">
+        <select name="reg_tipo" class="form-select d-inline w-auto">
+          <option value="incluir" {% if regla.tipo == 'incluir' %}selected{% endif %}>Incluir</option>
+          <option value="excluir" {% if regla.tipo == 'excluir' %}selected{% endif %}>Excluir</option>
+        </select>
+        <input name="reg_criterio"
+               placeholder="Criterio (Usa * como comodín)"
+               class="form-control d-inline w-25"
+               required
+               value="{{ regla.criterio }}">
+        <button type="button" class="btn btn-danger btn-sm remove-regla">✕</button>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="regla-row mb-2">
+        <input name="reg_descripcion"
+               placeholder="Descripción"
+               class="form-control d-inline w-50"
+               required>
+        <select name="reg_tipo" class="form-select d-inline w-auto">
+          <option value="incluir">Incluir</option>
+          <option value="excluir">Excluir</option>
+        </select>
+        <input name="reg_criterio"
+               placeholder="Criterio (Usa * como comodín)"
+               class="form-control d-inline w-25"
+               required>
+        <button type="button" class="btn btn-danger btn-sm remove-regla">✕</button>
+      </div>
+    {% endif %}
+  </div>
+
+  <button type="button" class="btn btn-secondary mb-3" onclick="
+    const reglaRow = document.querySelector('.regla-row');
+    const row = reglaRow.cloneNode(true);
+    row.querySelectorAll('input').forEach(i => i.value = '');
+    row.querySelector('select').value = 'incluir';
+    document.getElementById('reglas-container').appendChild(row);
+  ">Agregar regla</button>
+
+  <button class="btn btn-primary">Guardar</button>
+  <a href="{{ url_for('main.list_comercios') }}" class="btn btn-secondary ms-2">Cancelar</a>
+
+  {% if error %}
+  <div class="alert alert-danger mt-3">{{ error }}</div>
+  {% endif %}
+</form>
+
+<script>
+  document.getElementById('reglas-container').addEventListener('click', function(e) {
+    if (e.target.classList.contains('remove-regla')) {
+      e.target.closest('.regla-row').remove();
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,61 @@
+{# templates/sin_clasificar.html #}
+{% extends 'base.html' %}
+{% block title %}Movimientos Sin Clasificar{% endblock %}
+
+{% block content %}
+<h1>Movimientos Sin Clasificar</h1>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Fecha</th>
+      <th>Descripción</th>
+      <th>Monto</th>
+      <th>Comercio</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for m in movimientos %}
+    <tr>
+      <td>{{ m.fecha }}</td>
+      <td>{{ m.descripcion }}</td>
+      <td>{{ m.monto }}</td>
+      <td>
+        <form method="post"
+              action="{{ url_for('main.assign_movimiento_rule') }}"
+              class="d-inline">
+          <input type="hidden" name="movimiento_id" value="{{ m.id }}">
+
+          <!-- Select2 habilitado para búsqueda -->
+          <select name="comercio_id"
+                  class="select-comercio"
+                  style="width:180px"
+                  required>
+            <option value=""></option>
+            {% for c in comercios %}
+              <option value="{{ c.id }}">{{ c.nombre }}</option>
+            {% endfor %}
+          </select>
+
+          <button type="submit" class="btn btn-sm btn-primary mt-1">
+            Agregar regla
+          </button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    $(document).ready(function() {
+      $('.select-comercio').select2({
+        placeholder: 'Buscar comercio...',
+        allowClear: true,
+        minimumResultsForSearch: 0  // siempre muestra la caja de búsqueda
+      });
+    });
+  </script>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}Administración de Archivos{% endblock %}
+{% block content %}
+<h1>Administración de Archivos</h1>
+
+<form method="get" class="row g-3 mb-4">
+  <div class="col-md-3">
+    <label class="form-label">Tipo de Archivo</label>
+    <select class="form-select" name="tipo_archivo">
+      <option value="">-- Todos --</option>
+      {% for t in tipos %}
+      <option value="{{ t }}" {% if t == type_selected %}selected{% endif %}>
+        {{ t }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3">
+    <label class="form-label">Desde</label>
+    <input type="date"
+           name="start_date"
+           class="form-control"
+           value="{{ start_date or '' }}">
+  </div>
+  <div class="col-md-3">
+    <label class="form-label">Hasta</label>
+    <input type="date"
+           name="end_date"
+           class="form-control"
+           value="{{ end_date or '' }}">
+  </div>
+  <div class="col-md-3">
+    <label class="form-label">Nombre de archivo</label>
+    <input type="text"
+           name="filename"
+           class="form-control"
+           placeholder="Buscar..."
+           value="{{ filename_query or '' }}">
+  </div>
+  <div class="col-12">
+    <button class="btn btn-primary">Filtrar</button>
+    <a href="{{ url_for('main.list_archivos') }}" class="btn btn-secondary ms-2">Limpiar</a>
+  </div>
+</form>
+
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Nombre</th>
+      <th>Tipo</th>
+      <th>Fecha Carga</th>
+      <th># Movimientos</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for a in archivos %}
+    <tr>
+      <td>{{ a.id }}</td>
+      <td>{{ a.filename }}</td>
+      <td>{{ a.tipo_archivo }}</td>
+      <td>{{ a.upload_date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+      <td>{{ a.movimientos|length }}</td>
+      <td>
+        <form method="post"
+              action="{{ url_for('main.delete_archivo', archivo_id=a.id) }}"
+              style="display:inline"
+              onsubmit="return confirm('¿Eliminar este archivo y todos sus movimientos?');">
+          <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="6" class="text-center text-muted">
+        No se encontraron archivos.
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

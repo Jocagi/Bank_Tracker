@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}Comercios{% endblock %}
+{% block content %}
+<h1>Comercios</h1>
+<a href="{{ url_for('main.add_comercio') }}" class="btn btn-primary mb-3">Agregar Comercio</a>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Nombre</th>
+      <th>Categoría</th>
+      <th>Tipo</th>
+      <th>Reglas</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for c in comercios %}
+    <tr>
+      <td>{{ c.nombre }}</td>
+      <td>{{ c.categoria.nombre }}</td>
+      <td>{{ c.tipo_contabilizacion.capitalize() }}</td>
+      <td>
+        {% if c.reglas %}
+          <ul class="mb-0">
+            {% for r in c.reglas %}
+              <li>
+                <strong>{{ r.tipo.capitalize() }}:</strong>
+                {{ r.descripcion }} 
+                <em>({{ r.criterio }})</em>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <span class="text-muted">Sin reglas</span>
+        {% endif %}
+      </td>
+      <td>
+        <a href="{{ url_for('main.edit_comercio', comercio_id=c.id) }}" class="btn btn-sm btn-secondary">Editar</a>
+        <a href="{{ url_for('main.delete_comercio', comercio_id=c.id) }}" class="btn btn-sm btn-danger"
+           onclick="return confirm('¿Eliminar comercio {{ c.nombre }}?');">Eliminar</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

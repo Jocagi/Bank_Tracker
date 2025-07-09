@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Agregar Comercio{% endblock %}
+{% block content %}
+<h1>Agregar Comercio</h1>
+<form method="post">
+  <div class="mb-3">
+    <label class="form-label">Nombre</label>
+    <input class="form-control" name="nombre" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Categoría</label>
+    <select class="form-select" name="categoria_id">
+      {% for cat in categorias %}<option value="{{ cat.id }}">{{ cat.nombre }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+  <label class="form-label">Tipo de contabilización</label>
+  <select name="tipo_contabilizacion" class="form-select" required>
+    <option value="ingresos">Ingresos</option>
+    <option value="gastos" selected>Gastos</option>
+    <option value="transferencias">Transferencias</option>
+  </select>
+</div>
+  <div id="reglas-container">
+    <label class="form-label">Reglas de Clasificación</label>
+    <div class="regla-row mb-2">
+      <input name="reg_descripcion" placeholder="Descripción" class="form-control d-inline w-50" required>
+      <select name="reg_tipo" class="form-select d-inline w-auto">
+        <option value="incluir">Incluir</option>
+        <option value="excluir">Excluir</option>
+    </select>
+    <input name="reg_criterio" placeholder="Criterio (Usa * como comodín)" class="form-control d-inline w-25" required>
+  </div>
+</div>
+<button type="button" class="btn btn-secondary mb-3" onclick="
+  // Clonar la fila de regla y agregarla al contenedor y vaciar los campos
+  const reglaRow = document.querySelector('.regla-row');
+  const row = reglaRow.cloneNode(true);
+  row.querySelectorAll('input').forEach(input => input.value = '');
+  row.querySelector('select').value = 'incluir';
+  document.getElementById('reglas-container').appendChild(row);
+">Agregar regla</button>
+  <button class="btn btn-primary">Guardar</button>
+  {% if error %}
+  <div class="alert alert-danger mt-3">{{ error }}</div>
+  {% endif %}
+</form>
+{% endblock %}

@@ -1,0 +1,9 @@
+Flask
+Flask-SQLAlchemy
+Flask-Migrate
+pandas
+openpyxl
+python-dotenv
+debugpy
+pdfplumber
+xlrd

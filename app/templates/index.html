@@ -1,0 +1,128 @@
+{# templates/index.html #}
+{% extends 'base.html' %}
+{% block title %}Movimientos{% endblock %}
+
+{% block content %}
+<h1>Movimientos</h1>
+
+<form method="get">
+  <!-- Fila 1: Fechas y descripción -->
+  <div class="row g-3 mb-3">
+    <div class="col-md-3">
+      <label for="start_date" class="form-label">Desde</label>
+      <input type="date" id="start_date" name="start_date"
+             class="form-control" value="{{ start_date }}">
+    </div>
+    <div class="col-md-3">
+      <label for="end_date" class="form-label">Hasta</label>
+      <input type="date" id="end_date" name="end_date"
+             class="form-control" value="{{ end_date }}">
+    </div>
+    <div class="col-md-4">
+      <label for="desc" class="form-label">Descripción</label>
+      <input type="text" id="desc" name="desc"
+             class="form-control"
+             placeholder="Buscar descripción..."
+             value="{{ desc_query }}">
+    </div>
+    <div class="col-md-2 align-self-end">
+      <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+    </div>
+  </div>
+
+  <!-- Fila 2: Cuenta, Comercio, Categoría, Tipo contabilización -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <label for="cuenta_id" class="form-label">Cuenta</label>
+      <select id="cuenta_id" name="cuenta_id" class="form-select">
+        <option value="">-- Todas --</option>
+        {% for cta in cuentas %}
+          <option value="{{ cta.id }}"
+            {% if cta.id|string == selected_cuenta %}selected{% endif %}>
+            {{ cta.numero_cuenta }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label for="comercio_id" class="form-label">Comercio</label>
+      <select id="comercio_id" name="comercio_id" class="form-select">
+        <option value="">-- Todos --</option>
+        {% for c in comercios %}
+          <option value="{{ c.id }}"
+            {% if c.id|string == selected_comercio %}selected{% endif %}>
+            {{ c.nombre }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label for="categoria_id" class="form-label">Categoría</label>
+      <select id="categoria_id" name="categoria_id" class="form-select">
+        <option value="">-- Todas --</option>
+        {% for cat in categorias %}
+          <option value="{{ cat.id }}"
+            {% if cat.id|string == selected_categoria %}selected{% endif %}>
+            {{ cat.nombre }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label for="tipo_contabilizacion" class="form-label">Tipo</label>
+      <select id="tipo_contabilizacion" name="tipo_contabilizacion" class="form-select">
+        <option value="">-- Todos --</option>
+        {% for t in tipos_contabilizacion %}
+          <option value="{{ t }}"
+            {% if t == selected_tipo_cont %}selected{% endif %}>
+            {{ t.capitalize() }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+</form>
+
+<p>
+  Total movimientos: {{ total_movs }} |
+  Débito: Q{{ sum_debito }} |
+  Crédito: Q{{ sum_credito }}
+</p>
+
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Fecha</th>
+      <th>Descripción</th>
+      <th>Lugar</th>
+      <th>Documento</th>
+      <th>Monto</th>
+      <th>Moneda</th>
+      <th>Cuenta</th>
+      <th>Comercio</th>
+      <th>Categoría</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for m in movimientos %}
+    <tr>
+      <td>{{ m.fecha }}</td>
+      <td>{{ m.descripcion }}</td>
+      <td>{{ m.lugar or '—' }}</td>
+      <td>{{ m.numero_documento or '—' }}</td>
+      <td>{{ m.monto }}</td>
+      <td>{{ m.moneda }}</td>
+      <td>{{ m.cuenta.numero_cuenta }}</td>
+      <td>{{ m.comercio.nombre if m.comercio else '—' }}</td>
+      <td>
+        {% if m.comercio and m.comercio.categoria %}
+          {{ m.comercio.categoria.nombre }}
+        {% else %}
+          —
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Editar Tipo de Cambio{% endblock %}
+{% block content %}
+<h1>Editar Tipo de Cambio</h1>
+<form method="post">
+  <div class="mb-3">
+    <label class="form-label">Moneda</label>
+    <input class="form-control" value="{{ tc.moneda }}" disabled>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Valor (GTQ)</label>
+    <input name="valor" type="number" step="0.0001" class="form-control" value="{{ tc.valor }}" required>
+  </div>
+  <button class="btn btn-primary">Actualizar</button>
+</form>
+{% endblock %}
