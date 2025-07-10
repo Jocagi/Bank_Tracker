@@ -22,14 +22,17 @@ def load_movements_tc_gyt_pdf(filepath, archivo_obj):
 
     header_info = {}
     for line in lines[:8]:
+        # Ej. "Nombre cuenta: JOSE GIRON 09-07-2025 | 07:18:06"
         if 'Nombre cuenta:' in line:
-            header_info['titular'] = line.split('Nombre cuenta:', 1)[1].strip()
+            owner = line.split('Nombre cuenta:', 1)[1].strip().split('|')[0].strip().split(' ')[0:-1]
+            header_info['titular'] = ' '.join(owner) if owner else 'Desconocido'
         elif 'Cuenta:' in line:
-            # Ej: "Cuenta: TCR 5522-****-****-8241"
-            parts = line.split('Cuenta:', 1)[1].strip().split()
+            # Ej: "Cuenta: TCR 5522-****-****-8241 Día de corte 09 | Día de pago: 04"
+            parts = line.split('Cuenta:', 1)[1].strip().split('|')
+            header_info['numero_cuenta'] = parts[0].strip().split()[-5] if parts else 'Desconocido'
             header_info['tipo_cuenta']   = 'TC'
             header_info['moneda']        = 'GTQ|USD'
-            header_info['numero_cuenta'] = parts[-1] if parts else 'Desconocido'
+            break
 
     # --- 3) Actualizar metadatos en Archivo ---
     archivo_obj.tipo_cuenta   = header_info.get('tipo_cuenta', 'Desconocido')
@@ -65,9 +68,15 @@ def load_movements_tc_gyt_pdf(filepath, archivo_obj):
             })
             if tbl:
                 # Eliminar filas encabezado y agregar uno personalizado
-                if len(tbl) > 2 and page.page_number == 1:
-                    tbl = [tbl[0]] + tbl[2:] # Eliminar encabezado de página
-                elif len(tbl) > 1 and page.page_number > 1:
+                if page.page_number == 1:
+                    # Validar si en la segunda línea está el texto "Cuenta: TCR"
+                    if 'Cuenta:' in lines[6]:
+                        # Eliminar encabezado de página
+                        tbl = [tbl[0]] + tbl[2:]
+                    else:
+                        # Eliminar solo la primera fila
+                        tbl = [tbl[0]] + tbl[1:]
+                elif page.page_number > 1:
                     tbl = [tbl[0]] + tbl[1:]
                 tbl[0] = ['fecha', 'documento', 'blank1', 'descripcion', 'blank2', 'blank3', 'raw_monto', 'blank4', 'blank5']
                 # Convertir a DataFrame y agregar a la lista
@@ -92,9 +101,9 @@ def load_movements_tc_gyt_pdf(filepath, archivo_obj):
         df['raw_monto']
           .fillna('')
           .astype(str)
-          .str.extract(r'\b(QTZ|DOL)\b', expand=False)
-          .map({'QTZ':'GTQ','DOL':'USD'})
-          .fillna(archivo_obj.moneda)
+          .str.extract(r'\b(QTZ)\b', expand=False)
+          .map({'QTZ':'GTQ'})
+          .fillna('USD')
     )
     # Limpiar y convertir monto numérico
     df['monto'] = (
