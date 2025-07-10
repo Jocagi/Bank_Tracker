@@ -36,6 +36,7 @@ def load_movements_bi_monet_pdf(filepath, archivo_obj):
     archivo_obj.banco        = 'BI'
     archivo_obj.tipo_cuenta  = 'MONET'
     archivo_obj.numero_cuenta = header_info.get('numero_cuenta', 'Desconocido')
+    archivo_obj.titular      = lines[2].strip() if len(lines) > 1 else 'Desconocido'
     archivo_obj.moneda       = 'GTQ'
     db.session.commit()
 
@@ -66,11 +67,11 @@ def load_movements_bi_monet_pdf(filepath, archivo_obj):
 
     # --- 5) Procesar cada línea de transacción ---
     tx_pattern = re.compile(
-        r'^(?P<fecha>\d{2}/\d{2}/\d{4})\s+'
+        r'^(?P<fecha>\d{2}\/\d{2}\/\d{4})\s+'
         r'(?P<doc>\d+)\s+'
         r'(?P<desc>.+?)\s+'
-        r'(?P<monto>[\d,\.]+)\s+'
-        r'(?P<saldo>[\d,\.]+)$'
+        r'(?P<monto>[\d,\.]+)\s*'
+        r'(?P<saldo>[\d,\.]*)$'
     )
     count = 0
     for line in lines:
@@ -84,7 +85,7 @@ def load_movements_bi_monet_pdf(filepath, archivo_obj):
         doc   = m.group('doc')
         desc  = m.group('desc').strip()
         amt   = float(m.group('monto').replace(',', ''))
-        bal   = float(m.group('saldo').replace(',', ''))
+        bal   = float(m.group('saldo').replace(',', '')) if m.group('saldo') else 0.0
 
         # Valor por defecto para moneda
         moneda = 'GTQ'
