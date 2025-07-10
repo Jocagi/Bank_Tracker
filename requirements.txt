@@ -7,3 +7,4 @@ python-dotenv
 debugpy
 pdfplumber
 xlrd
+waitress
