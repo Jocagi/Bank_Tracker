@@ -1,8 +1,11 @@
+:: 0. Crear un entorno virtual
+python -m venv venv
+
 :: 1. Activar el entorno virtual
 venv\Scripts\activate.bat
 
-:: 2. (Opcional) Instalar Flask-Migrate
-pip install Flask Flask-Migrate
+:: 2. Instalar dependencias
+pip install -r requirements.txt
 
 :: 3. Definir variables de entorno
 set FLASK_APP=main:app

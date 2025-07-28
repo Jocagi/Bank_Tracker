@@ -8,6 +8,7 @@ from .parser.tc_gyt_xlsx import load_movements_tc_gyt_xlsx
 from .parser.tc_gyt_pdf import load_movements_tc_gyt_pdf
 from .parser.monet_bi_pdf import load_movements_bi_monet_pdf
 from .parser.tc_bi_xls import load_movements_bi_tc_xls
+from .parser.tc_promerica_xls import load_movements_promerica_tc_xls
 from .classifier import clasificar_movimientos
 
 
@@ -78,6 +79,12 @@ def load_movements(filepath, archivo_obj, tipo_archivo):
             count = load_movements_bi_tc_xls(filepath, archivo_obj)
         else:
             raise ValueError('Extensión no válida para formato tc-bi.')
+    elif tipo_archivo == 'tc-promerica':
+        archivo_obj.banco = 'Promerica'
+        if extension in ('.xls', '.xlsx'):
+            count = load_movements_promerica_tc_xls(filepath, archivo_obj)
+        else:
+            raise ValueError('Extensión no válida para formato tc-promerica.')
     else:
         raise ValueError(f'Tipo de archivo "{tipo_archivo}" no soportado.')
 
