@@ -6,17 +6,17 @@
 <h1>Dashboard de Movimientos</h1>
 
 <form method="get" class="row g-3 mb-4">
-  <div class="col-md-4">
+  <div class="col-md-3">
     <label for="start_date" class="form-label">Desde</label>
     <input type="date" id="start_date" name="start_date"
            class="form-control" value="{{ start_date }}">
   </div>
-  <div class="col-md-4">
+  <div class="col-md-3">
     <label for="end_date" class="form-label">Hasta</label>
     <input type="date" id="end_date" name="end_date"
            class="form-control" value="{{ end_date }}">
   </div>
-  <div class="col-md-4">
+  <div class="col-md-3">
     <label for="category_id" class="form-label">Categoría</label>
     <select id="category_id" name="category_id" class="form-select">
       <option value="">-- Todas --</option>
@@ -28,6 +28,16 @@
       {% endfor %}
     </select>
   </div>
+  <div class="col-md-3">
+    <label for="table_limit" class="form-label">Elementos a mostrar</label>
+    <select id="table_limit" class="form-select">
+      <option value="5">5 elementos</option>
+      <option value="10" selected>10 elementos</option>
+      <option value="15">15 elementos</option>
+      <option value="20">20 elementos</option>
+      <option value="0">Todos</option>
+    </select>
+  </div>
   <div class="col-12 text-end">
     <button type="submit" class="btn btn-primary">Aplicar filtros</button>
   </div>
@@ -36,8 +46,13 @@
 <div class="row mb-4">
   <!-- Gastos por Comercio -->
   <div class="col-md-4">
-    <h5>Gastos por Comercio (GTQ)</h5>
-    <table class="table table-sm table-bordered">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5>Gastos por Comercio (GTQ)</h5>
+      <button class="btn btn-sm btn-outline-secondary toggle-table" data-table="commerce">
+        <span class="toggle-text">Ver menos</span>
+      </button>
+    </div>
+    <table class="table table-sm table-bordered" id="commerce-table">
       <thead>
         <tr>
           <th>Comercio</th>
@@ -46,7 +61,7 @@
       </thead>
       <tbody>
         {% for label, total in commerce_table %}
-        <tr>
+        <tr class="table-row" data-index="{{ loop.index0 }}">
           <td>{{ label }}</td>
           <td class="text-end">{{ '%.2f'|format(total) }}</td>
         </tr>
@@ -60,8 +75,13 @@
 
   <!-- Gastos por Categoría -->
   <div class="col-md-4">
-    <h5>Gastos por Categoría (GTQ)</h5>
-    <table class="table table-sm table-bordered">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5>Gastos por Categoría (GTQ)</h5>
+      <button class="btn btn-sm btn-outline-secondary toggle-table" data-table="category">
+        <span class="toggle-text">Ver menos</span>
+      </button>
+    </div>
+    <table class="table table-sm table-bordered" id="category-table">
       <thead>
         <tr>
           <th>Categoría</th>
@@ -70,7 +90,7 @@
       </thead>
       <tbody>
         {% for label, total in category_table %}
-        <tr>
+        <tr class="table-row" data-index="{{ loop.index0 }}">
           <td>{{ label }}</td>
           <td class="text-end">{{ '%.2f'|format(total) }}</td>
         </tr>
@@ -84,8 +104,13 @@
 
   <!-- Ingresos por Comercio -->
   <div class="col-md-4">
-    <h5>Ingresos por Comercio (GTQ)</h5>
-    <table class="table table-sm table-bordered">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5>Ingresos por Comercio (GTQ)</h5>
+      <button class="btn btn-sm btn-outline-secondary toggle-table" data-table="income">
+        <span class="toggle-text">Ver menos</span>
+      </button>
+    </div>
+    <table class="table table-sm table-bordered" id="income-table">
       <thead>
         <tr>
           <th>Comercio</th>
@@ -94,7 +119,7 @@
       </thead>
       <tbody>
         {% for label, total in income_table %}
-        <tr>
+        <tr class="table-row" data-index="{{ loop.index0 }}">
           <td>{{ label }}</td>
           <td class="text-end">{{ '%.2f'|format(total) }}</td>
         </tr>
@@ -129,6 +154,90 @@
 {% block scripts %}
   {{ super() }}
   <script>
+    // Funcionalidad de colapso de tablas
+    document.addEventListener('DOMContentLoaded', function() {
+      const tableLimit = document.getElementById('table_limit');
+      
+      // Función para aplicar límite a una tabla
+      function applyTableLimit(tableId, limit) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+        
+        const rows = table.querySelectorAll('tbody .table-row');
+        
+        rows.forEach((row, index) => {
+          if (limit === 0 || index < limit) {
+            row.style.display = '';
+          } else {
+            row.style.display = 'none';
+          }
+        });
+        
+        // Actualizar texto del botón
+        const button = table.closest('.col-md-4').querySelector('.toggle-table');
+        const toggleText = button.querySelector('.toggle-text');
+        
+        if (limit === 0 || rows.length <= limit) {
+          toggleText.textContent = 'Ver menos';
+          button.disabled = rows.length <= 5;
+        } else {
+          const hiddenCount = rows.length - limit;
+          toggleText.textContent = `Ver ${hiddenCount} más`;
+          button.disabled = false;
+        }
+      }
+      
+      // Función para alternar vista completa de una tabla
+      function toggleTableView(tableId) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+        
+        const button = table.closest('.col-md-4').querySelector('.toggle-table');
+        const toggleText = button.querySelector('.toggle-text');
+        const rows = table.querySelectorAll('tbody .table-row');
+        const currentLimit = parseInt(tableLimit.value);
+        
+        const isExpanded = toggleText.textContent === 'Ver menos';
+        
+        if (isExpanded && currentLimit > 0) {
+          // Colapsar a la cantidad seleccionada
+          applyTableLimit(tableId, currentLimit);
+        } else {
+          // Expandir todo
+          applyTableLimit(tableId, 0);
+        }
+      }
+      
+      // Event listener para el selector de límite
+      tableLimit.addEventListener('change', function() {
+        const limit = parseInt(this.value);
+        applyTableLimit('commerce-table', limit);
+        applyTableLimit('category-table', limit);
+        applyTableLimit('income-table', limit);
+        // Actualizar gráficos también
+        updateCommerceChart(limit);
+        updateCategoryChart(limit);
+      });
+      
+      // Event listeners para botones de toggle
+      document.querySelectorAll('.toggle-table').forEach(button => {
+        button.addEventListener('click', function() {
+          const tableId = this.getAttribute('data-table') + '-table';
+          toggleTableView(tableId);
+        });
+      });
+      
+      // Aplicar límite inicial
+      const initialLimit = parseInt(tableLimit.value);
+      applyTableLimit('commerce-table', initialLimit);
+      applyTableLimit('category-table', initialLimit);
+      applyTableLimit('income-table', initialLimit);
+      
+      // Crear gráficos iniciales
+      updateCommerceChart(initialLimit);
+      updateCategoryChart(initialLimit);
+    });
+
     // Datos para los gráficos
     const commerceLabels  = {{ commerce_labels  | tojson }};
     const commerceValues  = {{ commerce_values  | tojson }};
@@ -137,49 +246,88 @@
     const monthLabels     = {{ month_labels     | tojson }};
     const monthValues     = {{ month_values     | tojson }};
 
-    // Pie chart: Gastos por Comercio
-    new Chart(document.getElementById('chartCommerce'), {
-      type: 'pie',
-      data: {
-        labels: commerceLabels,
-        datasets: [{ data: commerceValues }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          tooltip: {
-            callbacks: {
-              label: ctx => {
-                const v = Math.abs(ctx.parsed).toLocaleString(undefined, { minimumFractionDigits: 2 });
-                return `${ctx.label}: Q${v}`;
-              }
-            }
-          }
-        }
-      }
-    });
+    // Variables para almacenar las instancias de los gráficos
+    let chartCommerce, chartCategory;
 
-    // Pie chart: Gastos por Categoría
-    new Chart(document.getElementById('chartCategory'), {
-      type: 'pie',
-      data: {
-        labels: categoryLabels,
-        datasets: [{ data: categoryValues }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          tooltip: {
-            callbacks: {
-              label: ctx => {
-                const v = Math.abs(ctx.parsed).toLocaleString(undefined, { minimumFractionDigits: 2 });
-                return `${ctx.label}: Q${v}`;
+    // Función para procesar datos del gráfico según el límite
+    function processChartData(labels, values, limit) {
+      if (limit === 0 || labels.length <= limit) {
+        return { labels, values };
+      }
+      
+      const limitedLabels = labels.slice(0, limit);
+      const limitedValues = values.slice(0, limit);
+      
+      // Sumar el resto en "Otros"
+      const othersSum = values.slice(limit).reduce((sum, val) => sum + Math.abs(val), 0);
+      
+      if (othersSum > 0) {
+        limitedLabels.push('Otros');
+        limitedValues.push(othersSum);
+      }
+      
+      return { labels: limitedLabels, values: limitedValues };
+    }
+
+    // Función para crear/actualizar gráfico de comercio
+    function updateCommerceChart(limit) {
+      const { labels, values } = processChartData(commerceLabels, commerceValues, limit);
+      
+      if (chartCommerce) {
+        chartCommerce.destroy();
+      }
+      
+      chartCommerce = new Chart(document.getElementById('chartCommerce'), {
+        type: 'pie',
+        data: {
+          labels: labels,
+          datasets: [{ data: values }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const v = Math.abs(ctx.parsed).toLocaleString(undefined, { minimumFractionDigits: 2 });
+                  return `${ctx.label}: Q${v}`;
+                }
               }
             }
           }
         }
+      });
+    }
+
+    // Función para crear/actualizar gráfico de categorías
+    function updateCategoryChart(limit) {
+      const { labels, values } = processChartData(categoryLabels, categoryValues, limit);
+      
+      if (chartCategory) {
+        chartCategory.destroy();
       }
-    });
+      
+      chartCategory = new Chart(document.getElementById('chartCategory'), {
+        type: 'pie',
+        data: {
+          labels: labels,
+          datasets: [{ data: values }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const v = Math.abs(ctx.parsed).toLocaleString(undefined, { minimumFractionDigits: 2 });
+                  return `${ctx.label}: Q${v}`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
 
     // Línea: Evolución Mensual de Gastos
     new Chart(document.getElementById('chartMonthly'), {
