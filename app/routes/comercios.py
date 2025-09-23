@@ -3,18 +3,48 @@ from . import bp
 from .. import db
 from ..models import Comercio, Regla, Categoria
 from ..utils.classifier import reclasificar_movimientos
+from sqlalchemy.orm import joinedload
 
 
 @bp.route('/comercios')
 def list_comercios():
     #Obterner todos los comercios y sus reglas
-    comercios = Comercio.query.all()
-    for comercio in comercios:
-        # Cargar reglas para cada comercio
-        comercio.reglas = Regla.query.filter_by(comercio_id=comercio.id).all()
-    # Ordenar por nombre
-    comercios.sort(key=lambda c: c.nombre.lower())
-    return render_template('comercios.html', comercios=comercios)
+        # Filtros desde query string
+        nombre_q = request.args.get('q_name', '').strip()
+        categoria_id = request.args.get('categoria_id', type=int)
+        tipo = request.args.get('tipo', '').strip()
+        regla_q = request.args.get('regla', '').strip()
+
+        # Construir consulta dinámica
+        query = Comercio.query
+        if categoria_id:
+            query = query.filter(Comercio.categoria_id == categoria_id)
+        if tipo:
+            query = query.filter(Comercio.tipo_contabilizacion == tipo)
+        if nombre_q:
+            query = query.filter(Comercio.nombre.ilike(f"%{nombre_q}%"))
+        if regla_q:
+            # Buscar dentro de las reglas (descripcion, criterio o tipo)
+            query = query.join(Regla).filter(
+                (Regla.descripcion.ilike(f"%{regla_q}%")) |
+                (Regla.criterio.ilike(f"%{regla_q}%")) |
+                (Regla.tipo.ilike(f"%{regla_q}%"))
+            ).distinct()
+
+        # Eager-load reglas y categoria para evitar N+1
+        comercios = query.options(joinedload(Comercio.reglas), joinedload(Comercio.categoria)).all()
+        # Ordenar por nombre
+        comercios.sort(key=lambda c: c.nombre.lower())
+
+        # Pasar listas auxiliares (categorias) y valores de filtro actuales para la plantilla
+        categorias = Categoria.query.order_by(Categoria.nombre).all()
+        filters = {
+            'q_name': nombre_q,
+            'categoria_id': categoria_id or '',
+            'tipo': tipo,
+            'regla': regla_q
+        }
+        return render_template('comercios.html', comercios=comercios, categorias=categorias, filters=filters)
 
 
 @bp.route('/comercios/add', methods=['GET', 'POST'])

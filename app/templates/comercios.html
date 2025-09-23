@@ -2,7 +2,42 @@
 {% block title %}Comercios{% endblock %}
 {% block content %}
 <h1>Comercios</h1>
-<a href="{{ url_for('main.add_comercio') }}" class="btn btn-primary mb-3">Agregar Comercio</a>
+<div class="mb-2">
+  <a href="{{ url_for('main.add_comercio') }}" class="btn btn-primary">Agregar Comercio</a>
+</div>
+<div class="mb-3">
+  <form method="get" action="{{ url_for('main.list_comercios') }}">
+    <div class="row g-2 align-items-center">
+      <div class="col-auto col-md-3">
+        <input type="text" name="q_name" class="form-control" placeholder="Nombre" value="{{ filters.q_name }}">
+      </div>
+      <div class="col-auto col-md-2">
+        <select name="categoria_id" class="form-select">
+          <option value="">Todas las categorías</option>
+          {% for cat in categorias %}
+          <option value="{{ cat.id }}" {% if filters.categoria_id|string == cat.id|string %}selected{% endif %}>{{ cat.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto col-md-2">
+        <select name="tipo" class="form-select">
+          <option value="">Cualquiera</option>
+          <option value="gastos" {% if filters.tipo == 'gastos' %}selected{% endif %}>Gastos</option>
+          <option value="ingresos" {% if filters.tipo == 'ingresos' %}selected{% endif %}>Ingresos</option>
+          <option value="transferencia" {% if filters.tipo == 'transferencia' %}selected{% endif %}>Transferencia</option>
+        </select>
+      </div>
+      <div class="col-auto col-md-3">
+        <input type="text" name="regla" class="form-control" placeholder="Buscar en reglas" value="{{ filters.regla }}">
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-outline-primary">Filtrar</button>
+        <a href="{{ url_for('main.list_comercios') }}" class="btn btn-link">Limpiar</a>
+      </div>
+      <!-- botón 'Agregar Comercio' movido arriba del formulario -->
+    </div>
+  </form>
+</div>
 <table class="table table-striped">
   <thead>
     <tr>
@@ -21,15 +56,18 @@
       <td>{{ c.tipo_contabilizacion.capitalize() }}</td>
       <td>
         {% if c.reglas %}
-          <ul class="mb-0">
-            {% for r in c.reglas %}
-              <li>
-                <strong>{{ r.tipo.capitalize() }}:</strong>
-                {{ r.descripcion }} 
-                <em>({{ r.criterio }})</em>
-              </li>
-            {% endfor %}
-          </ul>
+          <div>
+            <button type="button" class="btn btn-sm btn-outline-secondary toggle-reglas" data-target="#reglas-{{ c.id }}">Mostrar reglas</button>
+            <ul id="reglas-{{ c.id }}" class="mb-0 mt-2 d-none reglas-list">
+              {% for r in c.reglas %}
+                <li>
+                  <strong>{{ r.tipo.capitalize() }}:</strong>
+                  {{ r.descripcion }} 
+                  <em>({{ r.criterio }})</em>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
         {% else %}
           <span class="text-muted">Sin reglas</span>
         {% endif %}
@@ -43,4 +81,23 @@
     {% endfor %}
   </tbody>
 </table>
+<script>
+  // Toggle para mostrar/ocultar reglas por comercio
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.toggle-reglas').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var target = document.querySelector(btn.getAttribute('data-target'));
+        if (!target) return;
+        var isHidden = target.classList.contains('d-none');
+        if (isHidden) {
+          target.classList.remove('d-none');
+          btn.textContent = 'Ocultar reglas';
+        } else {
+          target.classList.add('d-none');
+          btn.textContent = 'Mostrar reglas';
+        }
+      });
+    });
+  });
+</script>
 {% endblock %}

@@ -92,9 +92,11 @@ def dashboard():
 
     # ————————————————————————————————————————
     # 5) Evolución Mensual de Gastos (GTQ)
+    # label the month column so we can group/order by the labeled column (not a plain string)
+    mes = func.strftime('%Y-%m', Movimiento.fecha).label('mes')
     month_q = (
         db.session.query(
-            func.strftime('%Y-%m', Movimiento.fecha).label('mes'),
+            mes,
             func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
         )
         .join(Comercio, Movimiento.comercio_id == Comercio.id)
@@ -108,7 +110,7 @@ def dashboard():
     if cat_id:
         month_q = month_q.filter(Comercio.categoria_id == int(cat_id))
 
-    month_data = month_q.group_by('mes').order_by('mes').all()
+    month_data = month_q.group_by(mes).order_by(mes).all()
     if month_data:
         month_labels, raw_vals = zip(*month_data)
         month_values = [abs(v) for v in raw_vals]
@@ -119,7 +121,7 @@ def dashboard():
     # 5.b) Evolución Mensual de Ingresos (GTQ)
     income_month_q = (
         db.session.query(
-            func.strftime('%Y-%m', Movimiento.fecha).label('mes'),
+            mes,
             func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
         )
         .join(Comercio, Movimiento.comercio_id == Comercio.id)
@@ -132,9 +134,9 @@ def dashboard():
         income_month_q = income_month_q.filter(Movimiento.fecha <= d_end)
     if cat_id:
         # If category is selected, restrict by comercio's category (same as gastos)
-        income_month_q = income_month_q.join(Comercio).filter(Comercio.categoria_id == int(cat_id))
+        income_month_q = income_month_q.filter(Comercio.categoria_id == int(cat_id))
 
-    income_month_data = income_month_q.group_by('mes').order_by('mes').all()
+    income_month_data = income_month_q.group_by(mes).order_by(mes).all()
 
     # Align income series with months from expenses: create a dict for quick lookup
     income_by_month = {m: abs(v) for m, v in income_month_data} if income_month_data else {}
