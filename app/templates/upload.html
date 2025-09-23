@@ -14,9 +14,53 @@
     </select>
   </div>
   <div class="mb-3">
-    <label for="file" class="form-label">Archivo</label>
-    <input class="form-control" type="file" name="file" id="file" accept=".csv,.txt,.xls,.xlsx,.pdf" required>
+    <input class="form-control" type="file" name="file" id="file" accept=".xlsx,.xls,.pdf" required>
+    <div id="file_help" class="form-text">Extensiones permitidas: .xlsx, .xls, .pdf</div>
   </div>
   <button class="btn btn-primary">Cargar</button>
 </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Mapeo de tipos a extensiones según app/utils/file_loader.py
+  (function(){
+    const mapping = {
+      'monet-aho-gyt': ['.xlsx', '.xls', '.pdf'],
+      'tc-gyt': ['.xlsx', '.xls', '.pdf'],
+      'monet-bi': ['.pdf'],
+      'tc-bi': ['.xls', '.xlsx'],
+      'tc-promerica': ['.xls', '.xlsx']
+    };
+
+    function extsToAccept(exts){ return exts.join(','); }
+    function extsToLabel(exts, typeName){
+      return 'Archivo (' + typeName + ') [' + exts.join(' ') + ']';
+    }
+
+    function update(){
+      const select = document.getElementById('tipo_archivo');
+      const file = document.getElementById('file');
+      const help = document.getElementById('file_help');
+
+      if (!select) { console.warn('select #tipo_archivo not found'); return; }
+      if (!file || !help) { console.warn('file/help element missing', {file, help}); }
+
+      const val = select.value;
+      const typeName = (select.options && select.selectedIndex >= 0) ? select.options[select.selectedIndex].text : '';
+      const exts = mapping[val] || ['.csv', '.txt', '.xls', '.xlsx', '.pdf'];
+
+      if (file) file.setAttribute('accept', extsToAccept(exts));
+      if (help) help.textContent = 'Extensiones permitidas: ' + exts.join(', ');
+
+      console.debug('upload form updated', {tipo: val, typeName, exts});
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+      const select = document.getElementById('tipo_archivo');
+      if (select) select.addEventListener('change', update);
+      update(); // inicial
+    });
+  })();
+</script>
 {% endblock %}

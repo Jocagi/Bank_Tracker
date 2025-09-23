@@ -116,6 +116,54 @@ def dashboard():
         month_labels = month_values = []
 
     # ————————————————————————————————————————
+    # 5.b) Evolución Mensual de Ingresos (GTQ)
+    income_month_q = (
+        db.session.query(
+            func.strftime('%Y-%m', Movimiento.fecha).label('mes'),
+            func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
+        )
+        .join(Comercio, Movimiento.comercio_id == Comercio.id)
+        .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
+        .filter(Comercio.tipo_contabilizacion == 'ingresos')
+    )
+    if d_start:
+        income_month_q = income_month_q.filter(Movimiento.fecha >= d_start)
+    if d_end:
+        income_month_q = income_month_q.filter(Movimiento.fecha <= d_end)
+    if cat_id:
+        # If category is selected, restrict by comercio's category (same as gastos)
+        income_month_q = income_month_q.join(Comercio).filter(Comercio.categoria_id == int(cat_id))
+
+    income_month_data = income_month_q.group_by('mes').order_by('mes').all()
+
+    # Align income series with months from expenses: create a dict for quick lookup
+    income_by_month = {m: abs(v) for m, v in income_month_data} if income_month_data else {}
+
+    # Build month_income_values aligned with month_labels (expenses). If there are months with incomes
+    # not present in expenses, include them by extending labels and values so both series share same x-axis.
+    if month_labels:
+        # Ensure month_labels is a list
+        month_labels = list(month_labels)
+        month_income_values = [income_by_month.get(m, 0) for m in month_labels]
+        # Also check for income months not in month_labels and append them
+        extra_income_months = [m for m in income_by_month.keys() if m not in month_labels]
+        if extra_income_months:
+            extra_months_sorted = sorted(extra_income_months)
+            for m in extra_months_sorted:
+                month_labels.append(m)
+                month_values.append(0)
+                month_income_values.append(income_by_month.get(m, 0))
+    else:
+        # No expense months, but maybe income months exist
+        if income_month_data:
+            month_labels, income_vals = zip(*income_month_data)
+            month_labels = list(month_labels)
+            month_values = [0 for _ in income_vals]
+            month_income_values = [abs(v) for v in income_vals]
+        else:
+            month_labels = month_values = month_income_values = []
+
+    # ————————————————————————————————————————
     # 6) **Ingresos por Comercio (GTQ)**
     income_q = (
         db.session.query(
@@ -145,6 +193,7 @@ def dashboard():
         cat_values=list(cat_values),
         month_labels=list(month_labels),
         month_values=list(month_values),
+        month_income_values=list(month_income_values),
         # Tablas de gastos
         commerce_table=commerce_table,
         category_table=category_table,

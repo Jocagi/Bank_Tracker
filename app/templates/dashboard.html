@@ -44,6 +44,24 @@
 </form>
 
 <div class="row mb-4">
+  <div class="col-md-12">
+    <h5>Evolución Mensual de Gastos</h5>
+    <canvas id="chartMonthly"></canvas>
+  </div>
+</div>
+
+<div class="row mb-4">
+  <div class="col-md-6">
+    <h5>Gastos por Comercio</h5>
+    <canvas id="chartCommerce"></canvas>
+  </div>
+  <div class="col-md-6">
+    <h5>Gastos por Categoría</h5>
+    <canvas id="chartCategory"></canvas>
+  </div>
+</div>
+
+<div class="row mb-4">
   <!-- Gastos por Comercio -->
   <div class="col-md-4">
     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -132,23 +150,6 @@
   </div>
 </div>
 
-<div class="row mb-4">
-  <div class="col-md-6">
-    <h5>Gastos por Comercio</h5>
-    <canvas id="chartCommerce"></canvas>
-  </div>
-  <div class="col-md-6">
-    <h5>Gastos por Categoría</h5>
-    <canvas id="chartCategory"></canvas>
-  </div>
-</div>
-
-<div class="row mb-4">
-  <div class="col-md-12">
-    <h5>Evolución Mensual de Gastos</h5>
-    <canvas id="chartMonthly"></canvas>
-  </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
@@ -243,8 +244,9 @@
     const commerceValues  = {{ commerce_values  | tojson }};
     const categoryLabels  = {{ cat_labels       | tojson }};
     const categoryValues  = {{ cat_values       | tojson }};
-    const monthLabels     = {{ month_labels     | tojson }};
-    const monthValues     = {{ month_values     | tojson }};
+  const monthLabels     = {{ month_labels     | tojson }};
+  const monthValues     = {{ month_values     | tojson }};
+  const monthIncomeValues = {{ month_income_values | tojson }};
 
     // Variables para almacenar las instancias de los gráficos
     let chartCommerce, chartCategory;
@@ -329,17 +331,29 @@
       });
     }
 
-    // Línea: Evolución Mensual de Gastos
+    // Línea: Evolución Mensual de Gastos e Ingresos
     new Chart(document.getElementById('chartMonthly'), {
       type: 'line',
       data: {
         labels: monthLabels,
-        datasets: [{
-          label: 'Gastos Q',
-          data: monthValues,
-          fill: false,
-          tension: 0.1
-        }]
+        datasets: [
+          {
+            label: 'Gastos Q',
+            data: monthValues,
+            borderColor: 'rgba(220,53,69,0.9)', // bootstrap danger
+            backgroundColor: 'rgba(220,53,69,0.1)',
+            fill: false,
+            tension: 0.1
+          },
+          {
+            label: 'Ingresos Q',
+            data: monthIncomeValues,
+            borderColor: 'rgba(25,135,84,0.9)', // bootstrap success
+            backgroundColor: 'rgba(25,135,84,0.1)',
+            fill: false,
+            tension: 0.1
+          }
+        ]
       },
       options: {
         responsive: true,
@@ -347,10 +361,15 @@
           tooltip: {
             callbacks: {
               label: ctx => {
+                // ctx.datasetIndex tells which series; ctx.parsed.y is the value
                 const v = Math.abs(ctx.parsed.y).toLocaleString(undefined, { minimumFractionDigits: 2 });
-                return `Q${v}`;
+                return `${ctx.dataset.label}: Q${v}`;
               }
             }
+          },
+          legend: {
+            display: true,
+            position: 'top'
           }
         },
         scales: {

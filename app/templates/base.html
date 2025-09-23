@@ -17,10 +17,13 @@
     href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" 
     rel="stylesheet" />
 
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+
   {% block head %}{% endblock %}
 </head>
 <body>
-  <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
     <div class="container-fluid">
       <a class="navbar-brand" href="{{ url_for('main.index') }}">Bank Tracker</a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
@@ -28,8 +31,9 @@
               aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
+
       <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav me-auto">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
           <li class="nav-item">
             <a class="nav-link" href="{{ url_for('main.index') }}">Movimientos</a>
           </li>
@@ -37,27 +41,35 @@
             <a class="nav-link" href="{{ url_for('main.sin_clasificar') }}">Sin Clasificar</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('main.upload') }}">Cargar Archivo</a>
-          </li>
-          <li class="nav-item">
             <a class="nav-link" href="{{ url_for('main.dashboard') }}">Dashboard</a>
           </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('main.list_comercios') }}">Comercios</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('main.list_categorias') }}">Categorías</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('main.list_archivos') }}">Archivos</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('main.list_tipos_cambio') }}">Tipos de Cambio</a>
+
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="configDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Configuración
+            </a>
+            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="configDropdown">
+              <li><a class="dropdown-item" href="{{ url_for('main.list_comercios') }}">Comercios</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('main.list_categorias') }}">Categorías</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('main.list_tipos_cambio') }}">Tipos de Cambio</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="{{ url_for('main.list_archivos') }}">Archivos</a></li>
+            </ul>
           </li>
         </ul>
+
+        <div class="d-flex align-items-center">
+          <a class="btn btn-outline-light me-2" href="{{ url_for('main.upload') }}">Cargar Archivo</a>
+        </div>
       </div>
     </div>
   </nav>
+
+  <style>
+    /* Small style tweaks for the navbar */
+    .navbar-nav .nav-link { padding-left: .7rem; padding-right: .7rem; }
+    .navbar-brand { font-weight: 600; }
+  </style>
 
   <main class="container">
     {% with messages = get_flashed_messages(with_categories=true) %}
