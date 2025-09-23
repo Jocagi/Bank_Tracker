@@ -60,7 +60,8 @@ def clasificar_movimientos():
     for regla, patron in reglas_excluir:
         excl_por_comercio.setdefault(regla.comercio_id, []).append(patron)
 
-    sin_asignar = Movimiento.query.filter(Movimiento.comercio_id.is_(None)).all()
+    # Excluir movimientos que el usuario marcó para no clasificar
+    sin_asignar = Movimiento.query.filter(Movimiento.comercio_id.is_(None), Movimiento.excluir_clasificacion.is_(False)).all()
     for mov in sin_asignar:
         desc = (mov.descripcion or '').strip()
         for regla_inc, patron_inc in reglas_incluir:
@@ -90,7 +91,8 @@ def reclasificar_movimientos():
     for regla, patron in reglas_excluir:
         excl_por_comercio.setdefault(regla.comercio_id, []).append(patron)
 
-    todos = Movimiento.query.all()
+    # Durante una reclasificación respetamos movimientos marcados para excluir
+    todos = Movimiento.query.filter(Movimiento.excluir_clasificacion.is_(False)).all()
     for mov in todos:
         desc = (mov.descripcion or '').strip()
         mov.comercio_id = None
@@ -118,6 +120,10 @@ def previsualizar_clasificacion(movimientos):
 
     resultados = []
     for mov in movimientos:
+        # Si el movimiento (objeto en memoria) tiene atributo excluir_clasificacion True, saltarlo
+        if getattr(mov, 'excluir_clasificacion', False):
+            resultados.append((mov, None))
+            continue
         desc = (mov.descripcion or '').strip()
         comercio_asignado = None
         for regla_inc, patron_inc in reglas_incluir:

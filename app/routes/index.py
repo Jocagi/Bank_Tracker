@@ -136,6 +136,9 @@ def edit_movimiento(mov_id):
         mov.tipo = request.form.get('tipo') or mov.tipo
         cuenta_id = request.form.get('cuenta_id')
         comercio_id = request.form.get('comercio_id')
+        # Excluir de clasificación automática: checkbox sends 'on' when checked
+        excluir = request.form.get('excluir_clasificacion')
+        mov.excluir_clasificacion = True if excluir in ('on', '1', 'true', 'True') else False
 
         if cuenta_id:
             mov.cuenta_id = int(cuenta_id)
