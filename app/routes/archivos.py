@@ -61,3 +61,11 @@ def delete_archivo(archivo_id):
     db.session.commit()
     flash('Archivo y movimientos asociados eliminados.', 'warning')
     return redirect(url_for('main.list_archivos'))
+
+
+
+@bp.route('/archivos/<int:archivo_id>/movimientos', methods=['GET'])
+def archivos_movimientos(archivo_id):
+    archivo = Archivo.query.get_or_404(archivo_id)
+    movimientos = Movimiento.query.filter_by(archivo_id=archivo.id).order_by(Movimiento.fecha.desc()).all()
+    return render_template('archivos_movimientos.html', archivo=archivo, movimientos=movimientos)

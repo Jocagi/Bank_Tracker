@@ -63,12 +63,15 @@
       <td>{{ a.upload_date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
       <td>{{ a.movimientos|length }}</td>
       <td>
-        <form method="post"
-              action="{{ url_for('main.delete_archivo', archivo_id=a.id) }}"
-              style="display:inline"
-              onsubmit="return confirm('¿Eliminar este archivo y todos sus movimientos?');">
-          <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
-        </form>
+        <div class="btn-group" role="group" aria-label="Acciones archivo">
+          <a href="{{ url_for('main.archivos_movimientos', archivo_id=a.id) }}" class="btn btn-sm btn-outline-primary">Ver movimientos</a>
+          <form method="post"
+                action="{{ url_for('main.delete_archivo', archivo_id=a.id) }}"
+                style="display:inline-block; margin:0;"
+                onsubmit="return confirm('¿Eliminar este archivo y todos sus movimientos?');">
+            <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+          </form>
+        </div>
       </td>
     </tr>
     {% else %}

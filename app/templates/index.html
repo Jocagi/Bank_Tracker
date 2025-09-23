@@ -5,6 +5,11 @@
 {% block content %}
 <h1>Movimientos</h1>
 
+<!-- Toggle para mostrar/ocultar acciones -->
+<div class="mb-3">
+  <button id="toggle-actions-btn" class="btn btn-sm btn-outline-secondary">Mostrar acciones</button>
+</div>
+
 <form method="get">
   <!-- Fila 1: Fechas y descripción -->
   <div class="row g-3 mb-3">
@@ -101,7 +106,7 @@
       <th>Cuenta</th>
       <th>Comercio</th>
       <th>Categoría</th>
-      <th></th>
+      <th class="actions-col">Acciones</th>
     </tr>
   </thead>
   <tbody>
@@ -122,11 +127,44 @@
           —
         {% endif %}
       </td>
-      <td>
-        <a href="{{ url_for('main.edit_movimiento', mov_id=m.id) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
+      <td class="actions-col">
+        <div class="btn-group" role="group" aria-label="Acciones">
+          <a href="{{ url_for('main.edit_movimiento', mov_id=m.id) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
+          <form method="post" action="{{ url_for('main.delete_movimiento', mov_id=m.id) }}" style="display:inline-block; margin:0;" onsubmit="return confirm('¿Eliminar este movimiento?');">
+            <input type="hidden" name="next" value="{{ request.full_path }}">
+            <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+          </form>
+        </div>
       </td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    (function(){
+      const colClass = 'actions-col';
+      const storageKey = 'show_mov_actions';
+      const toggleBtn = document.getElementById('toggle-actions-btn');
+
+      function setVisibility(show){
+        document.querySelectorAll('.' + colClass).forEach(el => {
+          el.style.display = show ? '' : 'none';
+        });
+        toggleBtn.textContent = show ? 'Ocultar acciones' : 'Mostrar acciones';
+      }
+
+      // init from localStorage
+      let show = (localStorage.getItem(storageKey) === 'true');
+      setVisibility(show);
+
+      toggleBtn.addEventListener('click', function(){
+        show = !show;
+        localStorage.setItem(storageKey, show);
+        setVisibility(show);
+      });
+    })();
+  </script>
 {% endblock %}

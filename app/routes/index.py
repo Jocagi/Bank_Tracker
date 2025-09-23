@@ -152,3 +152,17 @@ def edit_movimiento(mov_id):
 
     return render_template('movimiento_edit.html', mov=mov, cuentas=cuentas, comercios=comercios)
 
+
+
+@bp.route('/movimiento/<int:mov_id>/delete', methods=['POST'])
+def delete_movimiento(mov_id):
+    mov = Movimiento.query.get_or_404(mov_id)
+    # intentar obtener url de retorno
+    next_url = request.form.get('next') or request.args.get('next')
+    db.session.delete(mov)
+    db.session.commit()
+    flash('Movimiento eliminado.', 'warning')
+    if next_url:
+        return redirect(next_url)
+    return redirect(url_for('main.index'))
+
