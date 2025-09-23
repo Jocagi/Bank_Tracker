@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Cuentas{% endblock %}
+{% block content %}
+<h1>Cuentas</h1>
+<div class="mb-2">
+  <a href="{{ url_for('main.add_cuenta') }}" class="btn btn-primary">Agregar Cuenta</a>
+</div>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Banco</th>
+      <th>Tipo</th>
+      <th>Número</th>
+      <th>Titular</th>
+      <th>Moneda</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for c in cuentas %}
+    <tr>
+      <td>{{ c.banco }}</td>
+      <td>{{ c.tipo_cuenta }}</td>
+      <td>{{ c.numero_cuenta }}</td>
+      <td>{{ c.titular }}</td>
+      <td>{{ c.moneda }}</td>
+      <td>
+        <a href="{{ url_for('main.edit_cuenta', cuenta_id=c.id) }}" class="btn btn-sm btn-secondary">Editar</a>
+        <form method="post" action="{{ url_for('main.delete_cuenta', cuenta_id=c.id) }}" style="display:inline" onsubmit="return confirm('¿Eliminar cuenta {{ c.numero_cuenta }}?');">
+          <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

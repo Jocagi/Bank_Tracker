@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Agregar Cuenta{% endblock %}
+{% block content %}
+<h1>Agregar Cuenta</h1>
+<form method="post">
+  <div class="mb-3">
+    <label class="form-label">Banco</label>
+    <input name="banco" class="form-control">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Tipo de cuenta</label>
+    <input name="tipo_cuenta" class="form-control">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Número de cuenta</label>
+    <input name="numero_cuenta" class="form-control">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Titular</label>
+    <input name="titular" class="form-control">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Moneda</label>
+    <input name="moneda" class="form-control">
+  </div>
+  <button class="btn btn-primary">Guardar</button>
+  <a href="{{ url_for('main.list_cuentas') }}" class="btn btn-link">Cancelar</a>
+</form>
+{% endblock %}
