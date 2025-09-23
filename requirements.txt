@@ -9,3 +9,4 @@ pdfplumber
 xlrd
 lxml
 waitress
+Flask-Login

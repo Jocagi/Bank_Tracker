@@ -48,6 +48,9 @@ def load_movements_monet_aho_gyt_xlsx(filepath, archivo_obj):
             titular=header_info.get('titular', 'Desconocido'),
             moneda=header_info.get('moneda', 'Desconocido')
         )
+        # asignar propietario si el archivo tiene user_id
+        if getattr(archivo_obj, 'user_id', None) is not None:
+            cuenta.user_id = archivo_obj.user_id
         db.session.add(cuenta)
         db.session.commit()
 
@@ -65,6 +68,9 @@ def load_movements_monet_aho_gyt_xlsx(filepath, archivo_obj):
             cuenta_id=cuenta.id,
             archivo_id=archivo_obj.id
         )
+        # Propagar propietario del archivo al movimiento
+        if getattr(archivo_obj, 'user_id', None) is not None:
+            mg.user_id = archivo_obj.user_id
         db.session.add(mg)
 
     db.session.commit()

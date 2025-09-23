@@ -43,10 +43,30 @@
   </div>
 </form>
 
+{# Owner filter for admins #}
+{% if current_user.is_authenticated and current_user.is_admin() %}
+<form method="get" class="mb-3 row g-3">
+  <div class="col-md-4">
+    <label class="form-label">Usuario</label>
+    <select name="owner_id" class="form-select">
+      <option value="">-- Todos --</option>
+      {% for u in users %}
+      <option value="{{ u.id }}" {% if u.id|string == selected_owner %}selected{% endif %}>{{ u.username }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2 align-self-end">
+    <button class="btn btn-primary">Filtrar</button>
+    <a href="{{ url_for('main.list_archivos') }}" class="btn btn-secondary ms-2">Limpiar</a>
+  </div>
+</form>
+{% endif %}
+
 <table class="table table-striped">
   <thead>
     <tr>
       <th>ID</th>
+      <th>Usuario</th>
       <th>Nombre</th>
       <th>Tipo</th>
       <th>Fecha Carga</th>
@@ -58,6 +78,7 @@
     {% for a in archivos %}
     <tr>
       <td>{{ a.id }}</td>
+      <td>{{ a.user.username if a.user else '-' }}</td>
       <td>{{ a.filename }}</td>
       <td>{{ a.tipo_archivo }}</td>
       <td>{{ a.upload_date.strftime('%Y-%m-%d %H:%M:%S') }}</td>

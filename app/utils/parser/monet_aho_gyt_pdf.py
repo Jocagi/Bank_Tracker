@@ -128,6 +128,9 @@ def load_movements_monet_aho_gyt_pdf(filepath, archivo_obj):
             cuenta_id=cuenta.id,
             archivo_id=archivo_obj.id
         )
+        # Propagar propietario del archivo al movimiento
+        if getattr(archivo_obj, 'user_id', None) is not None:
+            mov.user_id = archivo_obj.user_id
         db.session.add(mov)
     db.session.commit()
 

@@ -5,10 +5,29 @@
 <div class="mb-2">
   <a href="{{ url_for('main.add_cuenta') }}" class="btn btn-primary">Agregar Cuenta</a>
 </div>
+{# Owner filter for admins #}
+{% if current_user.is_authenticated and current_user.is_admin() %}
+<form method="get" class="mb-3 row g-3">
+  <div class="col-md-4">
+    <label class="form-label">Usuario</label>
+    <select name="owner_id" class="form-select">
+      <option value="">-- Todos --</option>
+      {% for u in users %}
+      <option value="{{ u.id }}" {% if u.id|string == selected_owner %}selected{% endif %}>{{ u.username }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2 align-self-end">
+    <button class="btn btn-primary">Filtrar</button>
+    <a href="{{ url_for('main.list_cuentas') }}" class="btn btn-secondary ms-2">Limpiar</a>
+  </div>
+</form>
+{% endif %}
 <table class="table table-striped">
   <thead>
     <tr>
       <th>Banco</th>
+      <th>Usuario</th>
       <th>Tipo</th>
       <th>Número</th>
       <th>Titular</th>
@@ -20,6 +39,7 @@
     {% for c in cuentas %}
     <tr>
       <td>{{ c.banco }}</td>
+      <td>{{ c.user.username if c.user else '-' }}</td>
       <td>{{ c.tipo_cuenta }}</td>
       <td>{{ c.numero_cuenta }}</td>
       <td>{{ c.titular }}</td>

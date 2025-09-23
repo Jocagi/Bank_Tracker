@@ -1,5 +1,6 @@
 from datetime import datetime
 from . import db
+from flask_login import UserMixin
 
 
 class Categoria(db.Model):
@@ -37,6 +38,7 @@ class Movimiento(db.Model):
     tipo = db.Column(db.String(10))  # 'debito' o 'credito'
     excluir_clasificacion = db.Column(db.Boolean, nullable=False, default=False)
     archivo_id = db.Column(db.Integer, db.ForeignKey('archivos.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     comercio_id = db.Column(db.Integer, db.ForeignKey('comercios.id'), nullable=True)
     # Relaciones
     comercio = db.relationship(
@@ -54,6 +56,7 @@ class Movimiento(db.Model):
         backref=db.backref('movimientos', lazy=True),
         foreign_keys=[archivo_id]
     )
+    user = db.relationship('User', backref=db.backref('movimientos', lazy=True), foreign_keys=[user_id])
 
 class Cuenta(db.Model):
     __tablename__ = 'cuentas'
@@ -64,6 +67,9 @@ class Cuenta(db.Model):
     titular = db.Column(db.String(200), nullable=False)
     moneda = db.Column(db.String(10), nullable=False)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    user = db.relationship('User', backref=db.backref('cuentas', lazy=True), foreign_keys=[user_id])
 
 class Archivo(db.Model):
     __tablename__ = 'archivos'
@@ -72,6 +78,9 @@ class Archivo(db.Model):
     filename = db.Column(db.String(200), nullable=False)
     upload_date = db.Column(db.DateTime, default=datetime.utcnow)
     file_hash = db.Column(db.String(64), unique=True, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    user = db.relationship('User', backref=db.backref('archivos', lazy=True), foreign_keys=[user_id])
 
 class TipoCambio(db.Model):
     __tablename__ = 'tipos_cambio'
@@ -79,4 +88,15 @@ class TipoCambio(db.Model):
     moneda     = db.Column(db.String(10), nullable=False, unique=True)  # p.e. "USD", "EUR"
     valor      = db.Column(db.Float,    nullable=False)                 # cuántos GTQ vale 1 unidad de esta moneda
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class User(UserMixin, db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    role = db.Column(db.String(20), nullable=False, default='user')  # 'admin' or 'user'
+
+    def is_admin(self):
+        return self.role == 'admin'
 

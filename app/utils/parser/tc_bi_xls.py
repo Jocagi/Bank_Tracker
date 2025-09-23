@@ -126,6 +126,9 @@ def load_movements_bi_tc_xls(filepath, archivo_obj):
             cuenta_id=cuenta.id,
             archivo_id=archivo_obj.id
         )
+        # Propagar propietario del archivo al movimiento
+        if getattr(archivo_obj, 'user_id', None) is not None:
+            m.user_id = archivo_obj.user_id
         db.session.add(m)
         count += 1
     db.session.commit()

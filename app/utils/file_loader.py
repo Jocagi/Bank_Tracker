@@ -21,7 +21,7 @@ def compute_file_hash(filepath):
     return hash_sha.hexdigest()
 
 
-def register_file(filepath, tipo_archivo):
+def register_file(filepath, tipo_archivo, user_id=None):
     """
     Registra un archivo en la DB si no existe duplicado y devuelve (ruta, Archivo).
     Si ya existe, devuelve (None, Archivo existente).
@@ -36,6 +36,9 @@ def register_file(filepath, tipo_archivo):
         filename=os.path.basename(filepath),
         file_hash=file_hash
     )
+    # asignar propietario si se proporciona
+    if user_id is not None:
+        nuevo.user_id = user_id
     db.session.add(nuevo)
     db.session.commit()
     return filepath, nuevo

@@ -2,15 +2,29 @@ from flask import render_template, request, redirect, url_for, flash
 from . import bp
 from .. import db
 from ..models import Cuenta, Movimiento
+from ..models import User
+from flask_login import login_required, current_user
 
 
 @bp.route('/cuentas')
+@login_required
 def list_cuentas():
-    cuentas = Cuenta.query.order_by(Cuenta.numero_cuenta).all()
-    return render_template('cuentas.html', cuentas=cuentas)
+    # Support optional owner filter for admins
+    selected_owner = request.args.get('owner_id', '')
+    users = []
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        users = User.query.order_by(User.username).all()
+        if selected_owner:
+            cuentas = Cuenta.query.filter_by(user_id=int(selected_owner)).order_by(Cuenta.numero_cuenta).all()
+        else:
+            cuentas = Cuenta.query.order_by(Cuenta.numero_cuenta).all()
+    else:
+        cuentas = Cuenta.query.filter_by(user_id=current_user.id).order_by(Cuenta.numero_cuenta).all()
+    return render_template('cuentas.html', cuentas=cuentas, users=users, selected_owner=selected_owner)
 
 
 @bp.route('/cuentas/add', methods=['GET', 'POST'])
+@login_required
 def add_cuenta():
     if request.method == 'POST':
         banco = request.form.get('banco', '').strip()
@@ -35,6 +49,12 @@ def add_cuenta():
             titular=titular,
             moneda=moneda
         )
+        # asignar propietario
+        if hasattr(current_user, 'is_admin') and current_user.is_admin():
+            # si admin no se asigna propietario por defecto
+            nueva.user_id = None
+        else:
+            nueva.user_id = current_user.id
         db.session.add(nueva)
         db.session.commit()
         flash('Cuenta añadida correctamente.', 'success')
@@ -44,8 +64,13 @@ def add_cuenta():
 
 
 @bp.route('/cuentas/<int:cuenta_id>/edit', methods=['GET', 'POST'])
+@login_required
 def edit_cuenta(cuenta_id):
     cuenta = Cuenta.query.get_or_404(cuenta_id)
+    if not (hasattr(current_user, 'is_admin') and current_user.is_admin()):
+        if cuenta.user_id != current_user.id:
+            flash('Acceso denegado', 'danger')
+            return redirect(url_for('main.list_cuentas'))
     if request.method == 'POST':
         banco = request.form.get('banco', '').strip()
         tipo_cuenta = request.form.get('tipo_cuenta', '').strip()
@@ -76,8 +101,13 @@ def edit_cuenta(cuenta_id):
 
 
 @bp.route('/cuentas/<int:cuenta_id>/delete', methods=['POST'])
+@login_required
 def delete_cuenta(cuenta_id):
     cuenta = Cuenta.query.get_or_404(cuenta_id)
+    if not (hasattr(current_user, 'is_admin') and current_user.is_admin()):
+        if cuenta.user_id != current_user.id:
+            flash('Acceso denegado', 'danger')
+            return redirect(url_for('main.list_cuentas'))
     # Comprobar si tiene movimientos asociados
     tiene_mov = Movimiento.query.filter_by(cuenta_id=cuenta.id).first()
     if tiene_mov:

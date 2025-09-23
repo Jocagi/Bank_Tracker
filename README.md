@@ -98,7 +98,21 @@
 
 ---
 
-## 📝 Uso básico
+## � Crear usuario admin inicial
+
+En una instalación nueva necesitas crear al menos un usuario administrador para acceder a las pantallas de administración. Hay un script de ayuda:
+
+```powershell
+# Desde la raíz del proyecto (Windows PowerShell)
+python .\scripts\create_admin.py --username admin
+```
+
+Si omites `--password`, el script te pedirá la contraseña por consola de forma segura.
+
+El script intenta crear las tablas si las migraciones no se han ejecutado todavía (usa `flask db upgrade` si prefieres gestionar migraciones explícitas).
+
+
+## �📝 Uso básico
 
 1. **Cargar archivo**
 

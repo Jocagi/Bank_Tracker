@@ -1,0 +1,46 @@
+/* Styles for authentication pages */
+.auth-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh; /* fill viewport so card is vertically centered */
+  padding: 2rem 0;
+  background: linear-gradient(180deg, #f7fbff 0%, #ffffff 100%);
+}
+.login-card {
+  max-width: 540px;
+  width: 100%;
+  padding: 2rem;
+  border-radius: .6rem;
+  box-shadow: 0 12px 30px rgba(14, 30, 37, 0.12);
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.04);
+}
+.brand-lead { font-weight:700; letter-spacing:.2px; }
+
+/* Keep card vertically compact on large screens */
+.login-card { margin: 0 auto; }
+
+/* Smaller adjustments for mobile */
+@media (max-width: 576px) {
+  .login-card { padding: 1rem; border-radius: .4rem; }
+  .login-card { max-width: 92%; }
+}
+
+/* Medium screens (tablets) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .login-card { max-width: 480px; padding: 1.5rem; }
+}
+
+/* Desktop */
+@media (min-width: 1200px) {
+  .login-card { max-width: 640px; padding: 2.25rem; }
+}
+
+/* Inputs and buttons fluid */
+.login-card .form-control { transition: box-shadow .12s ease, border-color .12s ease; }
+.login-card .btn { transition: transform .08s ease, box-shadow .12s ease; }
+.login-card .btn:active { transform: translateY(1px); }
+
+/* Button spinner spacing */
+#btn-spinner { vertical-align: middle; }

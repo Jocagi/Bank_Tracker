@@ -4,13 +4,15 @@ from flask import render_template, request, flash
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
 from .. import db
-from ..models import Movimiento, Cuenta, Comercio, Categoria, TipoCambio
+from ..models import Movimiento, Cuenta, Comercio, Categoria, TipoCambio, User
 from ..models import Movimiento as MovimientoModel
 from . import bp
 from flask import redirect, url_for
+from flask_login import login_required, current_user
 
 
 @bp.route('/')
+@login_required
 def index():
     # Lectura de filtros desde query string
     start               = request.args.get('start_date', '')
@@ -20,6 +22,7 @@ def index():
     selected_comercio   = request.args.get('comercio_id', '')
     selected_categoria  = request.args.get('categoria_id', '')
     selected_tipo_cont  = request.args.get('tipo_contabilizacion', '')
+    selected_owner = request.args.get('owner_id', '')
 
     # Base de la consulta
     query = Movimiento.query.options(
@@ -27,6 +30,19 @@ def index():
                    .joinedload(Comercio.categoria),
         joinedload(Movimiento.cuenta)
     )
+    # Filtrar por owner: admin puede filtrar por owner_id; los usuarios normales ven solo lo suyo
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        # obtener lista de usuarios para el select
+        users = User.query.order_by(User.username).all()
+        if selected_owner:
+            try:
+                oid = int(selected_owner)
+                query = query.filter(Movimiento.user_id == oid)
+            except ValueError:
+                pass
+    else:
+        users = []
+        query = query.filter(Movimiento.user_id == current_user.id)
     
 
     # Filtros
@@ -105,6 +121,7 @@ def index():
         comercios=comercios,
         categorias=categorias,
         tipos_contabilizacion=tipos
+        , users=users, selected_owner=selected_owner
     )
 
 

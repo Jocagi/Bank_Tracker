@@ -85,6 +85,18 @@
         {% endfor %}
       </select>
     </div>
+    {# Owner filter only visible to admins #}
+    {% if current_user.is_authenticated and current_user.is_admin() %}
+    <div class="col-md-3">
+      <label for="owner_id" class="form-label">Usuario</label>
+      <select id="owner_id" name="owner_id" class="form-select">
+        <option value="">-- Todos --</option>
+        {% for u in users %}
+          <option value="{{ u.id }}" {% if u.id|string == selected_owner %}selected{% endif %}>{{ u.username }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
   </div>
 </form>
 
@@ -97,7 +109,10 @@
 <table class="table table-striped">
   <thead>
     <tr>
-      <th>Fecha</th>
+  <th>Fecha</th>
+  {% if current_user.is_authenticated and current_user.is_admin() %}
+  <th>Usuario</th>
+  {% endif %}
       <th>Descripción</th>
       <th>Lugar</th>
       <th>Documento</th>
@@ -112,7 +127,10 @@
   <tbody>
     {% for m in movimientos %}
     <tr>
-      <td>{{ m.fecha }}</td>
+  <td>{{ m.fecha }}</td>
+  {% if current_user.is_authenticated and current_user.is_admin() %}
+  <td>{{ m.user.username if m.user else '-' }}</td>
+  {% endif %}
       <td>{{ m.descripcion }}</td>
       <td>{{ m.lugar or '—' }}</td>
       <td>{{ m.numero_documento or '—' }}</td>

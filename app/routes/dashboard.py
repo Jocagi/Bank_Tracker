@@ -2,11 +2,13 @@ from datetime import datetime
 from flask import render_template, request, flash
 from sqlalchemy import func
 from .. import db
-from ..models import Comercio, Categoria, Movimiento, TipoCambio
+from ..models import Comercio, Categoria, Movimiento, TipoCambio, User
 from . import bp
+from flask_login import login_required, current_user
 
 
 @bp.route('/dashboard')
+@login_required
 def dashboard():
     # ————————————————————————————————————————
     # 1) Leer filtros desde la query string
@@ -30,6 +32,13 @@ def dashboard():
     # 2) Lista de categorías para el dropdown
     categorias = Categoria.query.order_by(Categoria.nombre).all()
 
+    # Lista de usuarios (solo necesaria si es admin)
+    users = []
+    owner_id = request.args.get('owner_id', '')
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        users = User.query.order_by(User.username).all()
+
+
     # ————————————————————————————————————————
     # 3) Gastos por Comercio (GTQ)
     commerce_q = (
@@ -40,8 +49,21 @@ def dashboard():
         .join(Movimiento, Movimiento.comercio_id == Comercio.id)
         .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
         .filter(Comercio.tipo_contabilizacion == 'gastos')
-        .order_by(func.sum(Movimiento.monto * TipoCambio.valor).asc())
     )
+    # Filtrar por owner: si el usuario es admin puede seleccionar owner_id, si no -> su propio id
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        if owner_id:
+            try:
+                oid = int(owner_id)
+                commerce_q = commerce_q.filter(Movimiento.user_id == oid)
+            except ValueError:
+                # ignore invalid owner_id
+                pass
+    else:
+        commerce_q = commerce_q.filter(Movimiento.user_id == current_user.id)
+
+    # aplicar ordenamiento (antes del group_by)
+    commerce_q = commerce_q.order_by(func.sum(Movimiento.monto * TipoCambio.valor).asc())
     if d_start:
         commerce_q = commerce_q.filter(Movimiento.fecha >= d_start)
     if d_end:
@@ -73,6 +95,15 @@ def dashboard():
         .filter(Comercio.tipo_contabilizacion == 'gastos')
         .order_by(func.sum(Movimiento.monto * TipoCambio.valor).asc())
     )
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        if owner_id:
+            try:
+                oid = int(owner_id)
+                cat_q = cat_q.filter(Movimiento.user_id == oid)
+            except ValueError:
+                pass
+    else:
+        cat_q = cat_q.filter(Movimiento.user_id == current_user.id)
     if d_start:
         cat_q = cat_q.filter(Movimiento.fecha >= d_start)
     if d_end:
@@ -103,6 +134,15 @@ def dashboard():
         .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
         .filter(Comercio.tipo_contabilizacion == 'gastos')
     )
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        if owner_id:
+            try:
+                oid = int(owner_id)
+                month_q = month_q.filter(Movimiento.user_id == oid)
+            except ValueError:
+                pass
+    else:
+        month_q = month_q.filter(Movimiento.user_id == current_user.id)
     if d_start:
         month_q = month_q.filter(Movimiento.fecha >= d_start)
     if d_end:
@@ -128,6 +168,15 @@ def dashboard():
         .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
         .filter(Comercio.tipo_contabilizacion == 'ingresos')
     )
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        if owner_id:
+            try:
+                oid = int(owner_id)
+                income_month_q = income_month_q.filter(Movimiento.user_id == oid)
+            except ValueError:
+                pass
+    else:
+        income_month_q = income_month_q.filter(Movimiento.user_id == current_user.id)
     if d_start:
         income_month_q = income_month_q.filter(Movimiento.fecha >= d_start)
     if d_end:
@@ -176,6 +225,15 @@ def dashboard():
         .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
         .filter(Comercio.tipo_contabilizacion == 'ingresos')
     )
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        if owner_id:
+            try:
+                oid = int(owner_id)
+                income_q = income_q.filter(Movimiento.user_id == oid)
+            except ValueError:
+                pass
+    else:
+        income_q = income_q.filter(Movimiento.user_id == current_user.id)
     if d_start:
         income_q = income_q.filter(Movimiento.fecha >= d_start)
     if d_end:
@@ -203,6 +261,8 @@ def dashboard():
         income_table=income_table,
         # Filtros
         categorias=categorias,
+        users=users,
+        selected_owner=owner_id,
         start_date=start,
         end_date=end,
         selected_cat=cat_id

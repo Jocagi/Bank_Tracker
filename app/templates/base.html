@@ -20,9 +20,13 @@
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 
+  <!-- Auth page styles -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+
   {% block head %}{% endblock %}
 </head>
 <body>
+  {% if current_user.is_authenticated %}
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
     <div class="container-fluid">
       <a class="navbar-brand" href="{{ url_for('main.index') }}">Bank Tracker</a>
@@ -44,27 +48,52 @@
             <a class="nav-link" href="{{ url_for('main.dashboard') }}">Dashboard</a>
           </li>
 
+          <!-- Datos dropdown: comercios, categorias, cuentas, tipos de cambio, archivos -->
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" id="configDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              Configuración
+            <a class="nav-link dropdown-toggle" href="#" id="dataDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Datos
             </a>
-            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="configDropdown">
+            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="dataDropdown">
               <li><a class="dropdown-item" href="{{ url_for('main.list_comercios') }}">Comercios</a></li>
-              <li><a class="dropdown-item" href="{{ url_for('main.list_cuentas') }}">Cuentas</a></li>
               <li><a class="dropdown-item" href="{{ url_for('main.list_categorias') }}">Categorías</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('main.list_cuentas') }}">Cuentas</a></li>
               <li><a class="dropdown-item" href="{{ url_for('main.list_tipos_cambio') }}">Tipos de Cambio</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item" href="{{ url_for('main.list_archivos') }}">Archivos</a></li>
             </ul>
           </li>
+
+          {% if current_user.is_admin() %}
+          <!-- Admin dropdown only for administrators -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Admin
+            </a>
+            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="adminDropdown">
+              <li><a class="dropdown-item" href="{{ url_for('main.list_users') }}">Usuarios</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="{{ url_for('main.list_archivos') }}">Revisar Archivos</a></li>
+            </ul>
+          </li>
+          {% endif %}
         </ul>
 
         <div class="d-flex align-items-center">
-          <a class="btn btn-outline-light me-2" href="{{ url_for('main.upload') }}">Cargar Archivo</a>
+          <a class="btn btn-outline-light me-2" href="{{ url_for('main.upload') }}">Cargar</a>
+          <div class="dropdown">
+            <a class="btn btn-sm btn-outline-light dropdown-toggle me-2" href="#" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">{{ current_user.username }}</a>
+            <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark" aria-labelledby="userMenu">
+              <li><a class="dropdown-item" href="#">Perfil</a></li>
+              <li><a class="dropdown-item" href="#">Ajustes</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="{{ url_for('main.logout') }}">Cerrar sesión</a></li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>
   </nav>
+  {% endif %}
 
   <style>
     /* Small style tweaks for the navbar */
