@@ -7,6 +7,7 @@ from .. import db
 from ..models import Movimiento, Cuenta, Comercio, Categoria, TipoCambio
 from ..models import Movimiento as MovimientoModel
 from . import bp
+from flask import redirect, url_for
 
 
 @bp.route('/')
@@ -26,6 +27,7 @@ def index():
                    .joinedload(Comercio.categoria),
         joinedload(Movimiento.cuenta)
     )
+    
 
     # Filtros
     if start:
@@ -104,4 +106,49 @@ def index():
         categorias=categorias,
         tipos_contabilizacion=tipos
     )
+
+
+@bp.route('/movimiento/<int:mov_id>/edit', methods=['GET', 'POST'])
+def edit_movimiento(mov_id):
+    mov = Movimiento.query.get_or_404(mov_id)
+    cuentas   = Cuenta.query.order_by(Cuenta.numero_cuenta).all()
+    comercios = Comercio.query.order_by(Comercio.nombre).all()
+
+    if request.method == 'POST':
+        # Obtener valores del formulario
+        try:
+            mov.fecha = datetime.strptime(request.form.get('fecha'), '%Y-%m-%d').date()
+        except Exception:
+            flash('Fecha inválida', 'warning')
+            return redirect(url_for('main.edit_movimiento', mov_id=mov.id))
+
+        mov.descripcion = request.form.get('descripcion')
+        mov.lugar = request.form.get('lugar') or None
+        mov.numero_documento = request.form.get('numero_documento') or None
+        monto = request.form.get('monto')
+        try:
+            mov.monto = float(monto) if monto not in (None, '') else None
+        except ValueError:
+            flash('Monto inválido', 'warning')
+            return redirect(url_for('main.edit_movimiento', mov_id=mov.id))
+
+        mov.moneda = request.form.get('moneda') or mov.moneda
+        mov.tipo = request.form.get('tipo') or mov.tipo
+        cuenta_id = request.form.get('cuenta_id')
+        comercio_id = request.form.get('comercio_id')
+
+        if cuenta_id:
+            mov.cuenta_id = int(cuenta_id)
+        else:
+            flash('Debe seleccionar una cuenta', 'warning')
+            return redirect(url_for('main.edit_movimiento', mov_id=mov.id))
+
+        mov.comercio_id = int(comercio_id) if comercio_id else None
+
+        # Guardar cambios
+        db.session.commit()
+        flash('Movimiento actualizado.', 'success')
+        return redirect(url_for('main.index'))
+
+    return render_template('movimiento_edit.html', mov=mov, cuentas=cuentas, comercios=comercios)
 

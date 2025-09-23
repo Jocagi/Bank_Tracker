@@ -101,6 +101,7 @@
       <th>Cuenta</th>
       <th>Comercio</th>
       <th>Categoría</th>
+      <th></th>
     </tr>
   </thead>
   <tbody>
@@ -120,6 +121,9 @@
         {% else %}
           —
         {% endif %}
+      </td>
+      <td>
+        <a href="{{ url_for('main.edit_movimiento', mov_id=m.id) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
       </td>
     </tr>
     {% endfor %}

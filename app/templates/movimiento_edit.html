@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block title %}Editar Movimiento{% endblock %}
+
+{% block content %}
+<h1>Editar Movimiento</h1>
+
+<form method="post">
+  <div class="row g-3">
+    <div class="col-md-3">
+      <label for="fecha" class="form-label">Fecha</label>
+      <input type="date" id="fecha" name="fecha" class="form-control" value="{{ mov.fecha }}">
+    </div>
+    <div class="col-md-9">
+      <label for="descripcion" class="form-label">Descripción</label>
+      <input type="text" id="descripcion" name="descripcion" class="form-control" value="{{ mov.descripcion }}">
+    </div>
+
+    <div class="col-md-4">
+      <label for="lugar" class="form-label">Lugar</label>
+      <input type="text" id="lugar" name="lugar" class="form-control" value="{{ mov.lugar }}">
+    </div>
+    <div class="col-md-4">
+      <label for="numero_documento" class="form-label">Documento</label>
+      <input type="text" id="numero_documento" name="numero_documento" class="form-control" value="{{ mov.numero_documento }}">
+    </div>
+    <div class="col-md-4">
+      <label for="monto" class="form-label">Monto</label>
+      <input type="text" id="monto" name="monto" class="form-control" value="{{ mov.monto }}">
+    </div>
+
+    <div class="col-md-3">
+      <label for="moneda" class="form-label">Moneda</label>
+      <input type="text" id="moneda" name="moneda" class="form-control" value="{{ mov.moneda }}">
+    </div>
+    <div class="col-md-3">
+      <label for="tipo" class="form-label">Tipo</label>
+      <select id="tipo" name="tipo" class="form-select">
+        <option value="debito" {% if mov.tipo=='debito' %}selected{% endif %}>Débito</option>
+        <option value="credito" {% if mov.tipo=='credito' %}selected{% endif %}>Crédito</option>
+      </select>
+    </div>
+
+    <div class="col-md-6">
+      <label for="cuenta_id" class="form-label">Cuenta</label>
+      <select id="cuenta_id" name="cuenta_id" class="form-select">
+        {% for c in cuentas %}
+          <option value="{{ c.id }}" {% if c.id==mov.cuenta_id %}selected{% endif %}>{{ c.numero_cuenta }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-6">
+      <label for="comercio_id" class="form-label">Comercio</label>
+      <select id="comercio_id" name="comercio_id" class="form-select">
+        <option value="">-- Ninguno --</option>
+        {% for c in comercios %}
+          <option value="{{ c.id }}" {% if mov.comercio and c.id==mov.comercio.id %}selected{% endif %}>{{ c.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-12 mt-3">
+      <button type="submit" class="btn btn-primary">Guardar</button>
+      <a href="{{ url_for('main.index') }}" class="btn btn-secondary ms-2">Cancelar</a>
+    </div>
+  </div>
+</form>
+
+{% endblock %}
