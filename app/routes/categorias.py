@@ -1,13 +1,36 @@
 from flask import render_template, request, redirect, url_for, flash
 from . import bp
 from .. import db
-from ..models import Categoria
+from ..models import Categoria, Comercio
+from sqlalchemy import func
 
 
 @bp.route('/categorias')
 def list_categorias():
-    categorias = Categoria.query.all()
-    return render_template('categorias.html', categorias=categorias)
+    # Filtro por nombre desde query string
+    q_name = request.args.get('q_name', '').strip()
+
+    # Subquery para contar comercios por categoría
+    counts_subq = db.session.query(
+        Comercio.categoria_id.label('categoria_id'),
+        func.count(Comercio.id).label('comercios_count')
+    ).group_by(Comercio.categoria_id).subquery()
+
+    # Construir consulta principal con outerjoin a subquery de conteos
+    query = db.session.query(
+        Categoria,
+        func.coalesce(counts_subq.c.comercios_count, 0).label('comercios_count')
+    ).outerjoin(counts_subq, Categoria.id == counts_subq.c.categoria_id)
+
+    if q_name:
+        query = query.filter(Categoria.nombre.ilike(f"%{q_name}%"))
+
+    rows = query.order_by(Categoria.nombre).all()
+
+    # Separar en listas (categoria, conteo)
+    categorias = [{'categoria': r[0], 'comercios_count': r[1]} for r in rows]
+    filters = {'q_name': q_name}
+    return render_template('categorias.html', categorias=categorias, filters=filters)
 
 
 @bp.route('/categorias/add', methods=['GET', 'POST'])
