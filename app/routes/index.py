@@ -20,14 +20,14 @@ def index():
     selected_categoria  = request.args.get('categoria_id', '')
     selected_tipo_cont  = request.args.get('tipo_contabilizacion', '')
 
-    # Base de la consulta con eager loading
+    # Base de la consulta
     query = Movimiento.query.options(
         joinedload(Movimiento.comercio)
                    .joinedload(Comercio.categoria),
         joinedload(Movimiento.cuenta)
     )
 
-    # Filtros existentes...
+    # Filtros
     if start:
         try:
             d1 = datetime.strptime(start, '%Y-%m-%d').date()
@@ -52,17 +52,26 @@ def index():
         query = query.filter(
             Movimiento.comercio.has(tipo_contabilizacion=selected_tipo_cont)
         )
-
-    # --- Nuevo filtro por Cuenta ---
     if selected_cuenta:
         query = query.filter(Movimiento.cuenta_id == int(selected_cuenta))
 
     # Obtener los movimientos
-    movimientos = (
-        query.order_by(Movimiento.fecha.desc())
-             .limit(100)
-             .all()
-    )
+    # Aplicar límite de 100 solo cuando no hay filtros (para la vista por defecto)
+    has_filters = any([
+        start,
+        end,
+        desc,
+        selected_cuenta,
+        selected_comercio,
+        selected_categoria,
+        selected_tipo_cont,
+    ])
+
+    q = query.order_by(Movimiento.fecha.desc())
+    if not has_filters:
+        q = q.limit(100)
+
+    movimientos = q.all()
 
     # Totales
     total_movs  = len(movimientos)
