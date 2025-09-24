@@ -44,6 +44,9 @@ def load_movements_promerica_tc_xls(filepath, archivo_obj):
             titular=archivo_obj.titular,
             moneda=archivo_obj.moneda
         )
+        # Asignar el usuario propietario del archivo a la cuenta
+        if getattr(archivo_obj, 'user_id', None) is not None:
+            cuenta.user_id = archivo_obj.user_id
         db.session.add(cuenta)
         db.session.commit()
 
