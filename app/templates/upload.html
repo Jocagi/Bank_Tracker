@@ -11,11 +11,12 @@
       <option value="monet-bi">Monetaria BI</option>
       <option value="tc-bi">Tarjeta de Crédito BI</option>
       <option value="tc-promerica">Tarjeta de Crédito Promerica</option>
+      <option value="tc-bac">Tarjeta de Crédito BAC</option>
     </select>
   </div>
   <div class="mb-3">
-    <input class="form-control" type="file" name="file" id="file" accept=".xlsx,.xls,.pdf" required>
-    <div id="file_help" class="form-text">Extensiones permitidas: .xlsx, .xls, .pdf</div>
+    <input class="form-control" type="file" name="file" id="file" accept=".xlsx,.xls,.pdf,.csv" required>
+    <div id="file_help" class="form-text">Extensiones permitidas: .xlsx, .xls, .pdf, .csv</div>
   </div>
   <button class="btn btn-primary">Cargar</button>
 </form>
@@ -30,7 +31,8 @@
       'tc-gyt': ['.xlsx', '.xls', '.pdf'],
       'monet-bi': ['.pdf'],
       'tc-bi': ['.xls', '.xlsx'],
-      'tc-promerica': ['.xls', '.xlsx']
+      'tc-promerica': ['.xls', '.xlsx'],
+      'tc-bac': ['.csv']
     };
 
     function extsToAccept(exts){ return exts.join(','); }
