@@ -26,21 +26,27 @@ def list_cuentas():
 @bp.route('/cuentas/add', methods=['GET', 'POST'])
 @login_required
 def add_cuenta():
+    # Obtener lista de usuarios para administradores
+    users = []
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        users = User.query.order_by(User.username).all()
+    
     if request.method == 'POST':
         banco = request.form.get('banco', '').strip()
         tipo_cuenta = request.form.get('tipo_cuenta', '').strip()
         numero_cuenta = request.form.get('numero_cuenta', '').strip()
         titular = request.form.get('titular', '').strip()
         moneda = request.form.get('moneda', '').strip()
+        user_id = request.form.get('user_id', '')
 
         if not (banco and tipo_cuenta and numero_cuenta and titular and moneda):
             flash('Todos los campos son obligatorios.', 'danger')
-            return render_template('cuentas_add.html')
+            return render_template('cuentas_add.html', users=users)
 
         # Validar unicidad número de cuenta
         if Cuenta.query.filter_by(numero_cuenta=numero_cuenta).first():
             flash('Ya existe una cuenta con ese número.', 'warning')
-            return render_template('cuentas_add.html')
+            return render_template('cuentas_add.html', users=users)
 
         nueva = Cuenta(
             banco=banco,
@@ -49,18 +55,27 @@ def add_cuenta():
             titular=titular,
             moneda=moneda
         )
-        # asignar propietario
+        
+        # Asignar propietario
         if hasattr(current_user, 'is_admin') and current_user.is_admin():
-            # si admin no se asigna propietario por defecto
-            nueva.user_id = None
+            # Los administradores pueden asignar propietario específico
+            if user_id:
+                try:
+                    nueva.user_id = int(user_id)
+                except ValueError:
+                    flash('Usuario inválido seleccionado.', 'warning')
+                    return render_template('cuentas_add.html', users=users)
+            else:
+                nueva.user_id = None  # Sin asignar
         else:
-            nueva.user_id = current_user.id
+            nueva.user_id = current_user.id  # Usuarios normales se asignan a sí mismos
+        
         db.session.add(nueva)
         db.session.commit()
         flash('Cuenta añadida correctamente.', 'success')
         return redirect(url_for('main.list_cuentas'))
 
-    return render_template('cuentas_add.html')
+    return render_template('cuentas_add.html', users=users)
 
 
 @bp.route('/cuentas/<int:cuenta_id>/edit', methods=['GET', 'POST'])
@@ -71,33 +86,49 @@ def edit_cuenta(cuenta_id):
         if cuenta.user_id != current_user.id:
             flash('Acceso denegado', 'danger')
             return redirect(url_for('main.list_cuentas'))
+    
+    # Obtener lista de usuarios para administradores
+    users = []
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        users = User.query.order_by(User.username).all()
+    
     if request.method == 'POST':
         banco = request.form.get('banco', '').strip()
         tipo_cuenta = request.form.get('tipo_cuenta', '').strip()
         numero_cuenta = request.form.get('numero_cuenta', '').strip()
         titular = request.form.get('titular', '').strip()
         moneda = request.form.get('moneda', '').strip()
+        user_id = request.form.get('user_id', '')
 
         if not (banco and tipo_cuenta and numero_cuenta and titular and moneda):
             flash('Todos los campos son obligatorios.', 'danger')
-            return render_template('cuentas_edit.html', cuenta=cuenta)
+            return render_template('cuentas_edit.html', cuenta=cuenta, users=users)
 
         # Verificar si el número de cuenta ya lo usa otra cuenta
         other = Cuenta.query.filter(Cuenta.numero_cuenta == numero_cuenta, Cuenta.id != cuenta.id).first()
         if other:
             flash('Otra cuenta ya usa ese número.', 'warning')
-            return render_template('cuentas_edit.html', cuenta=cuenta)
+            return render_template('cuentas_edit.html', cuenta=cuenta, users=users)
 
         cuenta.banco = banco
         cuenta.tipo_cuenta = tipo_cuenta
         cuenta.numero_cuenta = numero_cuenta
         cuenta.titular = titular
         cuenta.moneda = moneda
+        
+        # Solo los administradores pueden cambiar el propietario
+        if hasattr(current_user, 'is_admin') and current_user.is_admin() and user_id:
+            try:
+                cuenta.user_id = int(user_id) if user_id else None
+            except ValueError:
+                flash('Usuario inválido seleccionado.', 'warning')
+                return render_template('cuentas_edit.html', cuenta=cuenta, users=users)
+        
         db.session.commit()
         flash('Cuenta actualizada correctamente.', 'success')
         return redirect(url_for('main.list_cuentas'))
 
-    return render_template('cuentas_edit.html', cuenta=cuenta)
+    return render_template('cuentas_edit.html', cuenta=cuenta, users=users)
 
 
 @bp.route('/cuentas/<int:cuenta_id>/delete', methods=['POST'])

@@ -23,6 +23,21 @@
     <label class="form-label">Moneda</label>
     <input name="moneda" class="form-control">
   </div>
+  
+  {# Solo administradores pueden asignar propietario #}
+  {% if current_user.is_authenticated and current_user.is_admin() %}
+  <div class="mb-3">
+    <label class="form-label">Propietario</label>
+    <select name="user_id" class="form-select">
+      <option value="">-- Sin asignar --</option>
+      {% for u in users %}
+        <option value="{{ u.id }}">{{ u.username }}</option>
+      {% endfor %}
+    </select>
+    <div class="form-text">Los administradores pueden asignar la cuenta a un usuario específico o dejarla sin asignar.</div>
+  </div>
+  {% endif %}
+  
   <button class="btn btn-primary">Guardar</button>
   <a href="{{ url_for('main.list_cuentas') }}" class="btn btn-link">Cancelar</a>
 </form>
