@@ -130,6 +130,9 @@ def edit_movimiento(mov_id):
     mov = Movimiento.query.get_or_404(mov_id)
     cuentas   = Cuenta.query.order_by(Cuenta.numero_cuenta).all()
     comercios = Comercio.query.order_by(Comercio.nombre).all()
+    
+    # Detectar si viene desde sin_clasificar
+    from_sin_clasificar = request.args.get('from') == 'sin_clasificar'
 
     if request.method == 'POST':
         # Obtener valores del formulario
@@ -167,8 +170,28 @@ def edit_movimiento(mov_id):
 
         # Guardar cambios
         db.session.commit()
-        flash('Movimiento actualizado.', 'success')
-        return redirect(url_for('main.index'))
+        
+        # Si viene desde sin_clasificar y se cumplen las condiciones, reclasificar
+        if from_sin_clasificar and not mov.excluir_clasificacion and not mov.comercio_id:
+            try:
+                from ..utils.classifier import reclasificar_movimientos
+                reclasificar_movimientos()
+                # Recargar el movimiento para ver si fue clasificado
+                db.session.refresh(mov)
+                if mov.comercio_id:
+                    flash('Movimiento actualizado y clasificado automáticamente.', 'success')
+                else:
+                    flash('Movimiento actualizado. No se pudo clasificar automáticamente.', 'info')
+            except Exception as e:
+                flash(f'Movimiento actualizado, pero error en reclasificación: {str(e)}', 'warning')
+        else:
+            flash('Movimiento actualizado.', 'success')
+        
+        # Redirigir según el origen
+        if from_sin_clasificar:
+            return redirect(url_for('main.sin_clasificar'))
+        else:
+            return redirect(url_for('main.index'))
 
     return render_template('movimiento_edit.html', mov=mov, cuentas=cuentas, comercios=comercios)
 

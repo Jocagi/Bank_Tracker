@@ -4,19 +4,47 @@
 
 {% block content %}
 <h1>Movimientos Sin Clasificar</h1>
+
+{# Filtro de usuario solo para administradores #}
+{% if current_user.is_authenticated and current_user.is_admin() %}
+<form method="get" class="mb-3">
+  <div class="row g-3">
+    <div class="col-md-3">
+      <label for="owner_id" class="form-label">Usuario</label>
+      <select id="owner_id" name="owner_id" class="form-select">
+        <option value="">-- Todos los usuarios --</option>
+        {% for u in users %}
+          <option value="{{ u.id }}" {% if u.id|string == selected_owner %}selected{% endif %}>{{ u.username }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2 align-self-end">
+      <button type="submit" class="btn btn-primary">Filtrar</button>
+    </div>
+  </div>
+</form>
+{% endif %}
+
 <table class="table table-striped">
   <thead>
     <tr>
       <th>Fecha</th>
+      {% if current_user.is_authenticated and current_user.is_admin() %}
+      <th>Usuario</th>
+      {% endif %}
       <th>Descripción</th>
       <th>Monto</th>
       <th>Comercio</th>
+      <th>Acciones</th>
     </tr>
   </thead>
   <tbody>
     {% for m in movimientos %}
     <tr>
       <td>{{ m.fecha }}</td>
+      {% if current_user.is_authenticated and current_user.is_admin() %}
+      <td>{{ m.user.username if m.user else '-' }}</td>
+      {% endif %}
       <td>{{ m.descripcion }}</td>
       <td>{{ m.monto }}</td>
       <td>
@@ -40,6 +68,15 @@
             Agregar regla
           </button>
         </form>
+      </td>
+      <td>
+        <div class="btn-group" role="group" aria-label="Acciones">
+          <a href="{{ url_for('main.edit_movimiento', mov_id=m.id) }}?from=sin_clasificar" class="btn btn-sm btn-outline-secondary">Editar</a>
+          <form method="post" action="{{ url_for('main.delete_movimiento', mov_id=m.id) }}" style="display:inline-block; margin:0;" onsubmit="return confirm('¿Eliminar este movimiento?');">
+            <input type="hidden" name="next" value="{{ url_for('main.sin_clasificar') }}">
+            <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+          </form>
+        </div>
       </td>
     </tr>
     {% endfor %}
