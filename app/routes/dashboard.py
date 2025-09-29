@@ -112,7 +112,7 @@ def dashboard():
         commerce_labels = commerce_values = []
 
     commerce_table = [
-        (lbl, abs(total)) for lbl, total in commerce_data
+        (lbl, abs(total) if total is not None else 0) for lbl, total in commerce_data
     ]
 
     # ————————————————————————————————————————
@@ -184,7 +184,7 @@ def dashboard():
         cat_labels = cat_values = []
 
     category_table = [
-        (lbl, abs(total)) for lbl, total in cat_data
+        (lbl, abs(total) if total is not None else 0) for lbl, total in cat_data
     ]
 
     # ————————————————————————————————————————
@@ -245,11 +245,12 @@ def dashboard():
 
     # Ejecutar consultas y combinar resultados por mes
     month_classified_data = month_classified_q.group_by(mes).order_by(mes).all()
-    month_data_dict = {m: total for m, total in month_classified_data}
+    month_data_dict = {m: total if total is not None else 0 for m, total in month_classified_data}
     
     if month_unclassified_q and not cat_id:  # Solo incluir no clasificados si no hay filtro de categoría
         month_unclassified_data = month_unclassified_q.group_by(mes).order_by(mes).all()
         for m, total in month_unclassified_data:
+            total = total if total is not None else 0
             if m in month_data_dict:
                 month_data_dict[m] += total
             else:
@@ -259,7 +260,7 @@ def dashboard():
     month_data = [(m, total) for m, total in sorted(month_data_dict.items())]
     if month_data:
         month_labels, raw_vals = zip(*month_data)
-        month_values = [abs(v) for v in raw_vals]
+        month_values = [abs(v) if v is not None else 0 for v in raw_vals]
     else:
         month_labels = month_values = []
 
@@ -319,11 +320,12 @@ def dashboard():
 
     # Ejecutar consultas y combinar resultados por mes
     income_month_classified_data = income_month_classified_q.group_by(mes).order_by(mes).all()
-    income_month_data_dict = {m: total for m, total in income_month_classified_data}
+    income_month_data_dict = {m: total if total is not None else 0 for m, total in income_month_classified_data}
     
     if income_month_unclassified_q and not cat_id:  # Solo incluir no clasificados si no hay filtro de categoría
         income_month_unclassified_data = income_month_unclassified_q.group_by(mes).order_by(mes).all()
         for m, total in income_month_unclassified_data:
+            total = total if total is not None else 0
             if m in income_month_data_dict:
                 income_month_data_dict[m] += total
             else:
@@ -333,7 +335,7 @@ def dashboard():
     income_month_data = [(m, total) for m, total in sorted(income_month_data_dict.items())]
 
     # Align income series with months from expenses: create a dict for quick lookup
-    income_by_month = {m: abs(v) for m, v in income_month_data} if income_month_data else {}
+    income_by_month = {m: abs(v) if v is not None else 0 for m, v in income_month_data} if income_month_data else {}
 
     # Build month_income_values aligned with month_labels (expenses). If there are months with incomes
     # not present in expenses, include them by extending labels and values so both series share same x-axis.
@@ -355,7 +357,7 @@ def dashboard():
             month_labels, income_vals = zip(*income_month_data)
             month_labels = list(month_labels)
             month_values = [0 for _ in income_vals]
-            month_income_values = [abs(v) for v in income_vals]
+            month_income_values = [abs(v) if v is not None else 0 for v in income_vals]
         else:
             month_labels = month_values = month_income_values = []
 
@@ -419,7 +421,7 @@ def dashboard():
         income_data.extend(income_unclassified_data)
     
     income_table = [
-        (lbl, abs(total)) for lbl, total in income_data
+        (lbl, abs(total) if total is not None else 0) for lbl, total in income_data
     ]
 
     # ————————————————————————————————————————
