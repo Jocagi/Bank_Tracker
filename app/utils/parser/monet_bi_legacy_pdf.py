@@ -133,6 +133,7 @@ def parse_monet_bi_legacy_pdf_file(filepath, archivo_obj):
     # --- 4) Procesar movimientos ---
     count = 0
     in_transactions_section = False
+    saldo_anterior_movimiento = None
     
     for line in lines:
         line = line.strip()
@@ -151,8 +152,12 @@ def parse_monet_bi_legacy_pdf_file(filepath, archivo_obj):
         if not in_transactions_section:
             continue
             
-        # Saltar saldo anterior
+        # Capturar saldo anterior
         if '****SALDO ANTERIOR****' in line:
+            # Extraer el saldo anterior de la línea
+            saldo_match = re.search(r'(\d{1,3}(?:,\d{3})*\.\d{2})$', line)
+            if saldo_match:
+                saldo_anterior_movimiento = float(saldo_match.group(1).replace(',', ''))
             continue
             
         # Patrón para transacciones: Día | Docto | Descripción | Débito/Crédito | Saldo
@@ -184,20 +189,37 @@ def parse_monet_bi_legacy_pdf_file(filepath, archivo_obj):
         # Limpiar descripción
         desc = descripcion.strip()
         
-        # Convertir monto
+        # Convertir monto y saldo
         monto_valor = float(monto_str.replace(',', ''))
+        saldo_actual = float(saldo_str.replace(',', ''))
         
-        # Determinar si es débito o crédito basado en patrones comunes
-        # En este formato, necesitamos inferir el tipo del contexto
-        if any(keyword in desc.upper() for keyword in [
-            'NOTA DE CREDITO', 'CREDITO', 'DEPOSITO', 'PAGO DE PLANILLA', 
-            'TRANSFERENCIA RECIBIDA', 'INTERES', 'ABONO'
-        ]):
-            tipo = 'credito'
-            monto = monto_valor  # Positivo para créditos
+        # Determinar si es débito o crédito basado en el cambio matemático del saldo
+        if saldo_anterior_movimiento is not None:
+            # Calcular si el saldo aumentó o disminuyó
+            cambio_saldo = saldo_actual - saldo_anterior_movimiento
+            
+            # Si el cambio del saldo es positivo, fue un crédito
+            # Si el cambio del saldo es negativo, fue un débito  
+            if cambio_saldo > 0:
+                tipo = 'credito'
+                monto = monto_valor  # Positivo para créditos
+            else:
+                tipo = 'debito'
+                monto = -monto_valor  # Negativo para débitos
         else:
-            tipo = 'debito'  
-            monto = -monto_valor  # Negativo para débitos
+            # Fallback: usar heurística de palabras clave para la primera transacción
+            if any(keyword in desc.upper() for keyword in [
+                'CREDITO', 'DEPOSITO', 'PLANILLA', 'PAGO', 'SALARIO', 'SUELDO', 
+                'TRANSFERENCIA RECIBIDA', 'INTERES', 'ABONO', 'BONIFICACION'
+            ]):
+                tipo = 'credito'
+                monto = monto_valor  # Positivo para créditos
+            else:
+                tipo = 'debito'  
+                monto = -monto_valor  # Negativo para débitos
+        
+        # Actualizar saldo_anterior_movimiento para la próxima iteración
+        saldo_anterior_movimiento = saldo_actual
         
         # Crear movimiento
         mov = Movimiento(
