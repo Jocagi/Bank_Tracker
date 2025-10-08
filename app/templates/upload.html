@@ -16,10 +16,11 @@
     </select>
   </div>
   <div class="mb-3">
-    <input class="form-control" type="file" name="file" id="file" accept=".xlsx,.xls,.pdf,.csv" required>
-    <div id="file_help" class="form-text">Extensiones permitidas: .xlsx, .xls, .pdf, .csv</div>
+    <input class="form-control" type="file" name="files" id="files" accept=".xlsx,.xls,.pdf,.csv" multiple required>
+    <div id="file_help" class="form-text">Extensiones permitidas: .xlsx, .xls, .pdf, .csv. Puedes seleccionar múltiples archivos de la misma categoría.</div>
   </div>
-  <button class="btn btn-primary">Cargar</button>
+  <button type="submit" class="btn btn-primary" id="upload-btn">Cargar</button>
+  <div id="file-info" class="mt-2 text-muted" style="display: none;"></div>
 </form>
 {% endblock %}
 
@@ -44,25 +45,59 @@
 
     function update(){
       const select = document.getElementById('tipo_archivo');
-      const file = document.getElementById('file');
+      const files = document.getElementById('files');
       const help = document.getElementById('file_help');
 
       if (!select) { console.warn('select #tipo_archivo not found'); return; }
-      if (!file || !help) { console.warn('file/help element missing', {file, help}); }
+      if (!files || !help) { console.warn('files/help element missing', {files, help}); }
 
       const val = select.value;
       const typeName = (select.options && select.selectedIndex >= 0) ? select.options[select.selectedIndex].text : '';
       const exts = mapping[val] || ['.csv', '.txt', '.xls', '.xlsx', '.pdf'];
 
-      if (file) file.setAttribute('accept', extsToAccept(exts));
-      if (help) help.textContent = 'Extensiones permitidas: ' + exts.join(', ');
+      if (files) files.setAttribute('accept', extsToAccept(exts));
+      if (help) help.textContent = 'Extensiones permitidas: ' + exts.join(', ') + '. Puedes seleccionar múltiples archivos de la misma categoría.';
 
       console.debug('upload form updated', {tipo: val, typeName, exts});
     }
 
+    function updateFileInfo(){
+      const filesInput = document.getElementById('files');
+      const fileInfo = document.getElementById('file-info');
+      
+      if (filesInput && fileInfo) {
+        const fileCount = filesInput.files.length;
+        if (fileCount === 0) {
+          fileInfo.style.display = 'none';
+        } else if (fileCount === 1) {
+          fileInfo.textContent = `1 archivo seleccionado: ${filesInput.files[0].name}`;
+          fileInfo.style.display = 'block';
+        } else {
+          fileInfo.textContent = `${fileCount} archivos seleccionados`;
+          fileInfo.style.display = 'block';
+        }
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', function(){
       const select = document.getElementById('tipo_archivo');
+      const filesInput = document.getElementById('files');
+      const form = document.querySelector('form');
+      const uploadBtn = document.getElementById('upload-btn');
+      
       if (select) select.addEventListener('change', update);
+      if (filesInput) filesInput.addEventListener('change', updateFileInfo);
+      
+      // Mostrar indicador de carga al enviar
+      if (form) {
+        form.addEventListener('submit', function(){
+          if (uploadBtn) {
+            uploadBtn.textContent = 'Cargando...';
+            uploadBtn.disabled = true;
+          }
+        });
+      }
+      
       update(); // inicial
     });
   })();
