@@ -8,6 +8,7 @@ from .parser.tc_gyt_xlsx import load_movements_tc_gyt_xlsx
 from .parser.tc_gyt_pdf import load_movements_tc_gyt_pdf
 from .parser.monet_bi_pdf import load_movements_bi_monet_pdf
 from .parser.monet_bi_email_pdf import load_movements_bi_monet_email_pdf
+from .parser.monet_bi_legacy_pdf import parse_monet_bi_legacy_pdf_file
 from .parser.tc_bi_xls import load_movements_bi_tc_xls
 from .parser.tc_bi_email_pdf import load_movements_bi_tc_email_pdf
 from .parser.tc_promerica_xls import load_movements_promerica_tc_xls
@@ -85,6 +86,12 @@ def load_movements(filepath, archivo_obj, tipo_archivo):
             count = load_movements_bi_monet_email_pdf(filepath, archivo_obj)
         else:
             raise ValueError('Extensión no válida para formato monet-bi-email.')
+    elif tipo_archivo == 'monet-bi-legacy':
+        archivo_obj.banco = 'BI'
+        if extension in ('.pdf',):
+            count = parse_monet_bi_legacy_pdf_file(filepath, archivo_obj)
+        else:
+            raise ValueError('Extensión no válida para formato monet-bi-legacy.')
     elif tipo_archivo == 'tc-bi':
         archivo_obj.banco = 'BI'
         if extension in ('.xls', '.xlsx'):
