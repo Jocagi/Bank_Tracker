@@ -51,7 +51,6 @@ def dashboard():
         .join(Movimiento, Movimiento.comercio_id == Comercio.id)
         .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
         .filter(Comercio.tipo_contabilizacion == 'gastos')
-        .filter(Movimiento.excluir_clasificacion == False)
     )
     
     # Parte 2: Movimientos sin clasificar (negativos = gastos)
@@ -61,12 +60,7 @@ def dashboard():
             func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
         )
         .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
-        .filter(
-            db.or_(
-                Movimiento.comercio_id.is_(None),
-                Movimiento.excluir_clasificacion == True
-            )
-        )
+        .filter(Movimiento.comercio_id.is_(None))
         .filter(Movimiento.monto < 0)  # Solo gastos (negativos)
     )
     # Aplicar filtros a ambas consultas
@@ -127,7 +121,6 @@ def dashboard():
         .join(Movimiento, Movimiento.comercio_id == Comercio.id)
         .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
         .filter(Comercio.tipo_contabilizacion == 'gastos')
-        .filter(Movimiento.excluir_clasificacion == False)
     )
     
     # Parte 2: Movimientos sin clasificar (negativos = gastos)
@@ -137,12 +130,7 @@ def dashboard():
             func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
         )
         .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
-        .filter(
-            db.or_(
-                Movimiento.comercio_id.is_(None),
-                Movimiento.excluir_clasificacion == True
-            )
-        )
+        .filter(Movimiento.comercio_id.is_(None))
         .filter(Movimiento.monto < 0)  # Solo gastos (negativos)
     )
     # Aplicar filtros a ambas consultas de categorías
@@ -201,7 +189,6 @@ def dashboard():
         .join(Comercio, Movimiento.comercio_id == Comercio.id)
         .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
         .filter(Comercio.tipo_contabilizacion == 'gastos')
-        .filter(Movimiento.excluir_clasificacion == False)
     )
     
     # Parte 2: Movimientos sin clasificar (negativos = gastos)
@@ -211,12 +198,7 @@ def dashboard():
             func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
         )
         .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
-        .filter(
-            db.or_(
-                Movimiento.comercio_id.is_(None),
-                Movimiento.excluir_clasificacion == True
-            )
-        )
+        .filter(Movimiento.comercio_id.is_(None))
         .filter(Movimiento.monto < 0)  # Solo gastos (negativos)
     )
     # Aplicar filtros a ambas consultas mensuales de gastos
@@ -275,7 +257,6 @@ def dashboard():
         .join(Comercio, Movimiento.comercio_id == Comercio.id)
         .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
         .filter(Comercio.tipo_contabilizacion == 'ingresos')
-        .filter(Movimiento.excluir_clasificacion == False)
     )
     
     # Parte 2: Movimientos sin clasificar (positivos = ingresos)
@@ -285,12 +266,7 @@ def dashboard():
             func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
         )
         .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
-        .filter(
-            db.or_(
-                Movimiento.comercio_id.is_(None),
-                Movimiento.excluir_clasificacion == True
-            )
-        )
+        .filter(Movimiento.comercio_id.is_(None))
         .filter(Movimiento.monto > 0)  # Solo ingresos (positivos)
     )
     # Aplicar filtros a ambas consultas mensuales de ingresos
@@ -372,7 +348,6 @@ def dashboard():
         .join(Movimiento, Movimiento.comercio_id == Comercio.id)
         .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
         .filter(Comercio.tipo_contabilizacion == 'ingresos')
-        .filter(Movimiento.excluir_clasificacion == False)
     )
     
     # Parte 2: Movimientos sin clasificar (positivos = ingresos)
@@ -382,12 +357,7 @@ def dashboard():
             func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
         )
         .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
-        .filter(
-            db.or_(
-                Movimiento.comercio_id.is_(None),
-                Movimiento.excluir_clasificacion == True
-            )
-        )
+        .filter(Movimiento.comercio_id.is_(None))
         .filter(Movimiento.monto > 0)  # Solo ingresos (positivos)
     )
     
