@@ -13,6 +13,7 @@ from .parser.tc_bi_xls import load_movements_bi_tc_xls
 from .parser.tc_bi_email_pdf import load_movements_bi_tc_email_pdf
 from .parser.tc_promerica_xls import load_movements_promerica_tc_xls
 from .parser.tc_bac_csv import load_movements_bac_tc_csv
+from .parser.ahorro_interbanco_pdf import parse_ahorro_interbanco_pdf_file
 from .classifier import clasificar_movimientos
 
 
@@ -116,6 +117,12 @@ def load_movements(filepath, archivo_obj, tipo_archivo):
             count = load_movements_bac_tc_csv(filepath, archivo_obj)
         else:
             raise ValueError('Extensión no válida para formato tc-bac.')
+    elif tipo_archivo == 'ahorro-interbanco':
+        archivo_obj.banco = 'Interbanco'
+        if extension in ('.pdf',):
+            count = parse_ahorro_interbanco_pdf_file(filepath, archivo_obj)
+        else:
+            raise ValueError('Extensión no válida para formato ahorro-interbanco.')
     else:
         raise ValueError(f'Tipo de archivo "{tipo_archivo}" no soportado.')
 

@@ -15,6 +15,7 @@
       <option value="tc-bi-email">Tarjeta de Crédito BI (Email)</option>
       <option value="tc-promerica">Tarjeta de Crédito Promerica</option>
       <option value="tc-bac">Tarjeta de Crédito BAC</option>
+      <option value="ahorro-interbanco">Ahorro Interbanco</option>
     </select>
   </div>
   <div class="mb-3">
@@ -39,7 +40,8 @@
       'tc-bi': ['.xls', '.xlsx'],
       'tc-bi-email': ['.pdf'],
       'tc-promerica': ['.xls', '.xlsx'],
-      'tc-bac': ['.csv']
+      'tc-bac': ['.csv'],
+      'ahorro-interbanco': ['.pdf']
     };
 
     function extsToAccept(exts){ return exts.join(','); }
