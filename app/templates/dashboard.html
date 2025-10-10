@@ -55,21 +55,154 @@
   </div>
 </form>
 
-<div class="row mb-4">
+<div class="row mb-3">
   <div class="col-md-12">
-    <h5>Evolución Mensual de Gastos</h5>
-    <canvas id="chartMonthly"></canvas>
+    <div class="card">
+      <div class="card-header p-2">
+        <h6 class="mb-0">Evolución Mensual de Gastos</h6>
+      </div>
+      <div class="card-body p-2" style="height: 350px;">
+        <canvas id="chartMonthly"></canvas>
+      </div>
+    </div>
   </div>
 </div>
 
-<div class="row mb-4">
+<div class="row mb-3">
   <div class="col-md-6">
-    <h5>Gastos por Comercio</h5>
-    <canvas id="chartCommerce"></canvas>
+    <div class="card">
+      <div class="card-header p-2">
+        <h6 class="mb-0">Gastos por Comercio</h6>
+      </div>
+      <div class="card-body p-2" style="height: 275px;">
+        <canvas id="chartCommerce"></canvas>
+      </div>
+    </div>
   </div>
   <div class="col-md-6">
-    <h5>Gastos por Categoría</h5>
-    <canvas id="chartCategory"></canvas>
+    <div class="card">
+      <div class="card-header p-2">
+        <h6 class="mb-0">Gastos por Categoría</h6>
+      </div>
+      <div class="card-body p-2" style="height: 275px;">
+        <canvas id="chartCategory"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Gráficas adicionales -->
+<div class="row mb-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header p-2">
+        <h6 class="mb-0">Top 10 Gastos Individuales</h6>
+      </div>
+      <div class="card-body p-2" style="height: 275px;">
+        <canvas id="chartTopGastos"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header p-2">
+        <h6 class="mb-0">Gastos por Día de la Semana</h6>
+      </div>
+      <div class="card-body p-2" style="height: 275px;">
+        <canvas id="chartWeekday"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Gráficas adicionales compactas -->
+<div class="row mb-3">
+  <div class="col-12 mb-2">
+    <h5>📊 Análisis Avanzado de Gastos</h5>
+  </div>
+  
+  <!-- Primera fila: Gráficas principales más grandes -->
+  <div class="col-lg-6 col-md-6 mb-3">
+    <div class="card">
+      <div class="card-header p-2">
+        <h6 class="mb-0 small">Gastos por Cuenta</h6>
+      </div>
+      <div class="card-body p-2" style="height: 315px;">
+        <canvas id="chartCuentas"></canvas>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-lg-6 col-md-6 mb-3">
+    <div class="card">
+      <div class="card-header p-2">
+        <h6 class="mb-0 small">Distribución por Rangos</h6>
+      </div>
+      <div class="card-body p-2" style="height: 315px;">
+        <canvas id="chartRangos"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Segunda fila: Gráficas secundarias más compactas -->
+<div class="row mb-3">
+  <div class="col-lg-4 col-md-6 mb-3">
+    <div class="card">
+      <div class="card-header p-2">
+        <h6 class="mb-0 small">Recurrentes vs Únicos</h6>
+      </div>
+      <div class="card-body p-2" style="height: 188px;">
+        <canvas id="chartRecurrentes"></canvas>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-lg-4 col-md-6 mb-3">
+    <div class="card">
+      <div class="card-header p-2">
+        <h6 class="mb-0 small">Gastos por Moneda</h6>
+      </div>
+      <div class="card-body p-2" style="height: 188px;">
+        <canvas id="chartMonedas"></canvas>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-lg-4 col-md-12 mb-3">
+    <div class="card">
+      <div class="card-header p-2">
+        <h6 class="mb-0 small">Top Comercios Recurrentes</h6>
+      </div>
+      <div class="card-body p-2" style="height: 188px;">
+        <canvas id="chartComerciosRecurrentes"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tercera fila: Heatmap ocupando todo el ancho -->
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header p-2">
+        <h6 class="mb-0 small">📅 Heatmap de Gastos Diarios (Último año - 365 días)</h6>
+      </div>
+      <div class="card-body p-3">
+        <div id="heatmapCalendar" class="heatmap-container">
+          <!-- El heatmap se generará aquí con JavaScript -->
+        </div>
+        <div class="heatmap-legend">
+          <span style="font-size: 10px;">Menos</span>
+          <div class="heatmap-legend-item heatmap-level-0"></div>
+          <div class="heatmap-legend-item heatmap-level-1"></div>
+          <div class="heatmap-legend-item heatmap-level-2"></div>
+          <div class="heatmap-legend-item heatmap-level-3"></div>
+          <div class="heatmap-legend-item heatmap-level-4"></div>
+          <span style="font-size: 10px;">Más</span>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -166,6 +299,66 @@
 
 {% block scripts %}
   {{ super() }}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .heatmap-container {
+      display: grid;
+      grid-template-columns: repeat(53, 1fr); /* 53 semanas (365 días) */
+      grid-template-rows: repeat(7, 1fr);     /* 7 días de la semana */
+      gap: 2px;
+      padding: 10px;
+      max-width: 100%;
+      margin: 0 auto;
+      overflow-x: auto;
+    }
+    
+    .heatmap-day {
+      width: 12px;
+      height: 12px;
+      background-color: #ebedf0;
+      border-radius: 2px;
+      position: relative;
+      cursor: pointer;
+    }
+    
+    .heatmap-legend {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 10px;
+      font-size: 11px;
+    }
+    
+    .heatmap-legend-item {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
+    
+    .heatmap-day:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      background: rgba(0,0,0,0.9);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      white-space: nowrap;
+      z-index: 1000;
+      bottom: 120%;
+      left: 50%;
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+    
+    /* Intensidades de color para el heatmap */
+    .heatmap-level-0 { background-color: #ebedf0; }
+    .heatmap-level-1 { background-color: #c6e48b; }
+    .heatmap-level-2 { background-color: #7bc96f; }
+    .heatmap-level-3 { background-color: #239a3b; }
+    .heatmap-level-4 { background-color: #196127; }
+  </style>
   <script>
     // Funcionalidad de colapso de tablas
     document.addEventListener('DOMContentLoaded', function() {
@@ -259,6 +452,28 @@
   const monthLabels     = {{ month_labels     | tojson }};
   const monthValues     = {{ month_values     | tojson }};
   const monthIncomeValues = {{ month_income_values | tojson }};
+  
+  // Datos para nuevas gráficas
+  const topGastosLabels = {{ top_gastos_labels | tojson }};
+  const topGastosValues = {{ top_gastos_values | tojson }};
+  const weekdayLabels   = {{ weekday_labels   | tojson }};
+  const weekdayValues   = {{ weekday_values   | tojson }};
+  
+  // Datos para gráficas adicionales
+  const rangosLabels = {{ rangos_labels | tojson }};
+  const rangosValues = {{ rangos_values | tojson }};
+  const heatmapDates = {{ heatmap_dates | tojson }};
+  const heatmapAmounts = {{ heatmap_amounts | tojson }};
+  const recurrentesLabels = {{ recurrentes_labels | tojson }};
+  const recurrentesValues = {{ recurrentes_values | tojson }};
+  const cuentasLabels = {{ cuentas_labels | tojson }};
+  const cuentasValues = {{ cuentas_values | tojson }};
+  const monedasLabels = {{ monedas_labels | tojson }};
+  const monedasValues = {{ monedas_values | tojson }};
+
+  // Datos para comercios recurrentes
+  const comerciosRecurrentesLabels = {{ comercios_recurrentes_labels | tojson }};
+  const comerciosRecurrentesValues = {{ comercios_recurrentes_values | tojson }};
 
     // Variables para almacenar las instancias de los gráficos
     let chartCommerce, chartCategory;
@@ -299,6 +514,7 @@
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           plugins: {
             tooltip: {
               callbacks: {
@@ -307,6 +523,10 @@
                   return `${ctx.label}: Q${v}`;
                 }
               }
+            },
+            legend: {
+              position: 'bottom',
+              labels: { font: { size: 11 } }
             }
           }
         }
@@ -329,6 +549,7 @@
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           plugins: {
             tooltip: {
               callbacks: {
@@ -337,6 +558,10 @@
                   return `${ctx.label}: Q${v}`;
                 }
               }
+            },
+            legend: {
+              position: 'bottom',
+              labels: { font: { size: 11 } }
             }
           }
         }
@@ -369,6 +594,7 @@
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
           tooltip: {
             callbacks: {
@@ -381,11 +607,391 @@
           },
           legend: {
             display: true,
-            position: 'top'
+            position: 'top',
+            labels: { font: { size: 12 } }
           }
         },
         scales: {
-          y: { beginAtZero: true }
+          y: { 
+            beginAtZero: true,
+            ticks: { font: { size: 11 } }
+          },
+          x: {
+            ticks: { font: { size: 11 } }
+          }
+        }
+      }
+    });
+
+    // ————————————————————————————————————————
+    // Gráfica de Top 10 Gastos
+    const ctxTopGastos = document.getElementById('chartTopGastos').getContext('2d');
+    new Chart(ctxTopGastos, {
+      type: 'bar',
+      data: {
+        labels: topGastosLabels,
+        datasets: [{
+          label: 'Monto Q',
+          data: topGastosValues,
+          backgroundColor: 'rgba(220,53,69,0.7)',
+          borderColor: 'rgba(220,53,69,0.9)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const v = Math.abs(ctx.parsed.x).toLocaleString(undefined, { minimumFractionDigits: 2 });
+                return `Gasto: Q${v}`;
+              }
+            }
+          },
+          legend: { display: false }
+        },
+        scales: {
+          x: { 
+            beginAtZero: true,
+            ticks: { font: { size: 10 } }
+          },
+          y: {
+            ticks: { font: { size: 10 } }
+          }
+        }
+      }
+    });
+
+    // ————————————————————————————————————————
+    // Gráfica de Gastos por Día de Semana
+    const ctxWeekday = document.getElementById('chartWeekday').getContext('2d');
+    new Chart(ctxWeekday, {
+      type: 'bar',
+      data: {
+        labels: weekdayLabels,
+        datasets: [{
+          label: 'Gastos Q',
+          data: weekdayValues,
+          backgroundColor: [
+            'rgba(255, 99, 132, 0.7)',   // Domingo
+            'rgba(54, 162, 235, 0.7)',   // Lunes
+            'rgba(255, 205, 86, 0.7)',   // Martes
+            'rgba(75, 192, 192, 0.7)',   // Miércoles
+            'rgba(153, 102, 255, 0.7)',  // Jueves
+            'rgba(255, 159, 64, 0.7)',   // Viernes
+            'rgba(199, 199, 199, 0.7)'   // Sábado
+          ],
+          borderColor: [
+            'rgba(255, 99, 132, 1)',
+            'rgba(54, 162, 235, 1)',
+            'rgba(255, 205, 86, 1)',
+            'rgba(75, 192, 192, 1)',
+            'rgba(153, 102, 255, 1)',
+            'rgba(255, 159, 64, 1)',
+            'rgba(199, 199, 199, 1)'
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const v = Math.abs(ctx.parsed.y).toLocaleString(undefined, { minimumFractionDigits: 2 });
+                return `Gastos: Q${v}`;
+              }
+            }
+          },
+          legend: { display: false }
+        },
+        scales: {
+          y: { 
+            beginAtZero: true,
+            ticks: { font: { size: 10 } }
+          },
+          x: {
+            ticks: { font: { size: 10 } }
+          }
+        }
+      }
+    });
+
+    // ————————————————————————————————————————
+    // Gráfica de Distribución por Rangos
+    const ctxRangos = document.getElementById('chartRangos').getContext('2d');
+    new Chart(ctxRangos, {
+      type: 'bar',
+      data: {
+        labels: rangosLabels,
+        datasets: [{
+          label: 'Cantidad de Gastos',
+          data: rangosValues,
+          backgroundColor: [
+            'rgba(255, 99, 132, 0.7)',
+            'rgba(54, 162, 235, 0.7)',
+            'rgba(255, 205, 86, 0.7)',
+            'rgba(75, 192, 192, 0.7)',
+            'rgba(153, 102, 255, 0.7)'
+          ],
+          borderColor: [
+            'rgba(255, 99, 132, 1)',
+            'rgba(54, 162, 235, 1)',
+            'rgba(255, 205, 86, 1)',
+            'rgba(75, 192, 192, 1)',
+            'rgba(153, 102, 255, 1)'
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: ctx => `${ctx.parsed.y} gastos`
+            }
+          },
+          legend: { display: false }
+        },
+        scales: {
+          y: { 
+            beginAtZero: true,
+            ticks: { font: { size: 10 } }
+          },
+          x: {
+            ticks: { font: { size: 10 } }
+          }
+        }
+      }
+    });
+
+    // ————————————————————————————————————————
+    // Gráfica de Gastos Recurrentes vs Únicos
+    const ctxRecurrentes = document.getElementById('chartRecurrentes').getContext('2d');
+    new Chart(ctxRecurrentes, {
+      type: 'doughnut',
+      data: {
+        labels: recurrentesLabels,
+        datasets: [{
+          data: recurrentesValues,
+          backgroundColor: [
+            'rgba(255, 99, 132, 0.7)',
+            'rgba(54, 162, 235, 0.7)'
+          ],
+          borderColor: [
+            'rgba(255, 99, 132, 1)',
+            'rgba(54, 162, 235, 1)'
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const v = ctx.parsed.toLocaleString(undefined, { minimumFractionDigits: 2 });
+                return `${ctx.label}: Q${v}`;
+              }
+            }
+          },
+          legend: { 
+            position: 'bottom',
+            labels: { font: { size: 10 } }
+          }
+        }
+      }
+    });
+
+    // ————————————————————————————————————————
+    // Gráfica de Gastos por Cuenta
+    const ctxCuentas = document.getElementById('chartCuentas').getContext('2d');
+    new Chart(ctxCuentas, {
+      type: 'pie',
+      data: {
+        labels: cuentasLabels,
+        datasets: [{
+          data: cuentasValues,
+          backgroundColor: [
+            'rgba(255, 99, 132, 0.7)',
+            'rgba(54, 162, 235, 0.7)',
+            'rgba(255, 205, 86, 0.7)',
+            'rgba(75, 192, 192, 0.7)',
+            'rgba(153, 102, 255, 0.7)',
+            'rgba(255, 159, 64, 0.7)'
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const v = ctx.parsed.toLocaleString(undefined, { minimumFractionDigits: 2 });
+                return `${ctx.label}: Q${v}`;
+              }
+            }
+          },
+          legend: { 
+            position: 'bottom',
+            labels: { font: { size: 9 } }
+          }
+        }
+      }
+    });
+
+    // ————————————————————————————————————————
+    // Gráfica de Gastos por Moneda
+    const ctxMonedas = document.getElementById('chartMonedas').getContext('2d');
+    new Chart(ctxMonedas, {
+      type: 'pie',
+      data: {
+        labels: monedasLabels,
+        datasets: [{
+          data: monedasValues,
+          backgroundColor: [
+            'rgba(75, 192, 192, 0.7)',
+            'rgba(255, 205, 86, 0.7)',
+            'rgba(255, 99, 132, 0.7)'
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const v = ctx.parsed.toLocaleString(undefined, { minimumFractionDigits: 2 });
+                return `${ctx.label}: Q${v}`;
+              }
+            }
+          },
+          legend: { 
+            position: 'bottom',
+            labels: { font: { size: 9 } }
+          }
+        }
+      }
+    });
+
+    // ————————————————————————————————————————
+    // Heatmap de calendario real con cuadrícula
+    function createHeatmapCalendar() {
+      const container = document.getElementById('heatmapCalendar');
+      container.innerHTML = '';
+      
+      // Crear un mapa de fechas a montos
+      const dataMap = {};
+      heatmapDates.forEach((date, index) => {
+        dataMap[date] = heatmapAmounts[index];
+      });
+      
+      // Calcular niveles de intensidad
+      const maxAmount = Math.max(...heatmapAmounts.filter(amount => amount > 0));
+      const getLevel = (amount) => {
+        if (amount === 0) return 0;
+        if (amount <= maxAmount * 0.2) return 1;
+        if (amount <= maxAmount * 0.4) return 2;
+        if (amount <= maxAmount * 0.7) return 3;
+        return 4;
+      };
+      
+      // Generar grid de 53 semanas x 7 días (365 días)
+      const today = new Date();
+      const startDate = new Date(today);
+      startDate.setDate(today.getDate() - 365); // 365 días = ~53 semanas
+      
+      // Ajustar para empezar en lunes
+      const startDay = startDate.getDay();
+      const daysToMonday = startDay === 0 ? 1 : startDay - 1;
+      startDate.setDate(startDate.getDate() - daysToMonday);
+      
+      // Crear cuadrícula de 53 columnas (semanas) x 7 filas (días)
+      const grid = [];
+      for (let week = 0; week < 53; week++) {
+        for (let day = 0; day < 7; day++) {
+          const currentDate = new Date(startDate);
+          currentDate.setDate(startDate.getDate() + (week * 7) + day);
+          
+          if (currentDate <= today) {
+            const dateStr = currentDate.toISOString().split('T')[0];
+            const amount = dataMap[dateStr] || 0;
+            const level = getLevel(amount);
+            
+            const dayElement = document.createElement('div');
+            dayElement.className = `heatmap-day heatmap-level-${level}`;
+            dayElement.style.gridColumn = week + 1;
+            dayElement.style.gridRow = day + 1;
+            dayElement.setAttribute('data-tooltip', 
+              `${dateStr}: Q${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+            );
+            
+            container.appendChild(dayElement);
+          }
+        }
+      }
+    }
+    
+    // Crear el heatmap
+    createHeatmapCalendar();
+
+    // ————————————————————————————————————————
+    // Gráfica de Comercios Más Recurrentes
+    const ctxComerciosRecurrentes = document.getElementById('chartComerciosRecurrentes').getContext('2d');
+    new Chart(ctxComerciosRecurrentes, {
+      type: 'bar',
+      data: {
+        labels: comerciosRecurrentesLabels,
+        datasets: [{
+          label: 'Transacciones',
+          data: comerciosRecurrentesValues,
+          backgroundColor: 'rgba(54, 162, 235, 0.7)',
+          borderColor: 'rgba(54, 162, 235, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y', // Barras horizontales
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: ctx => `${ctx.parsed.x} transacciones`
+            }
+          },
+          legend: { display: false }
+        },
+        scales: {
+          x: { 
+            beginAtZero: true,
+            ticks: { font: { size: 10 } }
+          },
+          y: {
+            ticks: { 
+              font: { size: 9 },
+              callback: function(value, index) {
+                // Truncar nombres largos
+                const label = this.getLabelForValue(value);
+                return label.length > 15 ? label.substring(0, 15) + '...' : label;
+              }
+            }
+          }
         }
       }
     });

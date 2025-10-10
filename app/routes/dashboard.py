@@ -3,7 +3,7 @@ from dateutil.relativedelta import relativedelta
 from flask import render_template, request, flash
 from sqlalchemy import func
 from .. import db
-from ..models import Comercio, Categoria, Movimiento, TipoCambio, User
+from ..models import Comercio, Categoria, Movimiento, TipoCambio, User, Cuenta
 from . import bp
 from flask_login import login_required, current_user
 
@@ -14,7 +14,7 @@ def dashboard():
     # ————————————————————————————————————————
     # 1) Leer filtros desde la query string
     # Verificar si hay filtros de datos aplicados (excluyendo parámetros de control)
-    has_filters = any(request.args.get(param) for param in ['start_date', 'end_date', 'category_id', 'owner_id', 'clear_filters'])
+    has_filters = any(request.args.get(param) for param in ['start_date', 'end_date', 'category_id', 'owner_id'])
     
     # Establecer fechas por defecto si no hay filtros
     if not has_filters:
@@ -410,6 +410,375 @@ def dashboard():
     ]
 
     # ————————————————————————————————————————
+    # 7) Top 10 Gastos Individuales - Solo movimientos clasificados como gastos
+    top_gastos_q = (
+        db.session.query(
+            Movimiento.descripcion,
+            (Movimiento.monto * TipoCambio.valor).label('monto_gtq'),
+            Movimiento.fecha,
+            Comercio.nombre
+        )
+        .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
+        .join(Comercio, Movimiento.comercio_id == Comercio.id)
+        .filter(Comercio.tipo_contabilizacion == 'gastos')
+        .filter(Movimiento.monto < 0)  # Solo gastos (negativos)
+    )
+    
+    # Aplicar filtros de usuario
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        if owner_id:
+            try:
+                oid = int(owner_id)
+                top_gastos_q = top_gastos_q.filter(Movimiento.user_id == oid)
+            except ValueError:
+                pass
+    else:
+        top_gastos_q = top_gastos_q.filter(Movimiento.user_id == current_user.id)
+    
+    # Aplicar filtros de fecha
+    if d_start:
+        top_gastos_q = top_gastos_q.filter(Movimiento.fecha >= d_start)
+    if d_end:
+        top_gastos_q = top_gastos_q.filter(Movimiento.fecha <= d_end)
+    
+    # Aplicar filtro de categoría
+    if cat_id:
+        top_gastos_q = top_gastos_q.filter(Comercio.categoria_id == int(cat_id))
+    
+    # Ejecutar consulta y obtener top 10
+    top_gastos_data = top_gastos_q.order_by((Movimiento.monto * TipoCambio.valor).asc()).limit(10).all()
+    
+    # Preparar datos para la gráfica
+    if top_gastos_data:
+        top_gastos_labels = [f"{row[0][:30]}..." if len(row[0]) > 30 else row[0] for row in top_gastos_data]
+        top_gastos_values = [abs(row[1]) for row in top_gastos_data]
+    else:
+        top_gastos_labels = top_gastos_values = []
+    
+    # ————————————————————————————————————————
+    # 8) Gastos por Día de la Semana - Solo movimientos clasificados como gastos
+    # Usar función SQL para extraer día de semana (0=domingo, 1=lunes, ..., 6=sábado)
+    dia_semana = func.strftime('%w', Movimiento.fecha).label('dia_semana')
+    
+    gastos_dia_q = (
+        db.session.query(
+            dia_semana,
+            func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
+        )
+        .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
+        .join(Comercio, Movimiento.comercio_id == Comercio.id)
+        .filter(Comercio.tipo_contabilizacion == 'gastos')
+        .filter(Movimiento.monto < 0)  # Solo gastos (negativos)
+    )
+    
+    # Aplicar filtros de usuario
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        if owner_id:
+            try:
+                oid = int(owner_id)
+                gastos_dia_q = gastos_dia_q.filter(Movimiento.user_id == oid)
+            except ValueError:
+                pass
+    else:
+        gastos_dia_q = gastos_dia_q.filter(Movimiento.user_id == current_user.id)
+    
+    # Aplicar filtros de fecha
+    if d_start:
+        gastos_dia_q = gastos_dia_q.filter(Movimiento.fecha >= d_start)
+    if d_end:
+        gastos_dia_q = gastos_dia_q.filter(Movimiento.fecha <= d_end)
+    
+    # Aplicar filtro de categoría
+    if cat_id:
+        gastos_dia_q = gastos_dia_q.filter(Comercio.categoria_id == int(cat_id))
+    
+    # Ejecutar consulta
+    gastos_dia_data = gastos_dia_q.group_by(dia_semana).all()
+    
+    # Crear diccionario con días de la semana
+    dias_nombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+    gastos_por_dia = {str(i): 0 for i in range(7)}
+    
+    for dia, total in gastos_dia_data:
+        gastos_por_dia[dia] = abs(total) if total else 0
+    
+    # Convertir a listas para la gráfica
+    weekday_labels = dias_nombres
+    weekday_values = [gastos_por_dia[str(i)] for i in range(7)]
+
+    # ————————————————————————————————————————
+    # 9) Distribución de Gastos por Rangos
+    rangos_gastos_q = (
+        db.session.query(
+            (Movimiento.monto * TipoCambio.valor).label('monto_gtq')
+        )
+        .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
+        .join(Comercio, Movimiento.comercio_id == Comercio.id)
+        .filter(Comercio.tipo_contabilizacion == 'gastos')
+        .filter(Movimiento.monto < 0)  # Solo gastos (negativos)
+    )
+    
+    # Aplicar filtros de usuario
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        if owner_id:
+            try:
+                oid = int(owner_id)
+                rangos_gastos_q = rangos_gastos_q.filter(Movimiento.user_id == oid)
+            except ValueError:
+                pass
+    else:
+        rangos_gastos_q = rangos_gastos_q.filter(Movimiento.user_id == current_user.id)
+    
+    # Aplicar filtros de fecha y categoría
+    if d_start:
+        rangos_gastos_q = rangos_gastos_q.filter(Movimiento.fecha >= d_start)
+    if d_end:
+        rangos_gastos_q = rangos_gastos_q.filter(Movimiento.fecha <= d_end)
+    if cat_id:
+        rangos_gastos_q = rangos_gastos_q.filter(Comercio.categoria_id == int(cat_id))
+    
+    # Obtener todos los gastos
+    rangos_data = rangos_gastos_q.all()
+    
+    # Definir rangos y contar
+    rangos = [
+        ("Q0-100", 0, 100),
+        ("Q100-500", 100, 500), 
+        ("Q500-1000", 500, 1000),
+        ("Q1000-2000", 1000, 2000),
+        ("Q2000+", 2000, float('inf'))
+    ]
+    
+    rangos_count = [0] * len(rangos)
+    
+    for row in rangos_data:
+        monto_abs = abs(row[0]) if row[0] else 0
+        for i, (label, min_val, max_val) in enumerate(rangos):
+            if min_val <= monto_abs < max_val:
+                rangos_count[i] += 1
+                break
+    
+    rangos_labels = [r[0] for r in rangos]
+    rangos_values = rangos_count
+
+    # ————————————————————————————————————————
+    # 10) Heatmap Calendario de Gastos (último año completo)
+    from datetime import timedelta
+    
+    # Calcular rango de fechas para heatmap (últimos 365 días)
+    hoy = date.today()
+    hace_365_dias = hoy - timedelta(days=365)
+    
+    heatmap_gastos_q = (
+        db.session.query(
+            Movimiento.fecha,
+            func.sum(Movimiento.monto * TipoCambio.valor).label('total_dia')
+        )
+        .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
+        .join(Comercio, Movimiento.comercio_id == Comercio.id)
+        .filter(Comercio.tipo_contabilizacion == 'gastos')
+        .filter(Movimiento.monto < 0)
+        .filter(Movimiento.fecha >= hace_365_dias)
+        .filter(Movimiento.fecha <= hoy)
+    )
+    
+    # Aplicar filtros de usuario
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        if owner_id:
+            try:
+                oid = int(owner_id)
+                heatmap_gastos_q = heatmap_gastos_q.filter(Movimiento.user_id == oid)
+            except ValueError:
+                pass
+    else:
+        heatmap_gastos_q = heatmap_gastos_q.filter(Movimiento.user_id == current_user.id)
+    
+    # Aplicar filtro de categoría
+    if cat_id:
+        heatmap_gastos_q = heatmap_gastos_q.filter(Comercio.categoria_id == int(cat_id))
+    
+    heatmap_data = heatmap_gastos_q.group_by(Movimiento.fecha).all()
+    
+    # Crear diccionario de gastos por día
+    gastos_por_dia_dict = {}
+    for fecha, total in heatmap_data:
+        gastos_por_dia_dict[fecha.strftime('%Y-%m-%d')] = abs(total) if total else 0
+    
+    # Crear lista de todos los días en el rango
+    heatmap_dates = []
+    heatmap_amounts = []
+    current_date = hace_365_dias
+    
+    while current_date <= hoy:
+        date_str = current_date.strftime('%Y-%m-%d')
+        heatmap_dates.append(date_str)
+        heatmap_amounts.append(gastos_por_dia_dict.get(date_str, 0))
+        current_date += timedelta(days=1)
+
+    # ————————————————————————————————————————
+    # 11) Gastos Recurrentes vs Únicos (por descripción similar)
+    from collections import Counter
+    
+    recurrentes_q = (
+        db.session.query(
+            Movimiento.descripcion,
+            func.count(Movimiento.id).label('frecuencia'),
+            func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
+        )
+        .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
+        .join(Comercio, Movimiento.comercio_id == Comercio.id)
+        .filter(Comercio.tipo_contabilizacion == 'gastos')
+        .filter(Movimiento.monto < 0)
+    )
+    
+    # Aplicar filtros de usuario
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        if owner_id:
+            try:
+                oid = int(owner_id)
+                recurrentes_q = recurrentes_q.filter(Movimiento.user_id == oid)
+            except ValueError:
+                pass
+    else:
+        recurrentes_q = recurrentes_q.filter(Movimiento.user_id == current_user.id)
+    
+    # Aplicar filtros de fecha y categoría
+    if d_start:
+        recurrentes_q = recurrentes_q.filter(Movimiento.fecha >= d_start)
+    if d_end:
+        recurrentes_q = recurrentes_q.filter(Movimiento.fecha <= d_end)
+    if cat_id:
+        recurrentes_q = recurrentes_q.filter(Comercio.categoria_id == int(cat_id))
+    
+    recurrentes_data = recurrentes_q.group_by(Movimiento.descripcion).all()
+    
+    # Clasificar en recurrentes (>= 2 veces) vs únicos (1 vez)
+    total_recurrentes = 0
+    total_unicos = 0
+    
+    for desc, freq, total in recurrentes_data:
+        monto_abs = abs(total) if total else 0
+        if freq >= 2:
+            total_recurrentes += monto_abs
+        else:
+            total_unicos += monto_abs
+    
+    recurrentes_labels = ['Gastos Recurrentes', 'Gastos Únicos']
+    recurrentes_values = [total_recurrentes, total_unicos]
+
+    # ————————————————————————————————————————
+    # 12) Análisis por Cuenta/Moneda
+    cuentas_q = (
+        db.session.query(
+            func.concat(Cuenta.banco, ' - ', Cuenta.tipo_cuenta).label('cuenta_nombre'),
+            Movimiento.moneda,
+            func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
+        )
+        .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
+        .join(Comercio, Movimiento.comercio_id == Comercio.id)
+        .join(Cuenta, Movimiento.cuenta_id == Cuenta.id)
+        .filter(Comercio.tipo_contabilizacion == 'gastos')
+        .filter(Movimiento.monto < 0)
+    )
+    
+    # Aplicar filtros de usuario
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        if owner_id:
+            try:
+                oid = int(owner_id)
+                cuentas_q = cuentas_q.filter(Movimiento.user_id == oid)
+            except ValueError:
+                pass
+    else:
+        cuentas_q = cuentas_q.filter(Movimiento.user_id == current_user.id)
+    
+    # Aplicar filtros de fecha y categoría
+    if d_start:
+        cuentas_q = cuentas_q.filter(Movimiento.fecha >= d_start)
+    if d_end:
+        cuentas_q = cuentas_q.filter(Movimiento.fecha <= d_end)
+    if cat_id:
+        cuentas_q = cuentas_q.filter(Comercio.categoria_id == int(cat_id))
+    
+    cuentas_data = cuentas_q.group_by(func.concat(Cuenta.banco, ' - ', Cuenta.tipo_cuenta), Movimiento.moneda).all()
+    
+    # Preparar datos para gráficas
+    cuentas_labels = []
+    cuentas_values = []
+    monedas_labels = []
+    monedas_values = []
+    
+    # Agrupar por cuenta
+    cuentas_dict = {}
+    monedas_dict = {}
+    
+    for cuenta_nombre, moneda, total in cuentas_data:
+        monto_abs = abs(total) if total else 0
+        
+        # Por cuenta
+        cuenta_key = cuenta_nombre or 'Sin cuenta'
+        cuentas_dict[cuenta_key] = cuentas_dict.get(cuenta_key, 0) + monto_abs
+        
+        # Por moneda
+        monedas_dict[moneda] = monedas_dict.get(moneda, 0) + monto_abs
+    
+    # Convertir a listas
+    cuentas_labels = list(cuentas_dict.keys())
+    cuentas_values = list(cuentas_dict.values())
+    monedas_labels = list(monedas_dict.keys())
+    monedas_values = list(monedas_dict.values())
+
+    # ————————————————————————————————————————
+    # COMERCIOS MÁS RECURRENTES
+    # ————————————————————————————————————————
+    # Query para contar transacciones por comercio (solo gastos)
+    comercios_recurrentes_query = db.session.query(
+        Comercio.nombre,
+        func.count(Movimiento.id).label('count')
+    ).join(
+        Movimiento, Movimiento.comercio_id == Comercio.id
+    ).join(
+        Categoria, Comercio.categoria_id == Categoria.id
+    ).filter(
+        Comercio.tipo_contabilizacion == 'gastos'  # Solo gastos
+    )
+    
+    # Aplicar los mismos filtros que las otras gráficas
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        if owner_id:
+            try:
+                oid = int(owner_id)
+                comercios_recurrentes_query = comercios_recurrentes_query.filter(Movimiento.user_id == oid)
+            except ValueError:
+                pass
+    else:
+        comercios_recurrentes_query = comercios_recurrentes_query.filter(Movimiento.user_id == current_user.id)
+
+    # Filtros de fecha
+    if d_start:
+        comercios_recurrentes_query = comercios_recurrentes_query.filter(Movimiento.fecha >= d_start)
+    if d_end:
+        comercios_recurrentes_query = comercios_recurrentes_query.filter(Movimiento.fecha <= d_end)
+    
+    # Filtro de categoría
+    if cat_id and cat_id != 'todas':
+        try:
+            cid = int(cat_id)
+            comercios_recurrentes_query = comercios_recurrentes_query.filter(Comercio.categoria_id == cid)
+        except ValueError:
+            pass
+
+    # Agrupar, ordenar y limitar a top 10
+    comercios_recurrentes_result = comercios_recurrentes_query.group_by(
+        Comercio.nombre
+    ).order_by(
+        func.count(Movimiento.id).desc()
+    ).limit(10).all()
+
+    comercios_recurrentes_labels = [c.nombre for c in comercios_recurrentes_result]
+    comercios_recurrentes_values = [c.count for c in comercios_recurrentes_result]
+
+    # ————————————————————————————————————————
     return render_template('dashboard.html',
         # Charts de gastos
         commerce_labels=list(commerce_labels),
@@ -419,6 +788,24 @@ def dashboard():
         month_labels=list(month_labels),
         month_values=list(month_values),
         month_income_values=list(month_income_values),
+        # Nuevas gráficas
+        top_gastos_labels=top_gastos_labels,
+        top_gastos_values=top_gastos_values,
+        weekday_labels=weekday_labels,
+        weekday_values=weekday_values,
+        # Gráficas adicionales
+        rangos_labels=rangos_labels,
+        rangos_values=rangos_values,
+        heatmap_dates=heatmap_dates,
+        heatmap_amounts=heatmap_amounts,
+        recurrentes_labels=recurrentes_labels,
+        recurrentes_values=recurrentes_values,
+        cuentas_labels=cuentas_labels,
+        cuentas_values=cuentas_values,
+        monedas_labels=monedas_labels,
+        monedas_values=monedas_values,
+        comercios_recurrentes_labels=comercios_recurrentes_labels,
+        comercios_recurrentes_values=comercios_recurrentes_values,
         # Tablas de gastos
         commerce_table=commerce_table,
         category_table=category_table,
