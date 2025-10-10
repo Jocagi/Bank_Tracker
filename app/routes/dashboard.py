@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, date
+from dateutil.relativedelta import relativedelta
 from flask import render_template, request, flash
 from sqlalchemy import func
 from .. import db
@@ -12,9 +13,24 @@ from flask_login import login_required, current_user
 def dashboard():
     # ————————————————————————————————————————
     # 1) Leer filtros desde la query string
-    start   = request.args.get('start_date', '')
-    end     = request.args.get('end_date', '')
-    cat_id  = request.args.get('category_id', '')
+    # Verificar si hay filtros de datos aplicados (excluyendo parámetros de control)
+    has_filters = any(request.args.get(param) for param in ['start_date', 'end_date', 'category_id', 'owner_id', 'clear_filters'])
+    
+    # Establecer fechas por defecto si no hay filtros
+    if not has_filters:
+        today = date.today()
+        default_start = today - relativedelta(years=2)
+        default_start_str = default_start.strftime('%Y-%m-%d')
+        default_end_str = today.strftime('%Y-%m-%d')
+    else:
+        default_start_str = ''
+        default_end_str = ''
+    
+    # Obtener valores de los filtros, usando valores por defecto si no están presentes
+    start = request.args.get('start_date', default_start_str)
+    end = request.args.get('end_date', default_end_str)
+    cat_id = request.args.get('category_id', '')
+    owner_id = request.args.get('owner_id', '')
     table_limit = request.args.get('table_limit', '10')  # Valor por defecto: 10
 
     d_start = d_end = None
@@ -35,7 +51,6 @@ def dashboard():
 
     # Lista de usuarios (solo necesaria si es admin)
     users = []
-    owner_id = request.args.get('owner_id', '')
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
         users = User.query.order_by(User.username).all()
 
