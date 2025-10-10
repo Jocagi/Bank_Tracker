@@ -4,6 +4,17 @@ from .. import db
 from ..models import Comercio, Regla, Categoria
 from ..utils.classifier import reclasificar_movimientos
 from sqlalchemy.orm import joinedload
+import re
+
+
+def format_sentence_case(text):
+    """Convierte un texto a formato de oración (primera letra mayúscula, resto minúscula)"""
+    if not text:
+        return text
+    # Limpiar caracteres especiales y espacios extra
+    text = re.sub(r'[^\w\s]', '', text).strip()
+    # Convertir a formato de oración
+    return text.capitalize()
 
 
 @bp.route('/comercios')
@@ -49,7 +60,12 @@ def list_comercios():
 
 @bp.route('/comercios/add', methods=['GET', 'POST'])
 def add_comercio():
-    categorias = Categoria.query.all()
+    categorias = Categoria.query.order_by(Categoria.nombre).all()
+    
+    # Obtener datos pre-llenados de la URL
+    pre_nombre = format_sentence_case(request.args.get('nombre', ''))
+    pre_regla = request.args.get('regla', '')
+    
     if request.method == 'POST':
         nombre = request.form['nombre']
         categoria_id = request.form['categoria_id']
@@ -86,13 +102,13 @@ def add_comercio():
 
         flash('Comercio y reglas agregados correctamente.', 'success')
         return redirect(url_for('main.list_comercios'))
-    return render_template('comercios_add.html', categorias=categorias)
+    return render_template('comercios_add.html', categorias=categorias, pre_nombre=pre_nombre, pre_regla=pre_regla)
 
 
 @bp.route('/comercios/<int:comercio_id>/edit', methods=['GET', 'POST'])
 def edit_comercio(comercio_id):
     comercio = Comercio.query.get_or_404(comercio_id)
-    categorias = Categoria.query.all()
+    categorias = Categoria.query.order_by(Categoria.nombre).all()
     if request.method == 'POST':
         comercio.nombre = request.form['nombre']
         comercio.categoria_id = request.form['categoria_id']

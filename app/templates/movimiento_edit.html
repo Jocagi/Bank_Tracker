@@ -12,25 +12,25 @@
     </div>
     <div class="col-md-9">
       <label for="descripcion" class="form-label">Descripción</label>
-      <input type="text" id="descripcion" name="descripcion" class="form-control" value="{{ mov.descripcion }}">
+      <input type="text" id="descripcion" name="descripcion" class="form-control" value="{{ mov.descripcion or '' }}">
     </div>
 
     <div class="col-md-4">
       <label for="lugar" class="form-label">Lugar</label>
-      <input type="text" id="lugar" name="lugar" class="form-control" value="{{ mov.lugar }}">
+      <input type="text" id="lugar" name="lugar" class="form-control" value="{{ mov.lugar or '' }}">
     </div>
     <div class="col-md-4">
       <label for="numero_documento" class="form-label">Documento</label>
-      <input type="text" id="numero_documento" name="numero_documento" class="form-control" value="{{ mov.numero_documento }}">
+      <input type="text" id="numero_documento" name="numero_documento" class="form-control" value="{{ mov.numero_documento or '' }}">
     </div>
     <div class="col-md-4">
       <label for="monto" class="form-label">Monto</label>
-      <input type="text" id="monto" name="monto" class="form-control" value="{{ mov.monto }}">
+      <input type="text" id="monto" name="monto" class="form-control" value="{{ mov.monto or '' }}">
     </div>
 
     <div class="col-md-3">
       <label for="moneda" class="form-label">Moneda</label>
-      <input type="text" id="moneda" name="moneda" class="form-control" value="{{ mov.moneda }}">
+      <input type="text" id="moneda" name="moneda" class="form-control" value="{{ mov.moneda or '' }}">
     </div>
     <div class="col-md-3">
       <label for="tipo" class="form-label">Tipo</label>

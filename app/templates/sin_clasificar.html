@@ -34,7 +34,7 @@
       {% endif %}
       <th>Descripción</th>
       <th>Monto</th>
-      <th>Comercio</th>
+      <th style="width: 380px;">Comercio</th>
       <th>Acciones</th>
     </tr>
   </thead>
@@ -48,33 +48,41 @@
       <td>{{ m.descripcion }}</td>
       <td>{{ m.monto }}</td>
       <td>
-        <form method="post"
-              action="{{ url_for('main.assign_movimiento_rule') }}"
-              class="d-inline">
-          <input type="hidden" name="movimiento_id" value="{{ m.id }}">
+        <div class="mb-2">
+          <form method="post"
+                action="{{ url_for('main.assign_movimiento_rule') }}"
+                class="d-inline">
+            <input type="hidden" name="movimiento_id" value="{{ m.id }}">
 
-          <!-- Select2 habilitado para búsqueda -->
-          <select name="comercio_id"
-                  class="select-comercio"
-                  style="width:180px"
-                  required>
-            <option value=""></option>
-            {% for c in comercios %}
-              <option value="{{ c.id }}">{{ c.nombre }}</option>
-            {% endfor %}
-          </select>
+            <!-- Select2 habilitado para búsqueda -->
+            <select name="comercio_id"
+                    class="select-comercio"
+                    style="width:200px"
+                    required>
+              <option value=""></option>
+              {% for c in comercios %}
+                <option value="{{ c.id }}">{{ c.nombre }}</option>
+              {% endfor %}
+            </select>
 
-          <button type="submit" class="btn btn-sm btn-primary mt-1">
-            Agregar regla
-          </button>
-        </form>
+            <button type="submit" class="btn btn-xs btn-primary mt-1" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+              + Regla
+            </button>
+          </form>
+          <a href="{{ url_for('main.add_comercio', nombre=m.descripcion, regla='*' + m.descripcion + '*') }}" 
+             class="btn btn-xs btn-success"
+             style="font-size: 0.75rem; padding: 0.25rem 0.5rem;"
+             title="Crear nuevo comercio con este nombre">
+            + Nuevo
+          </a>
+        </div>
       </td>
       <td>
         <div class="btn-group" role="group" aria-label="Acciones">
-          <a href="{{ url_for('main.edit_movimiento', mov_id=m.id) }}?from=sin_clasificar" class="btn btn-sm btn-outline-secondary">Editar</a>
+          <a href="{{ url_for('main.edit_movimiento', mov_id=m.id) }}?from=sin_clasificar" class="btn btn-xs btn-outline-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">Editar</a>
           <form method="post" action="{{ url_for('main.delete_movimiento', mov_id=m.id) }}" style="display:inline-block; margin:0;" onsubmit="return confirm('¿Eliminar este movimiento?');">
             <input type="hidden" name="next" value="{{ url_for('main.sin_clasificar') }}">
-            <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+            <button type="submit" class="btn btn-xs btn-danger" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">Eliminar</button>
           </form>
         </div>
       </td>
