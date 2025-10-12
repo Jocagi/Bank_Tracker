@@ -13,25 +13,24 @@ from flask_login import login_required, current_user
 def dashboard():
     # ————————————————————————————————————————
     # 1) Leer filtros desde la query string
-    # Verificar si hay filtros de datos aplicados (excluyendo parámetros de control)
-    has_filters = any(request.args.get(param) for param in ['start_date', 'end_date', 'category_id', 'owner_id'])
-    
-    # Establecer fechas por defecto si no hay filtros
-    if not has_filters:
-        today = date.today()
-        default_start = today - relativedelta(years=2)
-        default_start_str = default_start.strftime('%Y-%m-%d')
-        default_end_str = today.strftime('%Y-%m-%d')
-    else:
-        default_start_str = ''
-        default_end_str = ''
-    
-    # Obtener valores de los filtros, usando valores por defecto si no están presentes
-    start = request.args.get('start_date', default_start_str)
-    end = request.args.get('end_date', default_end_str)
+    # Obtener valores de los filtros directamente
+    start = request.args.get('start_date', '')
+    end = request.args.get('end_date', '')
     cat_id = request.args.get('category_id', '')
     owner_id = request.args.get('owner_id', '')
     table_limit = request.args.get('table_limit', '10')  # Valor por defecto: 10
+    
+    # Verificar si hay filtros de fechas o categoría aplicados
+    has_date_filters = bool(start or end)
+    has_category_filter = bool(cat_id)
+    has_owner_filter = bool(owner_id)
+    
+    # Establecer fechas por defecto solo si no hay filtros de fecha aplicados
+    if not has_date_filters and not has_category_filter and not has_owner_filter:
+        today = date.today()
+        default_start = today - relativedelta(years=2)
+        start = default_start.strftime('%Y-%m-%d')
+        end = today.strftime('%Y-%m-%d')
 
     d_start = d_end = None
     if start:
@@ -101,10 +100,13 @@ def dashboard():
         commerce_classified_q = commerce_classified_q.filter(Movimiento.fecha <= d_end)
         commerce_unclassified_q = commerce_unclassified_q.filter(Movimiento.fecha <= d_end)
     if cat_id:
-        commerce_classified_q = commerce_classified_q.join(Categoria)\
-                                                   .filter(Categoria.id == int(cat_id))
-        # Para no clasificados, si hay filtro de categoría, no incluirlos
-        commerce_unclassified_q = None
+        try:
+            cat_id_int = int(cat_id)
+            commerce_classified_q = commerce_classified_q.filter(Comercio.categoria_id == cat_id_int)
+            # Para no clasificados, si hay filtro de categoría, no incluirlos
+            commerce_unclassified_q = None
+        except ValueError:
+            pass
 
     # Ejecutar consultas y combinar resultados
     commerce_classified_data = commerce_classified_q.group_by(Comercio.id).order_by(func.sum(Movimiento.monto * TipoCambio.valor).asc()).all()
@@ -168,9 +170,13 @@ def dashboard():
         cat_classified_q = cat_classified_q.filter(Movimiento.fecha <= d_end)
         cat_unclassified_q = cat_unclassified_q.filter(Movimiento.fecha <= d_end)
     if cat_id:
-        cat_classified_q = cat_classified_q.filter(Categoria.id == int(cat_id))
-        # Para no clasificados, si hay filtro de categoría, no incluirlos
-        cat_unclassified_q = None
+        try:
+            cat_id_int = int(cat_id)
+            cat_classified_q = cat_classified_q.filter(Categoria.id == cat_id_int)
+            # Para no clasificados, si hay filtro de categoría, no incluirlos
+            cat_unclassified_q = None
+        except ValueError:
+            pass
 
     # Ejecutar consultas y combinar resultados
     cat_classified_data = cat_classified_q.group_by(Categoria.id).order_by(func.sum(Movimiento.monto * TipoCambio.valor).asc()).all()
@@ -236,9 +242,13 @@ def dashboard():
         month_classified_q = month_classified_q.filter(Movimiento.fecha <= d_end)
         month_unclassified_q = month_unclassified_q.filter(Movimiento.fecha <= d_end)
     if cat_id:
-        month_classified_q = month_classified_q.filter(Comercio.categoria_id == int(cat_id))
-        # Para no clasificados, si hay filtro de categoría, no incluirlos
-        month_unclassified_q = None
+        try:
+            cat_id_int = int(cat_id)
+            month_classified_q = month_classified_q.filter(Comercio.categoria_id == cat_id_int)
+            # Para no clasificados, si hay filtro de categoría, no incluirlos
+            month_unclassified_q = None
+        except ValueError:
+            pass
 
     # Ejecutar consultas y combinar resultados por mes
     month_classified_data = month_classified_q.group_by(mes).order_by(mes).all()
@@ -304,10 +314,14 @@ def dashboard():
         income_month_classified_q = income_month_classified_q.filter(Movimiento.fecha <= d_end)
         income_month_unclassified_q = income_month_unclassified_q.filter(Movimiento.fecha <= d_end)
     if cat_id:
-        # If category is selected, restrict by comercio's category (same as gastos)
-        income_month_classified_q = income_month_classified_q.filter(Comercio.categoria_id == int(cat_id))
-        # Para no clasificados, si hay filtro de categoría, no incluirlos
-        income_month_unclassified_q = None
+        try:
+            cat_id_int = int(cat_id)
+            # If category is selected, restrict by comercio's category (same as gastos)
+            income_month_classified_q = income_month_classified_q.filter(Comercio.categoria_id == cat_id_int)
+            # Para no clasificados, si hay filtro de categoría, no incluirlos
+            income_month_unclassified_q = None
+        except ValueError:
+            pass
 
     # Ejecutar consultas y combinar resultados por mes
     income_month_classified_data = income_month_classified_q.group_by(mes).order_by(mes).all()
@@ -443,7 +457,11 @@ def dashboard():
     
     # Aplicar filtro de categoría
     if cat_id:
-        top_gastos_q = top_gastos_q.filter(Comercio.categoria_id == int(cat_id))
+        try:
+            cat_id_int = int(cat_id)
+            top_gastos_q = top_gastos_q.filter(Comercio.categoria_id == cat_id_int)
+        except ValueError:
+            pass
     
     # Ejecutar consulta y obtener top 10
     top_gastos_data = top_gastos_q.order_by((Movimiento.monto * TipoCambio.valor).asc()).limit(10).all()
@@ -490,7 +508,11 @@ def dashboard():
     
     # Aplicar filtro de categoría
     if cat_id:
-        gastos_dia_q = gastos_dia_q.filter(Comercio.categoria_id == int(cat_id))
+        try:
+            cat_id_int = int(cat_id)
+            gastos_dia_q = gastos_dia_q.filter(Comercio.categoria_id == cat_id_int)
+        except ValueError:
+            pass
     
     # Ejecutar consulta
     gastos_dia_data = gastos_dia_q.group_by(dia_semana).all()
@@ -535,7 +557,11 @@ def dashboard():
     if d_end:
         rangos_gastos_q = rangos_gastos_q.filter(Movimiento.fecha <= d_end)
     if cat_id:
-        rangos_gastos_q = rangos_gastos_q.filter(Comercio.categoria_id == int(cat_id))
+        try:
+            cat_id_int = int(cat_id)
+            rangos_gastos_q = rangos_gastos_q.filter(Comercio.categoria_id == cat_id_int)
+        except ValueError:
+            pass
     
     # Obtener todos los gastos
     rangos_data = rangos_gastos_q.all()
@@ -595,7 +621,11 @@ def dashboard():
     
     # Aplicar filtro de categoría
     if cat_id:
-        heatmap_gastos_q = heatmap_gastos_q.filter(Comercio.categoria_id == int(cat_id))
+        try:
+            cat_id_int = int(cat_id)
+            heatmap_gastos_q = heatmap_gastos_q.filter(Comercio.categoria_id == cat_id_int)
+        except ValueError:
+            pass
     
     heatmap_data = heatmap_gastos_q.group_by(Movimiento.fecha).all()
     
@@ -648,7 +678,11 @@ def dashboard():
     if d_end:
         recurrentes_q = recurrentes_q.filter(Movimiento.fecha <= d_end)
     if cat_id:
-        recurrentes_q = recurrentes_q.filter(Comercio.categoria_id == int(cat_id))
+        try:
+            cat_id_int = int(cat_id)
+            recurrentes_q = recurrentes_q.filter(Comercio.categoria_id == cat_id_int)
+        except ValueError:
+            pass
     
     recurrentes_data = recurrentes_q.group_by(Movimiento.descripcion).all()
     
@@ -698,7 +732,11 @@ def dashboard():
     if d_end:
         cuentas_q = cuentas_q.filter(Movimiento.fecha <= d_end)
     if cat_id:
-        cuentas_q = cuentas_q.filter(Comercio.categoria_id == int(cat_id))
+        try:
+            cat_id_int = int(cat_id)
+            cuentas_q = cuentas_q.filter(Comercio.categoria_id == cat_id_int)
+        except ValueError:
+            pass
     
     cuentas_data = cuentas_q.group_by(func.concat(Cuenta.banco, ' - ', Cuenta.tipo_cuenta), Movimiento.moneda).all()
     
@@ -731,7 +769,7 @@ def dashboard():
     # ————————————————————————————————————————
     # COMERCIOS MÁS RECURRENTES
     # ————————————————————————————————————————
-    # Query para contar transacciones por comercio (solo gastos)
+    # Query para contar transacciones por comercio (solo gastos clasificados)
     comercios_recurrentes_query = db.session.query(
         Comercio.nombre,
         func.count(Movimiento.id).label('count')
@@ -743,7 +781,7 @@ def dashboard():
         Comercio.tipo_contabilizacion == 'gastos'  # Solo gastos
     )
     
-    # Aplicar los mismos filtros que las otras gráficas
+    # Aplicar filtros de usuario
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
         if owner_id:
             try:
@@ -754,17 +792,17 @@ def dashboard():
     else:
         comercios_recurrentes_query = comercios_recurrentes_query.filter(Movimiento.user_id == current_user.id)
 
-    # Filtros de fecha
+    # Aplicar filtros de fecha
     if d_start:
         comercios_recurrentes_query = comercios_recurrentes_query.filter(Movimiento.fecha >= d_start)
     if d_end:
         comercios_recurrentes_query = comercios_recurrentes_query.filter(Movimiento.fecha <= d_end)
     
     # Filtro de categoría
-    if cat_id and cat_id != 'todas':
+    if cat_id:
         try:
-            cid = int(cat_id)
-            comercios_recurrentes_query = comercios_recurrentes_query.filter(Comercio.categoria_id == cid)
+            cat_id_int = int(cat_id)
+            comercios_recurrentes_query = comercios_recurrentes_query.filter(Comercio.categoria_id == cat_id_int)
         except ValueError:
             pass
 
