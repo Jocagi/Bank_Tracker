@@ -15,11 +15,17 @@ def list_cuentas():
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
         users = User.query.order_by(User.username).all()
         if selected_owner:
-            cuentas = Cuenta.query.filter_by(user_id=int(selected_owner)).order_by(Cuenta.numero_cuenta).all()
+            cuentas = Cuenta.query.filter_by(user_id=int(selected_owner)).order_by(
+                Cuenta.banco, Cuenta.tipo_cuenta, Cuenta.moneda, Cuenta.alias, Cuenta.numero_cuenta
+            ).all()
         else:
-            cuentas = Cuenta.query.order_by(Cuenta.numero_cuenta).all()
+            cuentas = Cuenta.query.order_by(
+                Cuenta.banco, Cuenta.tipo_cuenta, Cuenta.moneda, Cuenta.alias, Cuenta.numero_cuenta
+            ).all()
     else:
-        cuentas = Cuenta.query.filter_by(user_id=current_user.id).order_by(Cuenta.numero_cuenta).all()
+        cuentas = Cuenta.query.filter_by(user_id=current_user.id).order_by(
+            Cuenta.banco, Cuenta.tipo_cuenta, Cuenta.moneda, Cuenta.alias, Cuenta.numero_cuenta
+        ).all()
     # Precalcular conteo de movimientos por cuenta (solo movimientos del usuario filtrado o del admin segun selection)
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
         # Si hay filtro de owner, limitar a ese usuario; si no, conteo global

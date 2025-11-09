@@ -26,9 +26,11 @@
 <table class="table table-striped">
   <thead>
     <tr>
-      <th>Banco</th>
-      <th>Usuario</th>
-      <th>Tipo</th>
+  <th>Banco</th>
+  {% if current_user.is_authenticated and current_user.is_admin() %}
+  <th>Usuario</th>
+  {% endif %}
+  <th>Tipo</th>
       <th>Alias</th>
       <th>Número</th>
       <th>Titular</th>
@@ -40,9 +42,11 @@
   <tbody>
     {% for c in cuentas %}
     <tr>
-      <td>{{ c.banco }}</td>
-      <td>{{ c.user.username if c.user else '-' }}</td>
-      <td>{{ c.tipo_cuenta }}</td>
+  <td>{{ c.banco }}</td>
+  {% if current_user.is_authenticated and current_user.is_admin() %}
+  <td>{{ c.user.username if c.user else '-' }}</td>
+  {% endif %}
+  <td>{{ c.tipo_cuenta }}</td>
       <td>{{ c.alias if c.alias else '-' }}</td>
       <td>{{ c.numero_cuenta }}</td>
       <td>{{ c.titular }}</td>
