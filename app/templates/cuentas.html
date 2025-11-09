@@ -51,7 +51,9 @@
       <td>{{ c.numero_cuenta }}</td>
       <td>{{ c.titular }}</td>
       <td>{{ c.moneda }}</td>
-  <td>{{ c.movimientos_count }}</td>
+      <td>
+        <a href="{{ url_for('main.index', cuenta_id=c.id) }}">{{ c.movimientos_count }}</a>
+      </td>
       <td>
         <a href="{{ url_for('main.edit_cuenta', cuenta_id=c.id) }}" class="btn btn-sm btn-secondary">Editar</a>
         {# Inline merge controls removed from main accounts view. Use edit page to access dedicated merge UI. #}

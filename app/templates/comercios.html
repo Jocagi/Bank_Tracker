@@ -55,7 +55,13 @@
       <td>{{ c.nombre }}</td>
       <td>{{ c.categoria.nombre }}</td>
   <td>{{ c.tipo_contabilizacion.capitalize() }}</td>
-  <td>{{ c.movimientos_count }}</td>
+  <td>
+    {% if filters.owner_id %}
+      <a href="{{ url_for('main.index', comercio_id=c.id, owner_id=filters.owner_id) }}">{{ c.movimientos_count }}</a>
+    {% else %}
+      <a href="{{ url_for('main.index', comercio_id=c.id) }}">{{ c.movimientos_count }}</a>
+    {% endif %}
+  </td>
       <td>
         {% if c.reglas %}
           <div>

@@ -24,6 +24,7 @@
     <tr>
       <th>Nombre</th>
       <th># Comercios</th>
+      <th>Movs</th>
       <th>Acciones</th>
     </tr>
   </thead>
@@ -33,7 +34,21 @@
         {% set cat = entry.categoria %}
     <tr>
       <td>{{ cat.nombre }}</td>
-      <td>{{ entry.comercios_count }}</td>
+      <td>
+        {% if filters.owner_id %}
+          <a href="{{ url_for('main.list_comercios', categoria_id=cat.id, owner_id=filters.owner_id) }}">{{ entry.comercios_count }}</a>
+        {% else %}
+          <a href="{{ url_for('main.list_comercios', categoria_id=cat.id) }}">{{ entry.comercios_count }}</a>
+        {% endif %}
+      </td>
+      <td>
+        {% set cat = entry.categoria %}
+        {% if filters.owner_id %}
+          <a href="{{ url_for('main.index', categoria_id=cat.id, owner_id=filters.owner_id) }}">{{ entry.movimientos_count }}</a>
+        {% else %}
+          <a href="{{ url_for('main.index', categoria_id=cat.id) }}">{{ entry.movimientos_count }}</a>
+        {% endif %}
+      </td>
       <td>
         <a href="{{ url_for('main.edit_categoria', categoria_id=cat.id) }}" class="btn btn-sm btn-secondary">Editar</a>
         <form method="post" action="{{ url_for('main.delete_categoria', categoria_id=cat.id) }}" style="display:inline" onsubmit="return confirm('¿Eliminar categoría {{ cat.nombre }}?');">
