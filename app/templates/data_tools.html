@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}Datos — Import/Export{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1>Importar / Exportar configuración</h1>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <h5 class="card-title">Exportar configuración</h5>
+    <p class="card-text">Descarga un archivo JSON con los tipos de cambio, categorías, comercios y reglas.</p>
+    <a class="btn btn-primary" href="{{ url_for('main.export_config') }}">Exportar configuración (JSON)</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <h5 class="card-title">Importar configuración</h5>
+    <p class="card-text">Sube un archivo JSON exportado previamente para importar o actualizar la configuración.</p>
+
+    <form action="{{ url_for('main.import_config') }}" method="post" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label for="file" class="form-label">Archivo JSON</label>
+        <input class="form-control" type="file" id="file" name="file" accept="application/json,.json" required>
+      </div>
+      <button type="submit" class="btn btn-success">Importar</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

@@ -3,9 +3,10 @@ from dateutil.relativedelta import relativedelta
 from flask import render_template, request, flash
 from sqlalchemy import func
 from .. import db
-from ..models import Comercio, Categoria, Movimiento, TipoCambio, User, Cuenta
+from ..models import Comercio, Categoria, Movimiento, TipoCambio, User, Cuenta, Regla
 from . import bp
 from flask_login import login_required, current_user
+
 
 
 @bp.route('/dashboard')
@@ -703,19 +704,18 @@ def dashboard():
     # ————————————————————————————————————————
     # 12) Análisis por Cuenta/Moneda
     cuentas_q = (
-        db.session.query(
-            Cuenta.alias.label('alias'),
-            func.concat(Cuenta.banco, ' - ', Cuenta.tipo_cuenta).label('cuenta_nombre'),
-            Movimiento.moneda,
-            func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
+            db.session.query(
+                Cuenta.alias.label('alias'),
+                func.concat(Cuenta.banco, ' - ', Cuenta.tipo_cuenta).label('cuenta_nombre'),
+                Movimiento.moneda,
+                func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
+            )
+            .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
+            .join(Comercio, Movimiento.comercio_id == Comercio.id)
+            .join(Cuenta, Movimiento.cuenta_id == Cuenta.id)
+            .filter(Comercio.tipo_contabilizacion == 'gastos')
+            .filter(Movimiento.monto < 0)
         )
-        .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
-        .join(Comercio, Movimiento.comercio_id == Comercio.id)
-        .join(Cuenta, Movimiento.cuenta_id == Cuenta.id)
-        .filter(Comercio.tipo_contabilizacion == 'gastos')
-        .filter(Movimiento.monto < 0)
-    )
-    
     # Aplicar filtros de usuario
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
         if owner_id:
@@ -726,7 +726,7 @@ def dashboard():
                 pass
     else:
         cuentas_q = cuentas_q.filter(Movimiento.user_id == current_user.id)
-    
+
     # Aplicar filtros de fecha y categoría
     if d_start:
         cuentas_q = cuentas_q.filter(Movimiento.fecha >= d_start)
@@ -738,29 +738,27 @@ def dashboard():
             cuentas_q = cuentas_q.filter(Comercio.categoria_id == cat_id_int)
         except ValueError:
             pass
-    
+
     cuentas_data = cuentas_q.group_by(Cuenta.alias, func.concat(Cuenta.banco, ' - ', Cuenta.tipo_cuenta), Movimiento.moneda).all()
-    
+
     # Preparar datos para gráficas
     cuentas_labels = []
     cuentas_values = []
     monedas_labels = []
     monedas_values = []
-    
+
     # Agrupar por cuenta
     cuentas_dict = {}
     monedas_dict = {}
-    
+
     for alias, cuenta_nombre, moneda, total in cuentas_data:
         monto_abs = abs(total) if total else 0
-        
         # Preferir alias si está disponible, si no usar la combinación banco - tipo
         cuenta_key = alias if alias else (cuenta_nombre or 'Sin cuenta')
         cuentas_dict[cuenta_key] = cuentas_dict.get(cuenta_key, 0) + monto_abs
-        
         # Por moneda
         monedas_dict[moneda] = monedas_dict.get(moneda, 0) + monto_abs
-    
+
     # Convertir a listas
     cuentas_labels = list(cuentas_dict.keys())
     cuentas_values = list(cuentas_dict.values())
@@ -770,7 +768,6 @@ def dashboard():
     # ————————————————————————————————————————
     # COMERCIOS MÁS RECURRENTES
     # ————————————————————————————————————————
-    # Query para contar transacciones por comercio (solo gastos clasificados)
     comercios_recurrentes_query = db.session.query(
         Comercio.nombre,
         func.count(Movimiento.id).label('count')
@@ -781,7 +778,7 @@ def dashboard():
     ).filter(
         Comercio.tipo_contabilizacion == 'gastos'  # Solo gastos
     )
-    
+
     # Aplicar filtros de usuario
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
         if owner_id:
@@ -798,7 +795,7 @@ def dashboard():
         comercios_recurrentes_query = comercios_recurrentes_query.filter(Movimiento.fecha >= d_start)
     if d_end:
         comercios_recurrentes_query = comercios_recurrentes_query.filter(Movimiento.fecha <= d_end)
-    
+
     # Filtro de categoría
     if cat_id:
         try:
@@ -817,7 +814,6 @@ def dashboard():
     comercios_recurrentes_labels = [c.nombre for c in comercios_recurrentes_result]
     comercios_recurrentes_values = [c.count for c in comercios_recurrentes_result]
 
-    # ————————————————————————————————————————
     return render_template('dashboard.html',
         # Charts de gastos
         commerce_labels=list(commerce_labels),
