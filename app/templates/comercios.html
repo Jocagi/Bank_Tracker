@@ -43,7 +43,8 @@
     <tr>
       <th>Nombre</th>
       <th>Categoría</th>
-      <th>Tipo</th>
+  <th>Tipo</th>
+  <th>Movs</th>
       <th>Reglas</th>
       <th>Acciones</th>
     </tr>
@@ -53,7 +54,8 @@
     <tr>
       <td>{{ c.nombre }}</td>
       <td>{{ c.categoria.nombre }}</td>
-      <td>{{ c.tipo_contabilizacion.capitalize() }}</td>
+  <td>{{ c.tipo_contabilizacion.capitalize() }}</td>
+  <td>{{ c.movimientos_count }}</td>
       <td>
         {% if c.reglas %}
           <div>

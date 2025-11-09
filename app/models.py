@@ -64,6 +64,7 @@ class Cuenta(db.Model):
     banco = db.Column(db.String(50), nullable=False)
     tipo_cuenta = db.Column(db.String(50), nullable=False)
     numero_cuenta = db.Column(db.String(100), nullable=False, unique=True)
+    alias = db.Column(db.String(100), nullable=True)
     titular = db.Column(db.String(200), nullable=False)
     moneda = db.Column(db.String(10), nullable=False)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)

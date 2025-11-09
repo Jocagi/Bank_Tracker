@@ -25,37 +25,53 @@ def load_movements_bi_tc_email_pdf(filepath, archivo_obj):
     # --- 2) Metadata de cuenta ---
     titular = 'Desconocido'
     numero_cuenta = 'Desconocido'
-    categoria_tarjeta = 'TC'  # Default
+    categoria_tarjeta = 'TC'  # Siempre "TC" (sin categoría)
+    categoria_detectada = None  # p.ej. PLATINUM, CLASICA
+    ultimos_digitos = None
     fecha_corte = None
     
-    # Buscar información de cuenta en las primeras líneas
-    for i, line in enumerate(lines[:30]):
-        # Buscar titular (primera línea con nombre completo)
-        if i < 10 and re.match(r'^[A-Z\s]+$', line.strip()) and len(line.strip()) > 10:
-            if 'GUATEMALA' not in line and 'ZONA' not in line and 'CALLE' not in line:
-                titular = line.strip()
-        
-        # Buscar número de tarjeta: "XXXX XXXX XXXX 9980 PLATINUM"
-        if re.search(r'XXXX XXXX XXXX (\d{4})\s*([A-Z]+)', line):
-            match = re.search(r'XXXX XXXX XXXX (\d{4})\s*([A-Z]+)', line)
-            if match:
-                ultimos_digitos = match.group(1)
-                categoria = match.group(2)
-                numero_cuenta = f"XXXX-XXXX-XXXX-{ultimos_digitos}"
-                categoria_tarjeta = f"TC-{categoria}"  # TC-CLASICA, TC-PLATINUM, etc.
-        
-        # Buscar fecha de corte: "Fecha de corte: 10 06 2023"
-        if 'Fecha de corte:' in line:
-            match = re.search(r'Fecha de corte:\s*(\d{1,2})\s+(\d{1,2})\s+(\d{4})', line)
+    # Buscar información de cuenta en las primeras líneas (ampliamos el rango por variaciones en PDFs)
+    # Acepta separadores variables entre bloques ("XXXX XXXX XXXX 9601", "XXXX-XXXX-XXXX-9601", "XXXX - XXXX - XXXX - 9601")
+    # y opcionalmente una categoría textual (p.ej. "PLATINUM", "Clasica") después.
+    card_pattern = re.compile(
+        r'XXXX(?:[\s-]+XXXX){2}[\s-]+(\d{4})(?:\s+([A-Za-zÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑ\- ]*))?',
+        re.IGNORECASE
+    )
+    for i, line in enumerate(lines[:80]):
+        raw = line.strip()
+        # Buscar titular (heurística: línea mayúsculas, longitud razonable, sin palabras de dirección)
+        if i < 15 and re.match(r'^[A-ZÁÉÍÓÚÑ\s]+$', raw) and 10 < len(raw) < 60:
+            if not any(token in raw for token in ['GUATEMALA', 'ZONA', 'CALLE']):
+                titular = raw
+
+        # Buscar número de tarjeta en formatos: "XXXX XXXX XXXX 9601 PLATINUM" o "XXXX-XXXX-XXXX-9601 Platinum" o sin categoría
+        m_card = card_pattern.search(raw)
+        if m_card:
+            ultimos_digitos = m_card.group(1)
+            cat_raw = m_card.group(2)
+            categoria_detectada = (cat_raw.split()[0] if cat_raw else None)
+            if categoria_detectada:
+                categoria_detectada = categoria_detectada.upper()
+            numero_cuenta = f"XXXX-XXXX-XXXX-{ultimos_digitos}"
+            # Mantener tipo de cuenta como "TC" únicamente
+            categoria_tarjeta = 'TC'
+
+        # Buscar fecha de corte: puede venir con espacios o con barras
+        if 'Fecha de corte:' in raw:
+            match = re.search(r'Fecha de corte:\s*(\d{1,2})\s+(\d{1,2})\s+(\d{2,4})', raw)
             if match:
                 dia, mes, año = match.groups()
                 try:
-                    fecha_corte = datetime(int(año), int(mes), int(dia)).date()
+                    año_int = int(año)
+                    if len(año) == 2:  # Ajuste año 2 dígitos
+                        año_int += 2000 if año_int <= 50 else 1900
+                    fecha_corte = datetime(año_int, int(mes), int(dia)).date()
                 except ValueError:
                     fecha_corte = None
 
     archivo_obj.banco = 'BI'
-    archivo_obj.tipo_cuenta = categoria_tarjeta
+    # Guardar en Archivo sólo "TC" como tipo de cuenta
+    archivo_obj.tipo_cuenta = 'TC'
     archivo_obj.numero_cuenta = numero_cuenta
     archivo_obj.titular = titular
     archivo_obj.moneda = 'GTQ|USD'  # Reporta ambas monedas separadas por |
@@ -84,10 +100,16 @@ def load_movements_bi_tc_email_pdf(filepath, archivo_obj):
                 break
     
     if not cuenta:
+        # Si es cuenta nueva, forzar tipo_cuenta = "TC" y, si hay categoría, colocarla en el alias
+        alias_sugerido = None
+        if categoria_detectada and ultimos_digitos:
+            alias_sugerido = f"{categoria_detectada} {ultimos_digitos}"
+
         cuenta = Cuenta(
             banco=archivo_obj.banco,
-            tipo_cuenta=archivo_obj.tipo_cuenta,
+            tipo_cuenta='TC',
             numero_cuenta=archivo_obj.numero_cuenta,
+            alias=alias_sugerido,
             titular=archivo_obj.titular,
             moneda=archivo_obj.moneda
         )

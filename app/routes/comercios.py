@@ -1,7 +1,8 @@
 from flask import render_template, request, redirect, url_for, flash
 from . import bp
 from .. import db
-from ..models import Comercio, Regla, Categoria
+from ..models import Comercio, Regla, Categoria, Movimiento
+from flask_login import current_user
 from ..utils.classifier import reclasificar_movimientos
 from sqlalchemy.orm import joinedload
 import re
@@ -43,7 +44,20 @@ def list_comercios():
             ).distinct()
 
         # Eager-load reglas y categoria para evitar N+1
+        # Añadir un conteo de movimientos por comercio (LEFT JOIN semantics)
         comercios = query.options(joinedload(Comercio.reglas), joinedload(Comercio.categoria)).all()
+        # Precalcular counts para evitar N+1
+        # Conteo de movimientos solo del usuario logueado
+        movimiento_counts = {
+            row[0]: row[1] for row in db.session.query(
+                Movimiento.comercio_id, db.func.count(Movimiento.id)
+            )
+            .filter(Movimiento.user_id == current_user.id)
+            .group_by(Movimiento.comercio_id)
+            .all()
+        }
+        for c in comercios:
+            c.movimientos_count = movimiento_counts.get(c.id, 0)
         # Ordenar por nombre
         comercios.sort(key=lambda c: c.nombre.lower())
 

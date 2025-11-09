@@ -16,6 +16,10 @@
     <input name="numero_cuenta" class="form-control" value="{{ cuenta.numero_cuenta }}">
   </div>
   <div class="mb-3">
+    <label class="form-label">Alias (opcional)</label>
+    <input name="alias" class="form-control" value="{{ cuenta.alias or '' }}" placeholder="Alias para mostrar en diagramas y filtros">
+  </div>
+  <div class="mb-3">
     <label class="form-label">Titular</label>
     <input name="titular" class="form-control" value="{{ cuenta.titular }}">
   </div>

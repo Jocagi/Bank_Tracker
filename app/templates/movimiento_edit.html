@@ -44,7 +44,7 @@
       <label for="cuenta_id" class="form-label">Cuenta</label>
       <select id="cuenta_id" name="cuenta_id" class="form-select">
         {% for c in cuentas %}
-          <option value="{{ c.id }}" {% if c.id==mov.cuenta_id %}selected{% endif %}>{{ c.numero_cuenta }}</option>
+          <option value="{{ c.id }}" {% if c.id==mov.cuenta_id %}selected{% endif %}>{{ c.alias or c.numero_cuenta }}</option>
         {% endfor %}
       </select>
     </div>

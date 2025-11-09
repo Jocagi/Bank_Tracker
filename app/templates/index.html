@@ -41,12 +41,15 @@
       <label for="cuenta_id" class="form-label">Cuenta</label>
       <select id="cuenta_id" name="cuenta_id" class="form-select">
         <option value="">-- Todas --</option>
-        {% for cta in cuentas %}
-          <option value="{{ cta.id }}"
-            {% if cta.id|string == selected_cuenta %}selected{% endif %}>
-            {{ cta.numero_cuenta }}
-          </option>
-        {% endfor %}
+        {% if current_user.is_authenticated and current_user.is_admin() %}
+          {% for cta in cuentas %}
+            <option value="{{ cta.id }}" {% if cta.id|string == selected_cuenta %}selected{% endif %}>{{ cta.alias or cta.numero_cuenta }}</option>
+          {% endfor %}
+        {% else %}
+          {% for cta in cuentas if cta.user_id == current_user.id %}
+            <option value="{{ cta.id }}" {% if cta.id|string == selected_cuenta %}selected{% endif %}>{{ cta.alias or cta.numero_cuenta }}</option>
+          {% endfor %}
+        {% endif %}
       </select>
     </div>
     <div class="col-md-3">

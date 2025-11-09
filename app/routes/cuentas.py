@@ -20,6 +20,19 @@ def list_cuentas():
             cuentas = Cuenta.query.order_by(Cuenta.numero_cuenta).all()
     else:
         cuentas = Cuenta.query.filter_by(user_id=current_user.id).order_by(Cuenta.numero_cuenta).all()
+    # Precalcular conteo de movimientos por cuenta (solo movimientos del usuario filtrado o del admin segun selection)
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        # Si hay filtro de owner, limitar a ese usuario; si no, conteo global
+        mov_query = db.session.query(Movimiento.cuenta_id, db.func.count(Movimiento.id)).group_by(Movimiento.cuenta_id)
+        if selected_owner:
+            mov_query = mov_query.filter(Movimiento.user_id == int(selected_owner))
+    else:
+        mov_query = db.session.query(Movimiento.cuenta_id, db.func.count(Movimiento.id))\
+            .filter(Movimiento.user_id == current_user.id)\
+            .group_by(Movimiento.cuenta_id)
+    mov_counts = {cid: cnt for cid, cnt in mov_query.all()}
+    for c in cuentas:
+        c.movimientos_count = mov_counts.get(c.id, 0)
     return render_template('cuentas.html', cuentas=cuentas, users=users, selected_owner=selected_owner)
 
 
@@ -35,6 +48,7 @@ def add_cuenta():
         banco = request.form.get('banco', '').strip()
         tipo_cuenta = request.form.get('tipo_cuenta', '').strip()
         numero_cuenta = request.form.get('numero_cuenta', '').strip()
+        alias = request.form.get('alias', '').strip()
         titular = request.form.get('titular', '').strip()
         moneda = request.form.get('moneda', '').strip()
         user_id = request.form.get('user_id', '')
@@ -52,6 +66,7 @@ def add_cuenta():
             banco=banco,
             tipo_cuenta=tipo_cuenta,
             numero_cuenta=numero_cuenta,
+            alias=alias or None,
             titular=titular,
             moneda=moneda
         )
@@ -96,6 +111,7 @@ def edit_cuenta(cuenta_id):
         banco = request.form.get('banco', '').strip()
         tipo_cuenta = request.form.get('tipo_cuenta', '').strip()
         numero_cuenta = request.form.get('numero_cuenta', '').strip()
+        alias = request.form.get('alias', '').strip()
         titular = request.form.get('titular', '').strip()
         moneda = request.form.get('moneda', '').strip()
         user_id = request.form.get('user_id', '')
@@ -113,6 +129,7 @@ def edit_cuenta(cuenta_id):
         cuenta.banco = banco
         cuenta.tipo_cuenta = tipo_cuenta
         cuenta.numero_cuenta = numero_cuenta
+        cuenta.alias = alias or None
         cuenta.titular = titular
         cuenta.moneda = moneda
         

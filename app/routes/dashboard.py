@@ -704,6 +704,7 @@ def dashboard():
     # 12) Análisis por Cuenta/Moneda
     cuentas_q = (
         db.session.query(
+            Cuenta.alias.label('alias'),
             func.concat(Cuenta.banco, ' - ', Cuenta.tipo_cuenta).label('cuenta_nombre'),
             Movimiento.moneda,
             func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
@@ -738,7 +739,7 @@ def dashboard():
         except ValueError:
             pass
     
-    cuentas_data = cuentas_q.group_by(func.concat(Cuenta.banco, ' - ', Cuenta.tipo_cuenta), Movimiento.moneda).all()
+    cuentas_data = cuentas_q.group_by(Cuenta.alias, func.concat(Cuenta.banco, ' - ', Cuenta.tipo_cuenta), Movimiento.moneda).all()
     
     # Preparar datos para gráficas
     cuentas_labels = []
@@ -750,11 +751,11 @@ def dashboard():
     cuentas_dict = {}
     monedas_dict = {}
     
-    for cuenta_nombre, moneda, total in cuentas_data:
+    for alias, cuenta_nombre, moneda, total in cuentas_data:
         monto_abs = abs(total) if total else 0
         
-        # Por cuenta
-        cuenta_key = cuenta_nombre or 'Sin cuenta'
+        # Preferir alias si está disponible, si no usar la combinación banco - tipo
+        cuenta_key = alias if alias else (cuenta_nombre or 'Sin cuenta')
         cuentas_dict[cuenta_key] = cuentas_dict.get(cuenta_key, 0) + monto_abs
         
         # Por moneda
