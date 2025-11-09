@@ -114,25 +114,14 @@ def load_movements_bi_tc_xls(filepath, archivo_obj):
                 logger.error("No se pudo recuperar o crear la cuenta tras IntegrityError para numero=%r", numero_raw)
                 raise
 
-    # 4) Detectar dinámicamente la fila de cabecera
-    # Buscamos una fila donde exista una celda exactamente 'FECHA' (normalizada)
-    # y además al menos otra cabecera esperada (VALOR/COMERCIO/TIPO/NO. DOC).
+    # 4) Detectar dinámicamente la fila de cabecera (buscar una celda con 'FECHA')
     header_idx = None
-    expected_tokens = {'FECHA', 'VALOR', 'MONTO', 'COMERCIO', 'DESCRIPCION', 'TIPO', 'TIPO DE MOVMIENTO', 'TIPO DE MOVIMIENTO', 'NO. DOC', 'NO. DOCUMENTO'}
     for i in range(len(df0)):
-        row = df0.iloc[i].fillna('').astype(str).tolist()
-        norm = [re.sub(r"\s+", " ", str(v).strip()).upper() for v in row]
-        # count non-empty
-        non_empty = [v for v in norm if v != '']
-        if 'FECHA' in norm:
-            # require at least one other expected token in the same row to avoid matching summary lines
-            if any(tok in norm for tok in expected_tokens - {'FECHA'}):
-                header_idx = i
-                break
-            # otherwise, accept only if the row has several non-empty cells (heuristic)
-            if len(non_empty) >= 3:
-                header_idx = i
-                break
+        # convertimos a string seguro y buscamos la palabra FECHA
+        row_vals = df0.iloc[i].astype(str).fillna('').tolist()
+        if any('FECHA' in str(v).upper() for v in row_vals):
+            header_idx = i
+            break
 
     # Fallback si no encontramos la cabecera: usar índice tradicional (línea 13 -> índice 12)
     if header_idx is None:
@@ -143,31 +132,11 @@ def load_movements_bi_tc_xls(filepath, archivo_obj):
 
     # Tomar cabecera y normalizar nombres (strip + upper) para facilitar mapeo
     header = df0.iloc[header_idx].fillna('').astype(str).tolist()
-    # Normalizar espacios y case
-    header_norm = [re.sub(r"\s+", " ", h.strip()).upper() for h in header]
+    header_norm = [h.strip().upper() for h in header]
 
     # 5) Construir DataFrame de movimientos desde la fila siguiente a la cabecera
     movs = df0.iloc[header_idx+1:].copy().reset_index(drop=True)
     movs.columns = header_norm
-
-    # Limpieza de columnas: eliminar columnas con nombre vacío o que claramente son resúmenes (contienen $ o dígitos en el header)
-    def _is_header_col_valid(h):
-        if not isinstance(h, str):
-            return False
-        if h.strip() == '':
-            return False
-        # si el header contiene un símbolo de moneda o dígitos (p. ej. '$. 10,500.00') es muy probable que sea una celda resumen
-        if re.search(r"\$|Q\.|\d", h):
-            return False
-        # evitar cabeceras demasiado largas que contienen frases (ej. 'LÍMITE DISPONIBLE $. 10,500.00')
-        if len(h) > 40:
-            return False
-        return True
-
-    valid_cols = [c for c in movs.columns if _is_header_col_valid(c)]
-    # Si no detectamos columnas válidas (caso raro), mantenemos las actuales para no romper otras variantes
-    if valid_cols:
-        movs = movs.loc[:, valid_cols]
 
     # 6) Detener en la primera fila completamente vacía
     blank = movs.apply(lambda r: all(str(v).strip()=='' for v in r), axis=1)
@@ -236,25 +205,11 @@ def load_movements_bi_tc_xls(filepath, archivo_obj):
     # Remueve filas sin fecha o sin monto
     movs = movs.dropna(subset=['fecha', 'monto'])
 
-    # Asegurar columna 'tipo' existe y usar acceso seguro para evitar errores en apply
-    if 'tipo' not in movs.columns:
-        movs['tipo'] = pd.Series([''] * len(movs), index=movs.index)
-
-    def _sign_adjust(row):
-        tipo_val = ''
-        try:
-            tipo_val = str(row.get('tipo', '')).strip().upper()
-        except Exception:
-            tipo_val = ''
-        try:
-            monto_val = float(row.get('monto', 0.0))
-        except Exception:
-            monto_val = 0.0
-        if tipo_val in ('DEBITO', 'CONSUMO'):
-            return -monto_val
-        return monto_val
-
-    movs['monto'] = movs.apply(_sign_adjust, axis=1)
+    movs['monto']  = movs.apply(
+        lambda row: -row['monto'] 
+        if row['tipo'].strip().upper() == 'DEBITO' or row['tipo'].strip().upper() == 'CONSUMO'
+        else row['monto'], axis=1
+    )
     movs['moneda'] = archivo_obj.moneda
 
     # 9) Persistir movimientos

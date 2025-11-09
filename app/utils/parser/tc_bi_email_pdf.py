@@ -78,14 +78,19 @@ def load_movements_bi_tc_email_pdf(filepath, archivo_obj):
     db.session.commit()
 
     # --- 3) Crear o recuperar cuenta ---
-    # Buscar cuenta con el número tal como viene del PDF
-    cuenta = Cuenta.query.filter_by(
-        banco=archivo_obj.banco,
-        tipo_cuenta=archivo_obj.tipo_cuenta,
-        numero_cuenta=archivo_obj.numero_cuenta
-    ).first()
-    
-    # Si no se encuentra, buscar también sin guiones por si existe en otro formato
+    # Intentar localizar cuenta por número, incluyendo números alternativos
+    cuenta = Cuenta.find_by_numero(archivo_obj.numero_cuenta)
+
+    # Asegurar que la cuenta encontrada corresponde al mismo banco y tipo (p. ej. TC)
+    if cuenta:
+        try:
+            if cuenta.banco != archivo_obj.banco or not cuenta.tipo_cuenta.startswith(archivo_obj.tipo_cuenta):
+                # Si no coincide, descartamos esta coincidencia para buscar una que sí coincida con banco/tipo
+                cuenta = None
+        except Exception:
+            cuenta = None
+
+    # Si aún no hay cuenta, buscar también sin guiones por si existe en otro formato dentro del mismo banco/tipo
     if not cuenta:
         numero_sin_guiones = numero_cuenta.replace('-', '')
         # Buscar cuentas del mismo banco y con tipos de TC similares que contengan los mismos dígitos
@@ -93,7 +98,7 @@ def load_movements_bi_tc_email_pdf(filepath, archivo_obj):
             Cuenta.banco == archivo_obj.banco,
             Cuenta.tipo_cuenta.like('TC%')  # Cualquier tipo que empiece con TC
         ).all()
-        
+
         for cuenta_existente in cuentas_similares:
             if cuenta_existente.numero_cuenta.replace('-', '') == numero_sin_guiones:
                 cuenta = cuenta_existente

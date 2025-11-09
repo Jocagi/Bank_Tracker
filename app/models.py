@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 from . import db
 from flask_login import UserMixin
 
@@ -71,6 +72,63 @@ class Cuenta(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 
     user = db.relationship('User', backref=db.backref('cuentas', lazy=True), foreign_keys=[user_id])
+
+    def add_numero_alternativo(self, numero):
+        """Agregar un número alternativo para esta cuenta si no existe."""
+        from . import db
+        from .models import CuentaNumero
+        numero = (numero or '').strip()
+        if not numero:
+            return
+        exists = CuentaNumero.query.filter_by(cuenta_id=self.id, numero=numero).first()
+        if not exists:
+            cn = CuentaNumero(cuenta_id=self.id, numero=numero)
+            db.session.add(cn)
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
+    @staticmethod
+    def find_by_numero(numero):
+        """Buscar una cuenta por su número o por números alternativos.
+
+        Retorna la instancia Cuenta o None.
+        """
+        if not numero:
+            return None
+        num_raw = numero.strip()
+        # intentar buscar por numero_cuenta exacto
+        c = Cuenta.query.filter_by(numero_cuenta=num_raw).first()
+        if c:
+            return c
+        # buscar en la tabla de numeros alternativos
+        cn = CuentaNumero.query.filter_by(numero=num_raw).first()
+        if cn:
+            return Cuenta.query.get(cn.cuenta_id)
+        # intentar buscar por versión "limpia"
+        clean = re.sub(r"[^A-Za-z0-9]", "", num_raw)
+        if clean:
+            # buscar en cuentas
+            posibles = Cuenta.query.all()
+            for pc in posibles:
+                if re.sub(r"[^A-Za-z0-9]", "", (pc.numero_cuenta or '')) == clean:
+                    return pc
+            # buscar en numeros alternativos
+            posibles_cn = CuentaNumero.query.all()
+            for pcn in posibles_cn:
+                if re.sub(r"[^A-Za-z0-9]", "", (pcn.numero or '')) == clean:
+                    return Cuenta.query.get(pcn.cuenta_id)
+        return None
+
+
+class CuentaNumero(db.Model):
+    __tablename__ = 'cuentas_numeros'
+    id = db.Column(db.Integer, primary_key=True)
+    cuenta_id = db.Column(db.Integer, db.ForeignKey('cuentas.id'), nullable=False, index=True)
+    numero = db.Column(db.String(100), nullable=False, index=True)
+
+    cuenta = db.relationship('Cuenta', backref=db.backref('numeros_alternativos', lazy=True), foreign_keys=[cuenta_id])
 
 class Archivo(db.Model):
     __tablename__ = 'archivos'

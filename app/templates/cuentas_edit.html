@@ -27,6 +27,16 @@
     <label class="form-label">Moneda</label>
     <input name="moneda" class="form-control" value="{{ cuenta.moneda }}">
   </div>
+  {% if cuenta.numeros_alternativos and cuenta.numeros_alternativos|length > 0 %}
+  <div class="mb-3">
+    <label class="form-label">Números alternativos</label>
+      <ul>
+        {% for n in cuenta.numeros_alternativos %}
+          <li>{{ n.numero }}</li>
+        {% endfor %}
+      </ul>
+  </div>
+  {% endif %}
   
   {# Solo administradores pueden asignar propietario #}
   {% if current_user.is_authenticated and current_user.is_admin() %}
@@ -44,5 +54,8 @@
   
   <button class="btn btn-primary">Guardar</button>
   <a href="{{ url_for('main.list_cuentas') }}" class="btn btn-link">Cancelar</a>
+  {% if current_user.is_authenticated and (current_user.is_admin() or (cuenta.user and cuenta.user.id == current_user.id)) %}
+    <a href="{{ url_for('main.merge_cuentas_view', source_id=cuenta.id) }}" class="btn btn-warning ms-2">Combinar cuentas</a>
+  {% endif %}
 </form>
 {% endblock %}

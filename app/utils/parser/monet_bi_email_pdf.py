@@ -3,6 +3,7 @@ import pdfplumber
 from datetime import datetime
 from ... import db
 from ...models import Archivo, Movimiento, Cuenta
+from .cuenta_utils import get_or_create_cuenta
 from ..classifier import clasificar_movimientos
 
 def load_movements_bi_monet_email_pdf(filepath, archivo_obj):
@@ -67,41 +68,9 @@ def load_movements_bi_monet_email_pdf(filepath, archivo_obj):
     archivo_obj.moneda = 'GTQ'
     db.session.commit()
 
-    # --- 3) Crear o recuperar cuenta ---
-    # Buscar cuenta con el número tal como viene del PDF
-    cuenta = Cuenta.query.filter_by(
-        banco=archivo_obj.banco,
-        tipo_cuenta=archivo_obj.tipo_cuenta,
-        numero_cuenta=archivo_obj.numero_cuenta
-    ).first()
-    
-    # Si no se encuentra, buscar también sin guiones por si existe en otro formato
-    if not cuenta:
-        numero_sin_guiones = numero_cuenta.replace('-', '')
-        # Buscar cuentas del mismo banco y tipo que contengan los mismos dígitos
-        cuentas_similares = Cuenta.query.filter(
-            Cuenta.banco == archivo_obj.banco,
-            Cuenta.tipo_cuenta == archivo_obj.tipo_cuenta
-        ).all()
-        
-        for cuenta_existente in cuentas_similares:
-            if cuenta_existente.numero_cuenta.replace('-', '') == numero_sin_guiones:
-                cuenta = cuenta_existente
-                break
-    
-    if not cuenta:
-        cuenta = Cuenta(
-            banco=archivo_obj.banco,
-            tipo_cuenta=archivo_obj.tipo_cuenta,
-            numero_cuenta=archivo_obj.numero_cuenta,
-            titular=archivo_obj.titular,
-            moneda=archivo_obj.moneda
-        )
-        # Asignar el usuario propietario del archivo a la cuenta
-        if getattr(archivo_obj, 'user_id', None) is not None:
-            cuenta.user_id = archivo_obj.user_id
-        db.session.add(cuenta)
-        db.session.commit()
+    # --- 3) Crear o recuperar cuenta (consultar números alternativos primero) ---
+    # --- 3) Crear o recuperar cuenta (centralizado) ---
+    cuenta = get_or_create_cuenta(archivo_obj)
 
     # --- 4) Buscar SALDO ANTERIOR ---
     prev_balance = None

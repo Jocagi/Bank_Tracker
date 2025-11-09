@@ -93,29 +93,34 @@ def parse_monet_bi_legacy_pdf_file(filepath, archivo_obj):
     archivo_obj.titular = titular or 'TITULAR NO IDENTIFICADO'
     archivo_obj.moneda = 'GTQ'
 
-    # Buscar cuenta existente (con y sin guiones)
-    cuenta = None
-    numero_sin_guiones = numero_cuenta.replace('-', '')
-    
-    cuentas_similares = Cuenta.query.filter(
-        (Cuenta.numero_cuenta == numero_cuenta) |
-        (Cuenta.numero_cuenta == numero_sin_guiones)
-    ).all()
-    
-    if cuentas_similares:
-        # Buscar coincidencia exacta primero
-        for cuenta_existente in cuentas_similares:
-            if cuenta_existente.numero_cuenta == numero_cuenta:
-                cuenta = cuenta_existente
-                break
+    # Buscar o crear cuenta (consultar números alternativos primero)
+    cuenta = Cuenta.find_by_numero(archivo_obj.numero_cuenta)
+    if cuenta:
+        try:
+            if cuenta.banco != archivo_obj.banco or not cuenta.tipo_cuenta.startswith(archivo_obj.tipo_cuenta):
+                cuenta = None
+        except Exception:
+            cuenta = None
+
+    if not cuenta:
+        # Buscar por coincidencia directa o sin guiones como último recurso
+        numero_sin_guiones = numero_cuenta.replace('-', '')
+        cuentas_similares = Cuenta.query.filter(
+            (Cuenta.numero_cuenta == numero_cuenta) |
+            (Cuenta.numero_cuenta == numero_sin_guiones)
+        ).all()
         
-        # Si no hay coincidencia exacta, buscar sin guiones
-        if not cuenta:
+        if cuentas_similares:
             for cuenta_existente in cuentas_similares:
-                if cuenta_existente.numero_cuenta.replace('-', '') == numero_sin_guiones:
+                if cuenta_existente.numero_cuenta == numero_cuenta:
                     cuenta = cuenta_existente
                     break
-    
+            if not cuenta:
+                for cuenta_existente in cuentas_similares:
+                    if cuenta_existente.numero_cuenta.replace('-', '') == numero_sin_guiones:
+                        cuenta = cuenta_existente
+                        break
+
     if not cuenta:
         cuenta = Cuenta(
             banco=archivo_obj.banco,

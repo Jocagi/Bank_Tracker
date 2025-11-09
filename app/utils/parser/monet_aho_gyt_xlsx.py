@@ -1,7 +1,8 @@
 from datetime import datetime
 import pandas as pd
 from ... import db
-from ...models import Archivo, Movimiento, Cuenta
+from ...models import Archivo, Movimiento
+from .cuenta_utils import get_or_create_cuenta
 from ..classifier import clasificar_movimientos
 
 def load_movements_monet_aho_gyt_xlsx(filepath, archivo_obj):
@@ -34,25 +35,8 @@ def load_movements_monet_aho_gyt_xlsx(filepath, archivo_obj):
     archivo_obj.saldo_inicial = header_info.get('saldo', 0.0)
     db.session.commit()
 
-    # Verificar o crear Cuenta
-    cuenta = Cuenta.query.filter_by(
-        banco=archivo_obj.banco,
-        tipo_cuenta=archivo_obj.tipo_cuenta,
-        numero_cuenta=archivo_obj.numero_cuenta
-    ).first()
-    if not cuenta:
-        cuenta = Cuenta(
-            banco=archivo_obj.banco,
-            tipo_cuenta=header_info.get('tipo_cuenta', 'Desconocido'),
-            numero_cuenta=header_info.get('numero_cuenta', 'Desconocido'),
-            titular=header_info.get('titular', 'Desconocido'),
-            moneda=header_info.get('moneda', 'Desconocido')
-        )
-        # asignar propietario si el archivo tiene user_id
-        if getattr(archivo_obj, 'user_id', None) is not None:
-            cuenta.user_id = archivo_obj.user_id
-        db.session.add(cuenta)
-        db.session.commit()
+    # Verificar o crear Cuenta (centralizado)
+    cuenta = get_or_create_cuenta(archivo_obj)
 
     movimientos = extract_movements_monet_aho_gyt_xlsx(df, archivo_obj)
     for idx, mov in movimientos.iterrows():

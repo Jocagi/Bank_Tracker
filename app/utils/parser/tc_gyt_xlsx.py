@@ -1,8 +1,9 @@
 
 import pandas as pd
 from ... import db
-from ...models import Movimiento, Cuenta
+from ...models import Movimiento
 from ..classifier import clasificar_movimientos
+from .cuenta_utils import get_or_create_cuenta
 
 def load_movements_tc_gyt_xlsx(filepath, archivo_obj):
     """
@@ -36,25 +37,8 @@ def load_movements_tc_gyt_xlsx(filepath, archivo_obj):
     archivo_obj.moneda        = moneda
     db.session.commit()
 
-    # 4) Crear o recuperar la cuenta
-    cuenta = Cuenta.query.filter_by(
-        banco=archivo_obj.banco,
-        tipo_cuenta=archivo_obj.tipo_cuenta,
-        numero_cuenta=archivo_obj.numero_cuenta
-    ).first()
-    if not cuenta:
-        cuenta = Cuenta(
-            banco=archivo_obj.banco,
-            tipo_cuenta=archivo_obj.tipo_cuenta,
-            numero_cuenta=archivo_obj.numero_cuenta,
-            titular=archivo_obj.titular,
-            moneda=archivo_obj.moneda
-        )
-        # Asignar el usuario propietario del archivo a la cuenta
-        if getattr(archivo_obj, 'user_id', None) is not None:
-            cuenta.user_id = archivo_obj.user_id
-        db.session.add(cuenta)
-        db.session.commit()
+    # 4) Crear o recuperar la cuenta (centralizado)
+    cuenta = get_or_create_cuenta(archivo_obj)
 
     # 5) Buscar el índice de la fila de cabecera (contiene 'Fecha' y 'Descripción')
     header_idx = None

@@ -1,6 +1,7 @@
 import pandas as pd
 from ... import db
-from ...models import Movimiento, Cuenta
+from ...models import Movimiento
+from .cuenta_utils import get_or_create_cuenta
 
 def load_movements_promerica_tc_xls(filepath, archivo_obj):
     """
@@ -30,25 +31,8 @@ def load_movements_promerica_tc_xls(filepath, archivo_obj):
     archivo_obj.moneda        = moneda
     db.session.commit()
 
-    # 3) Crear o recuperar Cuenta
-    cuenta = Cuenta.query.filter_by(
-        banco=archivo_obj.banco,
-        tipo_cuenta=archivo_obj.tipo_cuenta,
-        numero_cuenta=archivo_obj.numero_cuenta
-    ).first()
-    if not cuenta:
-        cuenta = Cuenta(
-            banco=archivo_obj.banco,
-            tipo_cuenta=archivo_obj.tipo_cuenta,
-            numero_cuenta=archivo_obj.numero_cuenta,
-            titular=archivo_obj.titular,
-            moneda=archivo_obj.moneda
-        )
-        # Asignar el usuario propietario del archivo a la cuenta
-        if getattr(archivo_obj, 'user_id', None) is not None:
-            cuenta.user_id = archivo_obj.user_id
-        db.session.add(cuenta)
-        db.session.commit()
+    # 3) Crear o recuperar Cuenta (centralizado)
+    cuenta = get_or_create_cuenta(archivo_obj)
 
     # 4) Tomar el séptimo valor del dataframe como la tabla de movimientos
     if len(df0) < 7:

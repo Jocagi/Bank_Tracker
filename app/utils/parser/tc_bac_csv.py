@@ -1,7 +1,8 @@
 import pandas as pd
 from datetime import datetime
 from ... import db
-from ...models import Archivo, Movimiento, Cuenta
+from ...models import Archivo, Movimiento
+from .cuenta_utils import get_or_create_cuenta
 from ..classifier import clasificar_movimientos
 
 def load_movements_bac_tc_csv(filepath, archivo_obj):
@@ -51,25 +52,8 @@ def load_movements_bac_tc_csv(filepath, archivo_obj):
     archivo_obj.moneda = 'GTQ'  # Por defecto GTQ, se puede ajustar si hay dólares
     db.session.commit()
     
-    # 4) Crear o recuperar Cuenta
-    cuenta = Cuenta.query.filter_by(
-        banco=archivo_obj.banco,
-        tipo_cuenta=archivo_obj.tipo_cuenta,
-        numero_cuenta=archivo_obj.numero_cuenta
-    ).first()
-    if not cuenta:
-        cuenta = Cuenta(
-            banco=archivo_obj.banco,
-            tipo_cuenta=archivo_obj.tipo_cuenta,
-            numero_cuenta=archivo_obj.numero_cuenta,
-            titular=archivo_obj.titular,
-            moneda=archivo_obj.moneda
-        )
-        # Asignar el usuario propietario del archivo a la cuenta
-        if getattr(archivo_obj, 'user_id', None) is not None:
-            cuenta.user_id = archivo_obj.user_id
-        db.session.add(cuenta)
-        db.session.commit()
+    # 4) Crear o recuperar Cuenta (centralizado)
+    cuenta = get_or_create_cuenta(archivo_obj)
     
     # 5) Procesar movimientos desde la línea 5 (índice 4)
     movimientos_df = df.iloc[4:].copy().reset_index(drop=True)

@@ -54,6 +54,7 @@
   <td>{{ c.movimientos_count }}</td>
       <td>
         <a href="{{ url_for('main.edit_cuenta', cuenta_id=c.id) }}" class="btn btn-sm btn-secondary">Editar</a>
+        {# Inline merge controls removed from main accounts view. Use edit page to access dedicated merge UI. #}
         <form method="post" action="{{ url_for('main.delete_cuenta', cuenta_id=c.id) }}" style="display:inline" onsubmit="return confirm('¿Eliminar cuenta {{ c.numero_cuenta }}?');">
           <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
         </form>

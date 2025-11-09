@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}Combinar Cuentas{% endblock %}
+{% block content %}
+<h1>Combinar cuenta</h1>
+<div class="mb-3">
+  <h5>Cuenta origen</h5>
+  <ul>
+    <li><strong>Banco:</strong> {{ source.banco }}</li>
+    <li><strong>Tipo:</strong> {{ source.tipo_cuenta }}</li>
+    <li><strong>Número:</strong> {{ source.numero_cuenta }}</li>
+    <li><strong>Alias:</strong> {{ source.alias or '-' }}</li>
+    <li><strong>Titular:</strong> {{ source.titular }}</li>
+  </ul>
+</div>
+<form method="post">
+  <div class="mb-3">
+    <label class="form-label">Cuenta destino</label>
+    <select name="target_id" class="form-select">
+      <option value="">-- Selecciona destino --</option>
+      {% for t in targets %}
+      <option value="{{ t.id }}">{{ t.banco }} / {{ t.tipo_cuenta }} / {{ t.numero_cuenta }}{% if t.alias %} ({{ t.alias }}){% endif %}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3 form-check">
+    <input type="checkbox" name="keep_alias" id="keep_alias" class="form-check-input" checked>
+    <label for="keep_alias" class="form-check-label">Si la cuenta destino no tiene alias, copiar el alias de la cuenta origen</label>
+  </div>
+  <button class="btn btn-danger">Combinar</button>
+  <a href="{{ url_for('main.edit_cuenta', cuenta_id=source.id) }}" class="btn btn-link">Cancelar</a>
+</form>
+{% endblock %}

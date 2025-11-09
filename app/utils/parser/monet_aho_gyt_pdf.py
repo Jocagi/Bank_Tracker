@@ -52,12 +52,15 @@ def load_movements_monet_aho_gyt_pdf(filepath, archivo_obj):
     archivo_obj.saldo_inicial = header_info.get('saldo', 0.0)
     db.session.commit()
 
-    # --- 4) Verificar o crear Cuenta ---
-    cuenta = Cuenta.query.filter_by(
-        banco=archivo_obj.banco,
-        tipo_cuenta=archivo_obj.tipo_cuenta,
-        numero_cuenta=archivo_obj.numero_cuenta
-    ).first()
+    # --- 4) Verificar o crear Cuenta (consultar números alternativos primero) ---
+    cuenta = Cuenta.find_by_numero(archivo_obj.numero_cuenta)
+    if cuenta:
+        try:
+            if cuenta.banco != archivo_obj.banco or not cuenta.tipo_cuenta.startswith(archivo_obj.tipo_cuenta):
+                cuenta = None
+        except Exception:
+            cuenta = None
+
     if not cuenta:
         cuenta = Cuenta(
             banco=archivo_obj.banco,
