@@ -4,6 +4,7 @@ from flask import render_template, request, flash
 from sqlalchemy import func
 from .. import db
 from ..models import Comercio, Categoria, Movimiento, TipoCambio, User, Cuenta, Regla
+from ..models import PresupuestoPlan, PresupuestoRegla
 from . import bp
 from flask_login import login_required, current_user
 
@@ -855,3 +856,90 @@ def dashboard():
         selected_cat=cat_id,
         table_limit=table_limit
     )
+
+
+@bp.route('/dashboard/presupuestos')
+@login_required
+def dashboard_presupuestos():
+    """Comparación mes a mes de gastos por PresupuestoPlan.
+
+    Para cada plan del usuario mostramos la serie mensual de gastos desde
+    la `fecha_inicio` del plan. Además mostramos la suma de montos de las
+    reglas del plan como presupuesto esperado para cada mes (las reglas con
+    fecha_inicio <= inicio del mes).
+    """
+    from datetime import date, datetime
+    from calendar import monthrange
+
+    # Solo planes del usuario (o por owner si admin && owner_id provided)
+    owner_id = request.args.get('owner_id', '')
+    if hasattr(current_user, 'is_admin') and current_user.is_admin() and owner_id:
+        try:
+            uid = int(owner_id)
+        except ValueError:
+            uid = current_user.id
+    else:
+        uid = current_user.id
+
+    plans = PresupuestoPlan.query.filter_by(user_id=uid).order_by(PresupuestoPlan.fecha_inicio).all()
+
+    if not plans:
+        return render_template('dashboard_presupuestos.html', plans=[], months=[], datasets=[])
+
+    # calcular rango global de meses desde el earliest fecha_inicio hasta mes actual
+    earliest = min(p.fecha_inicio for p in plans)
+    today = date.today()
+    # generar lista de meses en formato YYYY-MM
+    months = []
+    cursor = date(earliest.year, earliest.month, 1)
+    while cursor <= date(today.year, today.month, 1):
+        months.append(cursor.strftime('%Y-%m'))
+        # next month
+        year = cursor.year + (cursor.month // 12)
+        month = (cursor.month % 12) + 1
+        cursor = date(year, month, 1)
+
+    # Para cada plan, construir series alineadas a `months`
+    datasets = []
+    for plan in plans:
+        actuals = []
+        budgets = []
+        for m in months:
+            y, mo = m.split('-')
+            y = int(y); mo = int(mo)
+            month_start = date(y, mo, 1)
+            last_day = monthrange(y, mo)[1]
+            month_end = date(y, mo, last_day)
+
+            # Si el mes es anterior al inicio del plan, poner null para no dibujar
+            if month_start < plan.fecha_inicio:
+                actuals.append(None)
+                budgets.append(None)
+                continue
+
+            # sumar gastos reales para ese mes y ese usuario
+            q = db.session.query(func.sum(Movimiento.monto * TipoCambio.valor))
+            q = q.join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
+            q = q.join(Comercio, Movimiento.comercio_id == Comercio.id)
+            q = q.filter(Comercio.tipo_contabilizacion == 'gastos')
+            q = q.filter(Movimiento.user_id == uid)
+            q = q.filter(Movimiento.fecha >= month_start)
+            q = q.filter(Movimiento.fecha <= month_end)
+            total = q.scalar() or 0
+            actuals.append(abs(total))
+
+            # presupuesto esperado: sumar montos de reglas del plan vigentes para ese mes
+            reglas_sum = db.session.query(func.sum(PresupuestoRegla.monto)).filter(
+                PresupuestoRegla.presupuesto_id == plan.id,
+                PresupuestoRegla.fecha_inicio <= month_start
+            ).scalar() or 0
+            budgets.append(float(reglas_sum))
+
+        datasets.append({
+            'label': plan.nombre,
+            'start': plan.fecha_inicio.strftime('%Y-%m-%d'),
+            'actuals': actuals,
+            'budgets': budgets
+        })
+
+    return render_template('dashboard_presupuestos.html', plans=plans, months=months, datasets=datasets, selected_owner=owner_id)

@@ -159,3 +159,42 @@ class User(UserMixin, db.Model):
     def is_admin(self):
         return self.role == 'admin'
 
+
+class PresupuestoPlan(db.Model):
+    """Contenedor de reglas de presupuesto (concepto general).
+
+    Cada usuario puede tener uno o varios planes de presupuesto. Un plan contiene
+    múltiples reglas asociadas a categorías. Las reglas son inmutables: al
+    modificarlas se crea una nueva regla con la fecha de inicio indicada.
+    """
+    __tablename__ = 'presupuesto_planes'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    nombre = db.Column(db.String(150), nullable=False)
+    fecha_inicio = db.Column(db.Date, nullable=False)
+    active = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref('presupuesto_planes', lazy=True), foreign_keys=[user_id])
+
+
+class PresupuestoRegla(db.Model):
+    """Reglas individuales dentro de un plan de presupuesto.
+
+    Se usa la tabla existente `presupuestos` para guardar las reglas. Cada regla
+    referencia opcionalmente a un `PresupuestoPlan` (presupuesto principal).
+    """
+    __tablename__ = 'presupuestos'
+    id = db.Column(db.Integer, primary_key=True)
+    presupuesto_id = db.Column(db.Integer, db.ForeignKey('presupuesto_planes.id'), nullable=True, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    categoria_id = db.Column(db.Integer, db.ForeignKey('categorias.id'), nullable=False, index=True)
+    tipo = db.Column(db.String(20), nullable=False, default='inesperado')  # 'fijo','variable','inesperado'
+    monto = db.Column(db.Float, nullable=False, default=0.0)
+    fecha_inicio = db.Column(db.Date, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    presupuesto = db.relationship('PresupuestoPlan', backref=db.backref('reglas', lazy=True), foreign_keys=[presupuesto_id])
+    user = db.relationship('User', backref=db.backref('presupuesto_reglas', lazy=True), foreign_keys=[user_id])
+    categoria = db.relationship('Categoria', backref=db.backref('presupuesto_reglas', lazy=True), foreign_keys=[categoria_id])
+

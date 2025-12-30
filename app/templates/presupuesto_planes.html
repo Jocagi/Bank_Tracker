@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Planes de Presupuesto{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>Planes de Presupuesto</h2>
+  <a class="btn btn-primary" href="{{ url_for('main.add_plan') }}">Crear Plan</a>
+</div>
+
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Nombre</th>
+      <th>Fecha inicio</th>
+      <th>Activo</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in planes %}
+    <tr>
+      <td>{{ p.nombre }}</td>
+      <td>{{ p.fecha_inicio.strftime('%Y-%m-%d') }}</td>
+      <td>{{ 'Sí' if p.active else 'No' }}</td>
+      <td>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('main.view_plan', plan_id=p.id) }}">Ver</a>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('main.edit_plan', plan_id=p.id) }}">Editar</a>
+        <form method="post" action="{{ url_for('main.delete_plan', plan_id=p.id) }}" style="display:inline" onsubmit="return confirm('¿Eliminar plan {{ p.nombre }}?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-outline-danger" type="submit">Eliminar</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="4">No hay planes configurados.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}

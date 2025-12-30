@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}Plan: {{ plan.nombre }}{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Plan: {{ plan.nombre }}</h2>
+    <div>
+      <a class="btn btn-outline-secondary" href="{{ url_for('main.list_presupuestos') }}">Volver</a>
+      <a class="btn btn-primary" href="{{ url_for('main.add_regla', plan_id=plan.id) }}">Agregar regla</a>
+    </div>
+  </div>
+
+  <p>Fecha inicio: {{ plan.fecha_inicio.strftime('%Y-%m-%d') }} — Activo: {{ 'Sí' if plan.active else 'No' }}</p>
+
+  <table class="table table-sm">
+    <thead>
+      <tr>
+        <th>Categoría</th>
+        <th>Tipo</th>
+        <th>Monto</th>
+        <th>Fecha inicio</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in reglas %}
+      <tr>
+        <td>{{ categorias.get(r.categoria_id, 'N/D') }}</td>
+        <td>{{ r.tipo }}</td>
+        <td>{{ 'Q{:,.2f}'.format(r.monto) }}</td>
+        <td>{{ r.fecha_inicio.strftime('%Y-%m-%d') }}</td>
+        <td>
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('main.edit_regla', regla_id=r.id) }}">Editar</a>
+          <form method="post" action="{{ url_for('main.delete_regla', regla_id=r.id) }}" style="display:inline" onsubmit="return confirm('¿Eliminar esta regla?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-outline-danger" type="submit">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">No hay reglas en este plan.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+{% endblock %}

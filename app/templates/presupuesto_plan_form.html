@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ action }} Plan{% endblock %}
+
+{% block content %}
+  <h2>{{ action }} Plan de Presupuesto</h2>
+  <form method="post">
+    {{ form.hidden_tag() }}
+
+    <div class="mb-3">
+      <label class="form-label">Nombre</label>
+      {{ form.nombre(class_='form-control') }}
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Fecha inicio</label>
+      {{ form.fecha_inicio(class_='form-control') }}
+    </div>
+
+    <div class="form-check mb-3">
+      {{ form.active(class_='form-check-input') }}
+      <label class="form-check-label">Activo</label>
+    </div>
+
+    <button class="btn btn-primary" type="submit">{{ action }}</button>
+    <a class="btn btn-secondary" href="{{ url_for('main.list_presupuestos') }}">Cancelar</a>
+  </form>
+{% endblock %}

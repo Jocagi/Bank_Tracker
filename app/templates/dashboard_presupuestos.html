@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}Comparación Presupuestos{% endblock %}
+
+{% block content %}
+<h1>Comparación Mensual por Presupuesto</h1>
+
+<p>Compara gasto real mes-a-mes para cada plan desde su fecha de inicio, y muestra el monto presupuestado por mes.</p>
+
+<div class="card mb-3">
+  <div class="card-body" style="height:420px;">
+    <canvas id="chartPresupuestos"></canvas>
+  </div>
+</div>
+
+<div class="mb-3">
+  <h5>Planes detectados</h5>
+  <ul>
+    {% for p in plans %}
+      <li><strong>{{ p.nombre }}</strong> — inicio: {{ p.fecha_inicio }}{% if p.active %} (activo){% endif %}</li>
+    {% else %}
+      <li>No hay planes</li>
+    {% endfor %}
+  </ul>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const months = {{ months | tojson }};
+    const datasets = {{ datasets | tojson }};
+
+    // Build chart datasets: for each plan we show actuals and a dashed budget line
+    const chartDatasets = [];
+    const colors = ['#dc3545', '#0d6efd', '#198754', '#fd7e14', '#6f42c1', '#20c997'];
+
+    datasets.forEach((d, idx) => {
+      const color = colors[idx % colors.length];
+      chartDatasets.push({
+        label: d.label + ' — Real',
+        data: d.actuals,
+        borderColor: color,
+        backgroundColor: color,
+        fill: false,
+        tension: 0.1,
+        spanGaps: true
+      });
+      chartDatasets.push({
+        label: d.label + ' — Presupuesto',
+        data: d.budgets,
+        borderColor: color,
+        backgroundColor: color,
+        borderDash: [6,4],
+        fill: false,
+        tension: 0.1,
+        spanGaps: true
+      });
+    });
+
+    const ctx = document.getElementById('chartPresupuestos').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: { labels: months, datasets: chartDatasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          tooltip: { callbacks: { label: ctx => `Q${(ctx.parsed.y||0).toLocaleString(undefined,{minimumFractionDigits:2})}` } },
+          legend: { position: 'top' }
+        },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+  </script>
+{% endblock %}

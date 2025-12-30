@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ action }} presupuesto{% endblock %}
+
+{% block content %}
+  <h2>{{ action }} presupuesto</h2>
+  <form method="post">
+    {{ form.hidden_tag() }}
+
+    <div class="mb-3">
+      <label class="form-label">Categoría</label>
+      {{ form.categoria_id(class_='form-select') }}
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Tipo</label>
+      {{ form.tipo(class_='form-select') }}
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Monto</label>
+      {{ form.monto(class_='form-control') }}
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Fecha inicio</label>
+      {{ form.fecha_inicio(class_='form-control') }}
+      <div class="form-text">La fecha desde la cual aplica este valor. Si desea aplicarlo retroactivamente, elija una fecha anterior. Las ediciones crean un nuevo registro que aplica desde la fecha indicada.</div>
+    </div>
+
+    <button class="btn btn-primary" type="submit">{{ action }}</button>
+    <a class="btn btn-secondary" href="{{ url_for('main.list_presupuestos') }}">Cancelar</a>
+  </form>
+{% endblock %}
