@@ -13,6 +13,7 @@ from .parser.tc_bi_xls import load_movements_bi_tc_xls
 from .parser.tc_bi_email_pdf import load_movements_bi_tc_email_pdf
 from .parser.tc_promerica_xls import load_movements_promerica_tc_xls
 from .parser.tc_bac_csv import load_movements_bac_tc_csv
+from .parser.tc_bi_virtual_xls import load_movements_bi_tc_virtual_xls
 from .parser.ahorro_interbanco_pdf import parse_ahorro_interbanco_pdf_file
 from .classifier import clasificar_movimientos
 
@@ -111,6 +112,12 @@ def load_movements(filepath, archivo_obj, tipo_archivo):
             count = load_movements_promerica_tc_xls(filepath, archivo_obj)
         else:
             raise ValueError('Extensión no válida para formato tc-promerica.')
+    elif tipo_archivo == 'tc-online-bi':
+        archivo_obj.banco = 'BI'
+        if extension in ('.xls', '.xlsx'):
+            count = load_movements_bi_tc_virtual_xls(filepath, archivo_obj)
+        else:
+            raise ValueError('Extensión no válida para formato tc-online-bi.')
     elif tipo_archivo == 'tc-bac':
         archivo_obj.banco = 'BAC'
         if extension in ('.csv',):
