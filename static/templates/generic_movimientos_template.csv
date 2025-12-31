@@ -1,0 +1,3 @@
+cuenta,titular,moneda_cuenta,fecha,descripcion,monto,tipo,moneda
+12345678,Juan Perez,GTQ,2025-12-01,Compra supermercado,250,debito,GTQ
+12345678,Juan Perez,GTQ,2025-12-05,Abono tarjeta,300,credito,GTQ

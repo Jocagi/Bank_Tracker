@@ -6,6 +6,7 @@
   <div class="mb-3">
     <label for="tipo_archivo" class="form-label">Tipo Archivo</label>
     <select class="form-select" name="tipo_archivo" id="tipo_archivo" required>
+      <option value="generic-movimientos">Movimientos Genérico (xlsx/csv)</option>
       <option value="monet-aho-gyt">Monetaria/Ahorro GYT</option>
       <option value="tc-gyt">Tarjeta de Crédito GYT</option>
       <option value="monet-bi">Monetaria BI</option>
@@ -22,6 +23,9 @@
   <div class="mb-3">
     <input class="form-control" type="file" name="files" id="files" accept=".xlsx,.xls,.pdf,.csv" multiple required>
     <div id="file_help" class="form-text">Extensiones permitidas: .xlsx, .xls, .pdf, .csv. Puedes seleccionar múltiples archivos de la misma categoría.</div>
+    <div id="template-link" class="mt-2" style="display: none;">
+      <a class="link-primary" href="{{ url_for('static', filename='templates/generic_movimientos_template.csv') }}">Descargar plantilla genérica (CSV)</a>
+    </div>
   </div>
   <button type="submit" class="btn btn-primary" id="upload-btn">Cargar</button>
   <div id="file-info" class="mt-2 text-muted" style="display: none;"></div>
@@ -41,6 +45,7 @@
       'tc-bi': ['.xls', '.xlsx'],
       'tc-bi-email': ['.pdf'],
       'tc-online-bi': ['.xls', '.xlsx'],
+      'generic-movimientos': ['.xls', '.xlsx', '.csv'],
       'tc-promerica': ['.xls', '.xlsx'],
       'tc-bac': ['.csv'],
       'ahorro-interbanco': ['.pdf']
@@ -55,6 +60,7 @@
       const select = document.getElementById('tipo_archivo');
       const files = document.getElementById('files');
       const help = document.getElementById('file_help');
+      const templateLink = document.getElementById('template-link');
 
       if (!select) { console.warn('select #tipo_archivo not found'); return; }
       if (!files || !help) { console.warn('files/help element missing', {files, help}); }
@@ -65,6 +71,11 @@
 
       if (files) files.setAttribute('accept', extsToAccept(exts));
       if (help) help.textContent = 'Extensiones permitidas: ' + exts.join(', ') + '. Puedes seleccionar múltiples archivos de la misma categoría.';
+      
+      // Mostrar enlace de plantilla solo para genérico
+      if (templateLink) {
+        templateLink.style.display = (val === 'generic-movimientos') ? 'block' : 'none';
+      }
 
       console.debug('upload form updated', {tipo: val, typeName, exts});
     }
