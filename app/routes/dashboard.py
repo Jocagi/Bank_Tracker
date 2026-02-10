@@ -57,6 +57,9 @@ def dashboard():
 
     # ————————————————————————————————————————
     # 3) Gastos por Comercio (GTQ) - Incluye movimientos sin clasificar
+    def apply_dashboard_exclusion(query):
+        return query.filter(Movimiento.excluir_dashboard.is_(False))
+
     # Parte 1: Movimientos clasificados como gastos
     commerce_classified_q = (
         db.session.query(
@@ -67,6 +70,7 @@ def dashboard():
         .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
         .filter(Comercio.tipo_contabilizacion == 'gastos')
     )
+    commerce_classified_q = apply_dashboard_exclusion(commerce_classified_q)
     
     # Parte 2: Movimientos sin clasificar (negativos = gastos)
     commerce_unclassified_q = (
@@ -78,6 +82,7 @@ def dashboard():
         .filter(Movimiento.comercio_id.is_(None))
         .filter(Movimiento.monto < 0)  # Solo gastos (negativos)
     )
+    commerce_unclassified_q = apply_dashboard_exclusion(commerce_unclassified_q)
     # Aplicar filtros a ambas consultas
     # Filtrar por owner: si el usuario es admin puede seleccionar owner_id, si no -> su propio id
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
@@ -140,6 +145,7 @@ def dashboard():
         .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
         .filter(Comercio.tipo_contabilizacion == 'gastos')
     )
+    cat_classified_q = apply_dashboard_exclusion(cat_classified_q)
     
     # Parte 2: Movimientos sin clasificar (negativos = gastos)
     cat_unclassified_q = (
@@ -151,6 +157,7 @@ def dashboard():
         .filter(Movimiento.comercio_id.is_(None))
         .filter(Movimiento.monto < 0)  # Solo gastos (negativos)
     )
+    cat_unclassified_q = apply_dashboard_exclusion(cat_unclassified_q)
     # Aplicar filtros a ambas consultas de categorías
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
         if owner_id:
@@ -212,6 +219,7 @@ def dashboard():
         .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
         .filter(Comercio.tipo_contabilizacion == 'gastos')
     )
+    month_classified_q = apply_dashboard_exclusion(month_classified_q)
     
     # Parte 2: Movimientos sin clasificar (negativos = gastos)
     month_unclassified_q = (
@@ -223,6 +231,7 @@ def dashboard():
         .filter(Movimiento.comercio_id.is_(None))
         .filter(Movimiento.monto < 0)  # Solo gastos (negativos)
     )
+    month_unclassified_q = apply_dashboard_exclusion(month_unclassified_q)
     # Aplicar filtros a ambas consultas mensuales de gastos
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
         if owner_id:
@@ -284,6 +293,7 @@ def dashboard():
         .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
         .filter(Comercio.tipo_contabilizacion == 'ingresos')
     )
+    income_month_classified_q = apply_dashboard_exclusion(income_month_classified_q)
     
     # Parte 2: Movimientos sin clasificar (positivos = ingresos)
     income_month_unclassified_q = (
@@ -295,6 +305,7 @@ def dashboard():
         .filter(Movimiento.comercio_id.is_(None))
         .filter(Movimiento.monto > 0)  # Solo ingresos (positivos)
     )
+    income_month_unclassified_q = apply_dashboard_exclusion(income_month_unclassified_q)
     # Aplicar filtros a ambas consultas mensuales de ingresos
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
         if owner_id:
@@ -379,6 +390,7 @@ def dashboard():
         .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
         .filter(Comercio.tipo_contabilizacion == 'ingresos')
     )
+    income_classified_q = apply_dashboard_exclusion(income_classified_q)
     
     # Parte 2: Movimientos sin clasificar (positivos = ingresos)
     income_unclassified_q = (
@@ -390,6 +402,7 @@ def dashboard():
         .filter(Movimiento.comercio_id.is_(None))
         .filter(Movimiento.monto > 0)  # Solo ingresos (positivos)
     )
+    income_unclassified_q = apply_dashboard_exclusion(income_unclassified_q)
     
     # Aplicar filtros a ambas consultas de ingresos
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
@@ -438,6 +451,7 @@ def dashboard():
         .filter(Comercio.tipo_contabilizacion == 'gastos')
         .filter(Movimiento.monto < 0)  # Solo gastos (negativos)
     )
+    top_gastos_q = apply_dashboard_exclusion(top_gastos_q)
     
     # Aplicar filtros de usuario
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
@@ -489,6 +503,7 @@ def dashboard():
         .filter(Comercio.tipo_contabilizacion == 'gastos')
         .filter(Movimiento.monto < 0)  # Solo gastos (negativos)
     )
+    gastos_dia_q = apply_dashboard_exclusion(gastos_dia_q)
     
     # Aplicar filtros de usuario
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
@@ -540,6 +555,7 @@ def dashboard():
         .filter(Comercio.tipo_contabilizacion == 'gastos')
         .filter(Movimiento.monto < 0)  # Solo gastos (negativos)
     )
+    rangos_gastos_q = apply_dashboard_exclusion(rangos_gastos_q)
     
     # Aplicar filtros de usuario
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
@@ -608,6 +624,7 @@ def dashboard():
         .filter(Movimiento.fecha >= hace_365_dias)
         .filter(Movimiento.fecha <= hoy)
     )
+    heatmap_gastos_q = apply_dashboard_exclusion(heatmap_gastos_q)
     
     # Aplicar filtros de usuario
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
@@ -661,6 +678,7 @@ def dashboard():
         .filter(Comercio.tipo_contabilizacion == 'gastos')
         .filter(Movimiento.monto < 0)
     )
+    recurrentes_q = apply_dashboard_exclusion(recurrentes_q)
     
     # Aplicar filtros de usuario
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
@@ -716,6 +734,7 @@ def dashboard():
             .filter(Comercio.tipo_contabilizacion == 'gastos')
             .filter(Movimiento.monto < 0)
         )
+    cuentas_q = apply_dashboard_exclusion(cuentas_q)
     # Aplicar filtros de usuario
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
         if owner_id:
@@ -778,6 +797,7 @@ def dashboard():
     ).filter(
         Comercio.tipo_contabilizacion == 'gastos'  # Solo gastos
     )
+    comercios_recurrentes_query = apply_dashboard_exclusion(comercios_recurrentes_query)
 
     # Aplicar filtros de usuario
     if hasattr(current_user, 'is_admin') and current_user.is_admin():

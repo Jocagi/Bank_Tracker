@@ -159,6 +159,8 @@ def edit_movimiento(mov_id):
         # Excluir de clasificación automática: checkbox sends 'on' when checked
         excluir = request.form.get('excluir_clasificacion')
         mov.excluir_clasificacion = True if excluir in ('on', '1', 'true', 'True') else False
+        excluir_dashboard = request.form.get('excluir_dashboard')
+        mov.excluir_dashboard = True if excluir_dashboard in ('on', '1', 'true', 'True') else False
 
         if cuenta_id:
             mov.cuenta_id = int(cuenta_id)

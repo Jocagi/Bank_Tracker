@@ -38,6 +38,7 @@ class Movimiento(db.Model):
     moneda = db.Column(db.String(10))
     tipo = db.Column(db.String(10))  # 'debito' o 'credito'
     excluir_clasificacion = db.Column(db.Boolean, nullable=False, default=False)
+    excluir_dashboard = db.Column(db.Boolean, nullable=False, default=False)
     archivo_id = db.Column(db.Integer, db.ForeignKey('archivos.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     comercio_id = db.Column(db.Integer, db.ForeignKey('comercios.id'), nullable=True)

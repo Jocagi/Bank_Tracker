@@ -124,6 +124,7 @@
       <th>Cuenta</th>
       <th>Comercio</th>
       <th>Categoría</th>
+      <th>Dashboard</th>
       <th class="actions-col">Acciones</th>
     </tr>
   </thead>
@@ -146,6 +147,13 @@
           {{ m.comercio.categoria.nombre }}
         {% else %}
           —
+        {% endif %}
+      </td>
+      <td>
+        {% if m.excluir_dashboard %}
+          <span class="badge bg-warning text-dark">Excluido</span>
+        {% else %}
+          <span class="badge bg-success">Incluido</span>
         {% endif %}
       </td>
       <td class="actions-col">
