@@ -5,7 +5,12 @@
 <div class="mb-3">
   <h5>Cuenta origen</h5>
   <ul>
-    <li><strong>Banco:</strong> {{ source.banco }}</li>
+    <li><strong>Banco:</strong>
+      {% if source.bank_logo_filename %}
+        <img src="{{ url_for('static', filename='img/banks/' ~ source.bank_logo_filename) }}" alt="Logo {{ source.banco }}" style="height: 20px; width: 20px; object-fit: contain; margin-right: 6px;" onerror="this.style.display='none'">
+      {% endif %}
+      {{ source.banco }}
+    </li>
     <li><strong>Tipo:</strong> {{ source.tipo_cuenta }}</li>
     <li><strong>Número:</strong> {{ source.numero_cuenta }}</li>
     <li><strong>Alias:</strong> {{ source.alias or '-' }}</li>

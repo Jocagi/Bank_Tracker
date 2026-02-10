@@ -1,4 +1,5 @@
 from flask import render_template, request, redirect, url_for, flash
+import re
 from . import bp
 from .. import db
 from ..models import Cuenta, Movimiento
@@ -10,6 +11,10 @@ from flask_login import login_required, current_user
 @bp.route('/cuentas')
 @login_required
 def list_cuentas():
+    def bank_logo_filename(bank_name):
+        slug = re.sub(r'[^a-z0-9]+', '_', (bank_name or '').lower()).strip('_')
+        return f"{slug}.png" if slug else ""
+
     # Support optional owner filter for admins
     selected_owner = request.args.get('owner_id', '')
     users = []
@@ -40,6 +45,7 @@ def list_cuentas():
     mov_counts = {cid: cnt for cid, cnt in mov_query.all()}
     for c in cuentas:
         c.movimientos_count = mov_counts.get(c.id, 0)
+        c.bank_logo_filename = bank_logo_filename(c.banco)
     cuentas_all = None
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
         cuentas_all = Cuenta.query.order_by(Cuenta.banco, Cuenta.tipo_cuenta, Cuenta.moneda, Cuenta.alias, Cuenta.numero_cuenta).all()
@@ -124,8 +130,13 @@ def merge_cuentas(source_id, target_id, keep_alias=True):
 @bp.route('/cuentas/<int:source_id>/merge', methods=['GET', 'POST'])
 @login_required
 def merge_cuentas_view(source_id):
+    def bank_logo_filename(bank_name):
+        slug = re.sub(r'[^a-z0-9]+', '_', (bank_name or '').lower()).strip('_')
+        return f"{slug}.png" if slug else ""
+
     # Show a dedicated merge page accessible from edit view
     source = Cuenta.query.get_or_404(source_id)
+    source.bank_logo_filename = bank_logo_filename(source.banco)
     # Permission check for viewing the merge page: admin or owner
     if not (hasattr(current_user, 'is_admin') and current_user.is_admin()):
         if source.user_id != current_user.id:
