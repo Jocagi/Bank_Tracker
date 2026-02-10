@@ -54,11 +54,186 @@ def dashboard():
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
         users = User.query.order_by(User.username).all()
 
+    # ————————————————————————————————————————
+    # 2.5) Rango del mes anterior (independiente de filtros de fecha)
+    today = date.today()
+    current_month_start = today.replace(day=1)
+    prev_month_end = current_month_start - relativedelta(days=1)
+    prev_month_start = prev_month_end.replace(day=1)
+    prev_month_label = prev_month_start.strftime('%Y-%m')
+
 
     # ————————————————————————————————————————
     # 3) Gastos por Comercio (GTQ) - Incluye movimientos sin clasificar
     def apply_dashboard_exclusion(query):
         return query.filter(Movimiento.excluir_dashboard.is_(False))
+
+    # ————————————————————————————————————————
+    # 3.b) Resumen del mes anterior (gastos)
+    prev_commerce_q = (
+        db.session.query(
+            Comercio.nombre.label('nombre'),
+            func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
+        )
+        .join(Movimiento, Movimiento.comercio_id == Comercio.id)
+        .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
+        .filter(Comercio.tipo_contabilizacion == 'gastos')
+        .filter(Movimiento.fecha >= prev_month_start)
+        .filter(Movimiento.fecha <= prev_month_end)
+    )
+    prev_commerce_q = apply_dashboard_exclusion(prev_commerce_q)
+
+    prev_commerce_unclassified_q = (
+        db.session.query(
+            db.literal('No clasificado').label('nombre'),
+            func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
+        )
+        .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
+        .filter(Movimiento.comercio_id.is_(None))
+        .filter(Movimiento.monto < 0)
+        .filter(Movimiento.fecha >= prev_month_start)
+        .filter(Movimiento.fecha <= prev_month_end)
+    )
+    prev_commerce_unclassified_q = apply_dashboard_exclusion(prev_commerce_unclassified_q)
+
+    prev_category_q = (
+        db.session.query(
+            Categoria.nombre.label('nombre'),
+            func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
+        )
+        .join(Comercio, Comercio.categoria_id == Categoria.id)
+        .join(Movimiento, Movimiento.comercio_id == Comercio.id)
+        .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
+        .filter(Comercio.tipo_contabilizacion == 'gastos')
+        .filter(Movimiento.fecha >= prev_month_start)
+        .filter(Movimiento.fecha <= prev_month_end)
+    )
+    prev_category_q = apply_dashboard_exclusion(prev_category_q)
+
+    prev_category_unclassified_q = (
+        db.session.query(
+            db.literal('No clasificado').label('nombre'),
+            func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
+        )
+        .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
+        .filter(Movimiento.comercio_id.is_(None))
+        .filter(Movimiento.monto < 0)
+        .filter(Movimiento.fecha >= prev_month_start)
+        .filter(Movimiento.fecha <= prev_month_end)
+    )
+    prev_category_unclassified_q = apply_dashboard_exclusion(prev_category_unclassified_q)
+
+    prev_account_q = (
+        db.session.query(
+            Cuenta.alias.label('alias'),
+            func.concat(Cuenta.banco, ' - ', Cuenta.tipo_cuenta).label('cuenta_nombre'),
+            func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
+        )
+        .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
+        .join(Comercio, Movimiento.comercio_id == Comercio.id)
+        .join(Cuenta, Movimiento.cuenta_id == Cuenta.id)
+        .filter(Comercio.tipo_contabilizacion == 'gastos')
+        .filter(Movimiento.monto < 0)
+        .filter(Movimiento.fecha >= prev_month_start)
+        .filter(Movimiento.fecha <= prev_month_end)
+    )
+    prev_account_q = apply_dashboard_exclusion(prev_account_q)
+
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        if owner_id:
+            try:
+                oid = int(owner_id)
+                prev_commerce_q = prev_commerce_q.filter(Movimiento.user_id == oid)
+                prev_commerce_unclassified_q = prev_commerce_unclassified_q.filter(Movimiento.user_id == oid)
+                prev_category_q = prev_category_q.filter(Movimiento.user_id == oid)
+                prev_category_unclassified_q = prev_category_unclassified_q.filter(Movimiento.user_id == oid)
+                prev_account_q = prev_account_q.filter(Movimiento.user_id == oid)
+            except ValueError:
+                pass
+    else:
+        prev_commerce_q = prev_commerce_q.filter(Movimiento.user_id == current_user.id)
+        prev_commerce_unclassified_q = prev_commerce_unclassified_q.filter(Movimiento.user_id == current_user.id)
+        prev_category_q = prev_category_q.filter(Movimiento.user_id == current_user.id)
+        prev_category_unclassified_q = prev_category_unclassified_q.filter(Movimiento.user_id == current_user.id)
+        prev_account_q = prev_account_q.filter(Movimiento.user_id == current_user.id)
+
+    if cat_id:
+        try:
+            cat_id_int = int(cat_id)
+            prev_commerce_q = prev_commerce_q.filter(Comercio.categoria_id == cat_id_int)
+            prev_category_q = prev_category_q.filter(Categoria.id == cat_id_int)
+            prev_account_q = prev_account_q.filter(Comercio.categoria_id == cat_id_int)
+            prev_commerce_unclassified_q = None
+            prev_category_unclassified_q = None
+        except ValueError:
+            pass
+
+    prev_commerce_data = list(prev_commerce_q.group_by(Comercio.id).order_by(func.sum(Movimiento.monto * TipoCambio.valor).desc()).all())
+    if prev_commerce_unclassified_q and not cat_id:
+        unclassified = prev_commerce_unclassified_q.all()
+        if unclassified and unclassified[0][1] != 0:
+            prev_commerce_data.extend(unclassified)
+
+    if prev_commerce_data:
+        prev_month_commerce_labels, prev_month_commerce_raw = zip(*prev_commerce_data)
+        prev_month_commerce_values = [abs(v) if v is not None else 0 for v in prev_month_commerce_raw]
+    else:
+        prev_month_commerce_labels = prev_month_commerce_values = []
+
+    if prev_month_commerce_labels:
+        prev_month_commerce_pairs = sorted(
+            zip(prev_month_commerce_labels, prev_month_commerce_values),
+            key=lambda x: x[1],
+            reverse=True
+        )
+        prev_month_commerce_labels, prev_month_commerce_values = zip(*prev_month_commerce_pairs)
+        prev_month_commerce_labels = list(prev_month_commerce_labels)
+        prev_month_commerce_values = list(prev_month_commerce_values)
+
+    prev_category_data = list(prev_category_q.group_by(Categoria.id).order_by(func.sum(Movimiento.monto * TipoCambio.valor).desc()).all())
+    if prev_category_unclassified_q and not cat_id:
+        unclassified = prev_category_unclassified_q.all()
+        if unclassified and unclassified[0][1] != 0:
+            prev_category_data.extend(unclassified)
+
+    if prev_category_data:
+        prev_month_category_labels, prev_month_category_raw = zip(*prev_category_data)
+        prev_month_category_values = [abs(v) if v is not None else 0 for v in prev_month_category_raw]
+    else:
+        prev_month_category_labels = prev_month_category_values = []
+
+    if prev_month_category_labels:
+        prev_month_category_pairs = sorted(
+            zip(prev_month_category_labels, prev_month_category_values),
+            key=lambda x: x[1],
+            reverse=True
+        )
+        prev_month_category_labels, prev_month_category_values = zip(*prev_month_category_pairs)
+        prev_month_category_labels = list(prev_month_category_labels)
+        prev_month_category_values = list(prev_month_category_values)
+
+    prev_account_data = prev_account_q.group_by(
+        Cuenta.alias,
+        func.concat(Cuenta.banco, ' - ', Cuenta.tipo_cuenta)
+    ).all()
+    prev_accounts_dict = {}
+    for alias, cuenta_nombre, total in prev_account_data:
+        monto_abs = abs(total) if total else 0
+        cuenta_key = alias if alias else (cuenta_nombre or 'Sin cuenta')
+        prev_accounts_dict[cuenta_key] = prev_accounts_dict.get(cuenta_key, 0) + monto_abs
+
+    prev_month_account_labels = list(prev_accounts_dict.keys())
+    prev_month_account_values = list(prev_accounts_dict.values())
+
+    if prev_month_account_labels:
+        prev_month_account_pairs = sorted(
+            zip(prev_month_account_labels, prev_month_account_values),
+            key=lambda x: x[1],
+            reverse=True
+        )
+        prev_month_account_labels, prev_month_account_values = zip(*prev_month_account_pairs)
+        prev_month_account_labels = list(prev_month_account_labels)
+        prev_month_account_values = list(prev_month_account_values)
 
     # Parte 1: Movimientos clasificados como gastos
     commerce_classified_q = (
@@ -861,6 +1036,13 @@ def dashboard():
         monedas_values=monedas_values,
         comercios_recurrentes_labels=comercios_recurrentes_labels,
         comercios_recurrentes_values=comercios_recurrentes_values,
+        prev_month_label=prev_month_label,
+        prev_month_category_labels=prev_month_category_labels,
+        prev_month_category_values=prev_month_category_values,
+        prev_month_commerce_labels=prev_month_commerce_labels,
+        prev_month_commerce_values=prev_month_commerce_values,
+        prev_month_account_labels=prev_month_account_labels,
+        prev_month_account_values=prev_month_account_values,
         # Tablas de gastos
         commerce_table=commerce_table,
         category_table=category_table,

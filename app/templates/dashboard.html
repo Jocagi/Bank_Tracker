@@ -69,6 +69,45 @@
 </div>
 
 <div class="row mb-3">
+  <div class="col-12 mb-2">
+    <h5>Mes anterior ({{ prev_month_label }})</h5>
+  </div>
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header p-2">
+        <h6 class="mb-0">Gastos por Categoría</h6>
+      </div>
+      <div class="card-body p-2" style="height: 275px;">
+        <canvas id="chartPrevMonthCategory"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header p-2">
+        <h6 class="mb-0">Gastos por Comercio</h6>
+      </div>
+      <div class="card-body p-2" style="height: 275px;">
+        <canvas id="chartPrevMonthCommerce"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header p-2">
+        <h6 class="mb-0">Gastos por Cuenta</h6>
+      </div>
+      <div class="card-body p-2" style="height: 275px;">
+        <canvas id="chartPrevMonthAccount"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mb-3">
+  <div class="col-12 mb-2">
+    <h5>Análisis</h5>
+  </div>
   <div class="col-md-6">
     <div class="card">
       <div class="card-header p-2">
@@ -452,6 +491,13 @@
   const monthLabels     = {{ month_labels     | tojson }};
   const monthValues     = {{ month_values     | tojson }};
   const monthIncomeValues = {{ month_income_values | tojson }};
+  const prevMonthLabel = {{ prev_month_label | tojson }};
+  const prevMonthCategoryLabels = {{ prev_month_category_labels | tojson }};
+  const prevMonthCategoryValues = {{ prev_month_category_values | tojson }};
+  const prevMonthCommerceLabels = {{ prev_month_commerce_labels | tojson }};
+  const prevMonthCommerceValues = {{ prev_month_commerce_values | tojson }};
+  const prevMonthAccountLabels = {{ prev_month_account_labels | tojson }};
+  const prevMonthAccountValues = {{ prev_month_account_values | tojson }};
   
   // Datos para nuevas gráficas
   const topGastosLabels = {{ top_gastos_labels | tojson }};
@@ -622,6 +668,64 @@
         }
       }
     });
+
+    function buildPrevMonthBarChart(canvasId, labels, values, datasetLabel) {
+      const ctx = document.getElementById(canvasId);
+      if (!ctx) return;
+      const palette = [
+        'rgba(255, 99, 132, 0.7)',
+        'rgba(54, 162, 235, 0.7)',
+        'rgba(255, 205, 86, 0.7)',
+        'rgba(75, 192, 192, 0.7)',
+        'rgba(153, 102, 255, 0.7)',
+        'rgba(255, 159, 64, 0.7)',
+        'rgba(201, 203, 207, 0.7)',
+        'rgba(40, 167, 69, 0.7)'
+      ];
+      const colors = labels.map((_, idx) => palette[idx % palette.length]);
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: datasetLabel,
+            data: values,
+            backgroundColor: colors,
+            borderColor: colors.map(c => c.replace('0.7', '1')),
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const v = Math.abs(ctx.parsed.y).toLocaleString(undefined, { minimumFractionDigits: 2 });
+                  return `Q${v}`;
+                }
+              }
+            },
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { font: { size: 10 } }
+            },
+            x: {
+              ticks: { font: { size: 10 }, maxRotation: 45, minRotation: 0 }
+            }
+          }
+        }
+      });
+    }
+
+    // Gráficas del mes anterior
+    buildPrevMonthBarChart('chartPrevMonthCategory', prevMonthCategoryLabels, prevMonthCategoryValues, `Gastos ${prevMonthLabel}`);
+    buildPrevMonthBarChart('chartPrevMonthCommerce', prevMonthCommerceLabels, prevMonthCommerceValues, `Gastos ${prevMonthLabel}`);
+    buildPrevMonthBarChart('chartPrevMonthAccount', prevMonthAccountLabels, prevMonthAccountValues, `Gastos ${prevMonthLabel}`);
 
     // ————————————————————————————————————————
     // Gráfica de Top 10 Gastos
