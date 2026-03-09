@@ -9,6 +9,37 @@ from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
 
+
+def _make_unique_headers(headers):
+    unique = []
+    seen = {}
+    for raw in headers:
+        base = (raw or '').strip().upper()
+        if not base:
+            base = 'UNNAMED'
+        count = seen.get(base, 0)
+        seen[base] = count + 1
+        unique.append(base if count == 0 else f"{base}_{count + 1}")
+    return unique
+
+
+def _get_first_series(df, exact_names=None, contains_terms=None, default_value=''):
+    exact_names = exact_names or []
+    contains_terms = contains_terms or []
+
+    for name in exact_names:
+        if name in df.columns:
+            col = df[name]
+            return col.iloc[:, 0] if isinstance(col, pd.DataFrame) else col
+
+    for col_name in df.columns:
+        up = str(col_name).upper()
+        if any(term in up for term in contains_terms):
+            col = df[col_name]
+            return col.iloc[:, 0] if isinstance(col, pd.DataFrame) else col
+
+    return pd.Series([default_value] * len(df), index=df.index)
+
 def load_movements_bi_tc_xls(filepath, archivo_obj):
     """
     Parser para estado de cuenta de Tarjeta de Crédito BI (.xls),
@@ -114,12 +145,17 @@ def load_movements_bi_tc_xls(filepath, archivo_obj):
                 logger.error("No se pudo recuperar o crear la cuenta tras IntegrityError para numero=%r", numero_raw)
                 raise
 
-    # 4) Detectar dinámicamente la fila de cabecera (buscar una celda con 'FECHA')
+    # 4) Detectar dinámicamente la fila de cabecera real de movimientos
+    # Evita falsos positivos en metadatos como "FECHA DE PAGO".
     header_idx = None
     for i in range(len(df0)):
-        # convertimos a string seguro y buscamos la palabra FECHA
-        row_vals = df0.iloc[i].astype(str).fillna('').tolist()
-        if any('FECHA' in str(v).upper() for v in row_vals):
+        row_vals = [str(v).strip().upper() for v in df0.iloc[i].fillna('').astype(str).tolist()]
+        has_fecha = any(v == 'FECHA' or 'FECHA' in v for v in row_vals)
+        header_hints = sum(
+            1 for v in row_vals
+            if any(token in v for token in ('MOVIMIENTO', 'MOVMIENTO', 'DOC', 'COMERCIO', 'VALOR', 'SALDO'))
+        )
+        if has_fecha and header_hints >= 2:
             header_idx = i
             break
 
@@ -132,7 +168,7 @@ def load_movements_bi_tc_xls(filepath, archivo_obj):
 
     # Tomar cabecera y normalizar nombres (strip + upper) para facilitar mapeo
     header = df0.iloc[header_idx].fillna('').astype(str).tolist()
-    header_norm = [h.strip().upper() for h in header]
+    header_norm = _make_unique_headers(header)
 
     # 5) Construir DataFrame de movimientos desde la fila siguiente a la cabecera
     movs = df0.iloc[header_idx+1:].copy().reset_index(drop=True)
@@ -143,46 +179,38 @@ def load_movements_bi_tc_xls(filepath, archivo_obj):
     if blank.any():
         movs = movs.loc[:blank.idxmax()-1]
 
-    # 7) Renombrar columnas a nombres estándar
-    # Mapear variantes de cabeceras (normalizadas) a nombres estándar
-    ren = {
-        'FECHA':       'fecha',
-        'TIPO DE MOVMIENTO': 'tipo',
-        'TIPO DE MOVIMIENTO': 'tipo',
-        'NO. DOC':     'documento',
-        'NO. DOCUMENTO': 'documento',
-        'COMERCIO':    'descripcion',
-        'DESCRIPCION': 'descripcion',
-        'VALOR':       'monto',
-        'MONTO':       'monto',
-    }
-    ren_norm = {k.strip().upper(): v for k, v in ren.items()}
-    cols = {k: v for k, v in ren_norm.items() if k in movs.columns}
-    movs = movs.rename(columns=cols)
+    # 7) Extraer columnas de forma segura a nombres estándar
+    fecha_src = _get_first_series(movs, exact_names=['FECHA'], contains_terms=['FECHA'])
+    tipo_src = _get_first_series(
+        movs,
+        exact_names=['TIPO DE MOVIMIENTO', 'TIPO DE MOVMIENTO'],
+        contains_terms=['TIPO DE MOVIMIENTO', 'TIPO DE MOVMIENTO', 'TIPO']
+    )
+    documento_src = _get_first_series(
+        movs,
+        exact_names=['NO. DOC', 'NO. DOCUMENTO'],
+        contains_terms=['NO. DOC', 'DOCUMENTO', 'DOC']
+    )
+    descripcion_src = _get_first_series(
+        movs,
+        exact_names=['COMERCIO', 'DESCRIPCION'],
+        contains_terms=['COMERCIO', 'DESCRIPCION']
+    )
+    monto_src = _get_first_series(movs, exact_names=['VALOR', 'MONTO'], contains_terms=['VALOR', 'MONTO'])
+
+    movs = pd.DataFrame({
+        'fecha': fecha_src,
+        'tipo': tipo_src,
+        'numero_documento': documento_src,
+        'descripcion': descripcion_src,
+        'monto': monto_src,
+    }, index=movs.index)
 
     # 8) Normalizar datos y calcular monto
-    # Asegurarse de que las columnas críticas existan; usar alternativas si hacen falta
-    # 'fecha'
-    if 'fecha' not in movs.columns:
-        # intentar encontrar cualquier columna que contenga la palabra FECHA
-        poss = [c for c in movs.columns if 'FECHA' in c]
-        if poss:
-            movs = movs.rename(columns={poss[0]: 'fecha'})
-
-    # 'descripcion'
-    if 'descripcion' not in movs.columns:
-        poss = [c for c in movs.columns if 'COMERCIO' in c or 'DESCRIPCION' in c]
-        if poss:
-            movs = movs.rename(columns={poss[0]: 'descripcion'})
-
-    movs['fecha']       = pd.to_datetime(movs['fecha'], dayfirst=True, errors='coerce').dt.date
-    movs['descripcion'] = movs['descripcion'].astype(str).str.strip() if 'descripcion' in movs.columns else ''
-
-    # Use a Series fallback so .astype works even when la columna no existe
-    if 'documento' in movs.columns:
-        movs['numero_documento'] = movs['documento'].astype(str).str.strip()
-    else:
-        movs['numero_documento'] = pd.Series([''] * len(movs), index=movs.index)
+    movs['fecha'] = pd.to_datetime(movs['fecha'], dayfirst=True, errors='coerce').dt.date
+    movs['tipo'] = movs['tipo'].astype(str).str.strip()
+    movs['descripcion'] = movs['descripcion'].astype(str).str.strip()
+    movs['numero_documento'] = movs['numero_documento'].astype(str).str.strip()
 
     # Convertir columnas de monto a numéricas, manejando errores y formatos
     # Tiene símbolo de moneda
@@ -196,19 +224,16 @@ def load_movements_bi_tc_xls(filepath, archivo_obj):
         except ValueError:
             return 0.0
     
-    movs['monto'] = movs['monto'].apply(parse_monto) if 'monto' in movs.columns else pd.Series([0.0]*len(movs), index=movs.index)
-
-    # Debug imprime cada columna renombrada y su contenido
-    for col in movs.columns:
-        print(f"Columna '{col}': \n{movs[col]}")
+    movs['monto'] = movs['monto'].apply(parse_monto)
 
     # Remueve filas sin fecha o sin monto
     movs = movs.dropna(subset=['fecha', 'monto'])
 
-    movs['monto']  = movs.apply(
-        lambda row: -row['monto'] 
-        if row['tipo'].strip().upper() == 'DEBITO' or row['tipo'].strip().upper() == 'CONSUMO'
-        else row['monto'], axis=1
+    movs['monto'] = movs.apply(
+        lambda row: -row['monto']
+        if row['tipo'].upper() in ('DEBITO', 'CONSUMO')
+        else row['monto'],
+        axis=1
     )
     movs['moneda'] = archivo_obj.moneda
 
