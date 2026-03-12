@@ -62,21 +62,23 @@
 </form>
 {% endif %}
 
-<table class="table table-striped">
+<div class="table-container">
+  <div class="table-wrapper">
+    <table class="table table-hover mb-0" id="archivos-table">
   <thead>
     <tr>
-      <th>ID</th>
-      <th>Usuario</th>
-      <th>Nombre</th>
-      <th>Tipo</th>
-      <th>Fecha Carga</th>
-      <th># Movimientos</th>
+      <th data-column="id">ID <span class="sort-indicator" data-column="id"></span></th>
+      <th data-column="usuario">Usuario <span class="sort-indicator" data-column="usuario"></span></th>
+      <th data-column="nombre">Nombre <span class="sort-indicator" data-column="nombre"></span></th>
+      <th data-column="tipo">Tipo <span class="sort-indicator" data-column="tipo"></span></th>
+      <th data-column="fecha">Fecha Carga <span class="sort-indicator" data-column="fecha"></span></th>
+      <th data-column="movimientos"># Movimientos <span class="sort-indicator" data-column="movimientos"></span></th>
       <th>Acciones</th>
     </tr>
   </thead>
   <tbody>
     {% for a in archivos %}
-    <tr>
+    <tr data-id="{{ a.id }}" data-usuario="{{ (a.user.username if a.user else '').lower() }}" data-nombre="{{ a.filename.lower() }}" data-tipo="{{ a.tipo_archivo.lower() }}" data-fecha="{{ a.upload_date.strftime('%Y-%m-%d %H:%M:%S') }}" data-movimientos="{{ a.movimientos|length }}">
       <td>{{ a.id }}</td>
       <td>{{ a.user.username if a.user else '-' }}</td>
       <td>{{ a.filename }}</td>
@@ -104,4 +106,6 @@
     {% endfor %}
   </tbody>
 </table>
+  </div>
+</div>
 {% endblock %}

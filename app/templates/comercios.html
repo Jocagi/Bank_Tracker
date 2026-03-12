@@ -1,17 +1,73 @@
 {% extends 'base.html' %}
 {% block title %}Comercios{% endblock %}
 {% block content %}
+<style>
+  /* Formulario de filtros */
+  .form-control,
+  .form-select {
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .form-control:focus,
+  .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+  }
+
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #0a58ca 0%, #084298 100%);
+  }
+
+  .btn-outline-primary {
+    border-radius: 6px;
+    font-weight: 500;
+  }
+
+  .btn-link {
+    color: #6c757d;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .btn-link:hover {
+    color: #0d6efd;
+    text-decoration: underline;
+  }
+
+  /* Encabezado y título */
+  h1 {
+    color: #212529;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    font-size: 2rem;
+  }
+
+  @media (max-width: 768px) {
+    h1 {
+      font-size: 1.5rem;
+    }
+  }
+</style>
 <h1>Comercios</h1>
 <div class="mb-2">
-  <a href="{{ url_for('main.add_comercio') }}" class="btn btn-primary">Agregar Comercio</a>
+  <a href="{{ url_for('main.add_comercio') }}" class="btn btn-primary">+ Agregar Comercio</a>
 </div>
-<div class="mb-3">
-  <form method="get" action="{{ url_for('main.list_comercios') }}">
+<div class="mb-4">
+  <form method="get" action="{{ url_for('main.list_comercios') }}" class="p-3 bg-light rounded-3">
     <div class="row g-2 align-items-center">
-      <div class="col-auto col-md-3">
-        <input type="text" name="q_name" class="form-control" placeholder="Nombre" value="{{ filters.q_name }}">
+      <div class="col-12 col-md-3">
+          <input type="text" name="q_name" class="form-control" placeholder="Nombre o descripción" value="{{ filters.q_name }}">
       </div>
-      <div class="col-auto col-md-2">
+      <div class="col-12 col-md-2">
         <select name="categoria_id" class="form-select">
           <option value="">Todas las categorías</option>
           {% for cat in categorias %}
@@ -19,7 +75,7 @@
           {% endfor %}
         </select>
       </div>
-      <div class="col-auto col-md-2">
+      <div class="col-12 col-md-2">
         <select name="tipo" class="form-select">
           <option value="">Cualquiera</option>
           <option value="gastos" {% if filters.tipo == 'gastos' %}selected{% endif %}>Gastos</option>
@@ -27,41 +83,58 @@
           <option value="transferencia" {% if filters.tipo == 'transferencia' %}selected{% endif %}>Transferencia</option>
         </select>
       </div>
-      <div class="col-auto col-md-3">
+      <div class="col-12 col-md-3">
         <input type="text" name="regla" class="form-control" placeholder="Buscar en reglas" value="{{ filters.regla }}">
       </div>
-      <div class="col-auto">
-        <button type="submit" class="btn btn-outline-primary">Filtrar</button>
-        <a href="{{ url_for('main.list_comercios') }}" class="btn btn-link">Limpiar</a>
+      <div class="col-12 col-md-2">
+        <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
       </div>
-      <!-- botón 'Agregar Comercio' movido arriba del formulario -->
+      <div class="col-12 col-md-1">
+        <a href="{{ url_for('main.list_comercios') }}" class="btn btn-link w-100">Limpiar</a>
+      </div>
     </div>
   </form>
 </div>
-<table class="table table-striped">
+<div class="comercios-container">
+  <div class="table-wrapper">
+    <table class="table table-hover mb-0">
   <thead>
     <tr>
-      <th>Nombre</th>
-      <th>Categoría</th>
-  <th>Tipo</th>
-  <th>Movs</th>
+      <th data-column="nombre">
+        Nombre 
+        <span class="sort-indicator" data-column="nombre"></span>
+      </th>
+      <th data-column="categoria">
+        Categoría 
+        <span class="sort-indicator" data-column="categoria"></span>
+      </th>
+      <th data-column="tipo">
+        Tipo 
+        <span class="sort-indicator" data-column="tipo"></span>
+      </th>
+      <th data-column="movimientos">
+        Movs 
+        <span class="sort-indicator" data-column="movimientos"></span>
+      </th>
       <th>Reglas</th>
       <th>Acciones</th>
     </tr>
   </thead>
-  <tbody>
+  <tbody id="comercios-table-body">
     {% for c in comercios %}
-    <tr>
-      <td>{{ c.nombre }}</td>
+    <tr data-nombre="{{ c.nombre.lower() }}" data-categoria="{{ c.categoria.nombre.lower() }}" data-tipo="{{ c.tipo_contabilizacion.lower() }}" data-movimientos="{{ c.movimientos_count }}">
+      <td>
+        <span{% if c.descripcion %} title="{{ c.descripcion }}"{% endif %}>{{ c.nombre }}</span>
+      </td>
       <td>{{ c.categoria.nombre }}</td>
-  <td>{{ c.tipo_contabilizacion.capitalize() }}</td>
-  <td>
-    {% if filters.owner_id %}
-      <a href="{{ url_for('main.index', comercio_id=c.id, owner_id=filters.owner_id) }}">{{ c.movimientos_count }}</a>
-    {% else %}
-      <a href="{{ url_for('main.index', comercio_id=c.id) }}">{{ c.movimientos_count }}</a>
-    {% endif %}
-  </td>
+      <td>{{ c.tipo_contabilizacion.capitalize() }}</td>
+      <td>
+        {% if filters.owner_id %}
+          <a href="{{ url_for('main.index', comercio_id=c.id, owner_id=filters.owner_id) }}">{{ c.movimientos_count }}</a>
+        {% else %}
+          <a href="{{ url_for('main.index', comercio_id=c.id) }}">{{ c.movimientos_count }}</a>
+        {% endif %}
+      </td>
       <td>
         {% if c.reglas %}
           <div>
@@ -81,14 +154,18 @@
         {% endif %}
       </td>
       <td>
-        <a href="{{ url_for('main.edit_comercio', comercio_id=c.id) }}" class="btn btn-sm btn-secondary">Editar</a>
-        <a href="{{ url_for('main.delete_comercio', comercio_id=c.id) }}" class="btn btn-sm btn-danger"
-           onclick="return confirm('¿Eliminar comercio {{ c.nombre }}?');">Eliminar</a>
+        <div class="btn-group btn-group-sm" role="group">
+          <a href="{{ url_for('main.edit_comercio', comercio_id=c.id) }}" class="btn btn-outline-secondary">✎ Editar</a>
+          <a href="{{ url_for('main.delete_comercio', comercio_id=c.id) }}" class="btn btn-outline-danger"
+             onclick="return confirm('¿Eliminar comercio {{ c.nombre }}?');">✕ Eliminar</a>
+        </div>
       </td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
+  </div>
+</div>
 <script>
   // Toggle para mostrar/ocultar reglas por comercio
   document.addEventListener('DOMContentLoaded', function () {

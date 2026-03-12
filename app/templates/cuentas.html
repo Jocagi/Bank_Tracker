@@ -23,25 +23,27 @@
   </div>
 </form>
 {% endif %}
-<table class="table table-striped">
+<div class="table-container">
+  <div class="table-wrapper">
+    <table class="table table-hover mb-0">
   <thead>
     <tr>
-  <th>Banco</th>
+  <th data-column="banco">Banco <span class="sort-indicator" data-column="banco"></span></th>
   {% if current_user.is_authenticated and current_user.is_admin() %}
-  <th>Usuario</th>
+  <th data-column="usuario">Usuario <span class="sort-indicator" data-column="usuario"></span></th>
   {% endif %}
-  <th>Tipo</th>
-      <th>Alias</th>
-      <th>Número</th>
-      <th>Titular</th>
-      <th>Moneda</th>
-  <th>Movs</th>
+  <th data-column="tipo">Tipo <span class="sort-indicator" data-column="tipo"></span></th>
+      <th data-column="alias">Alias <span class="sort-indicator" data-column="alias"></span></th>
+      <th data-column="numero">Número <span class="sort-indicator" data-column="numero"></span></th>
+      <th data-column="titular">Titular <span class="sort-indicator" data-column="titular"></span></th>
+      <th data-column="moneda">Moneda <span class="sort-indicator" data-column="moneda"></span></th>
+  <th data-column="movimientos">Movs <span class="sort-indicator" data-column="movimientos"></span></th>
       <th>Acciones</th>
     </tr>
   </thead>
-  <tbody>
+  <tbody id="cuentas-table-body">
     {% for c in cuentas %}
-    <tr>
+    <tr data-banco="{{ c.banco.lower() }}" data-tipo="{{ c.tipo_cuenta.lower() }}" data-alias="{{ (c.alias or '').lower() }}" data-numero="{{ c.numero_cuenta }}" data-titular="{{ c.titular.lower() }}" data-moneda="{{ c.moneda }}" data-movimientos="{{ c.movimientos_count }}"{% if current_user.is_authenticated and current_user.is_admin() %} data-usuario="{{ (c.user.username if c.user else '').lower() }}"{% endif %}>
   <td>
     {% if c.bank_logo_filename %}
       <img src="{{ url_for('static', filename='img/banks/' ~ c.bank_logo_filename) }}" alt="Logo {{ c.banco }}" style="height: 20px; width: 20px; object-fit: contain; margin-right: 6px;" onerror="this.style.display='none'">
@@ -70,4 +72,6 @@
     {% endfor %}
   </tbody>
 </table>
+  </div>
+</div>
 {% endblock %}

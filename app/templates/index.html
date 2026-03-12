@@ -3,10 +3,57 @@
 {% block title %}Movimientos{% endblock %}
 
 {% block content %}
+<style>
+  .movimientos-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #movimientos-table {
+    width: 100%;
+    table-layout: auto;
+  }
+
+  .movimientos-table-wrapper.with-actions #movimientos-table {
+    width: 100%;
+  }
+
+  #movimientos-table .actions-col {
+    width: 1%;
+    white-space: nowrap;
+  }
+
+  #movimientos-table .actions-col .btn-group {
+    display: inline-flex;
+    gap: 0.2rem;
+    flex-wrap: nowrap;
+  }
+
+  #movimientos-table .actions-col .btn,
+  #movimientos-table .actions-col button.btn {
+    flex: 0 0 auto;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.68rem;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  #movimientos-table td:nth-child(3),
+  #movimientos-table td:nth-child(4),
+  #movimientos-table td:nth-child(5),
+  #movimientos-table td:nth-child(9),
+  #movimientos-table td:nth-child(10) {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+</style>
 <h1>Movimientos</h1>
 
 <!-- Toggle para mostrar/ocultar acciones -->
-<div class="mb-3">
+<div class="mb-3 d-flex gap-2">
+  <a href="{{ url_for('main.add_movimiento') }}" class="btn btn-sm btn-success">+</a>
   <button id="toggle-actions-btn" class="btn btn-sm btn-outline-secondary">Mostrar acciones</button>
 </div>
 
@@ -109,27 +156,29 @@
   Crédito: Q{{ sum_credito }}
 </p>
 
-<table class="table table-striped">
+<div class="table-container">
+  <div class="table-wrapper movimientos-table-wrapper">
+    <table class="table table-hover mb-0" id="movimientos-table">
   <thead>
     <tr>
-  <th>Fecha</th>
+  <th data-column="fecha">Fecha <span class="sort-indicator" data-column="fecha"></span></th>
   {% if current_user.is_authenticated and current_user.is_admin() %}
-  <th>Usuario</th>
+  <th data-column="usuario">Usuario <span class="sort-indicator" data-column="usuario"></span></th>
   {% endif %}
-      <th>Descripción</th>
-      <th>Lugar</th>
-      <th>Documento</th>
-      <th>Monto</th>
-      <th>Moneda</th>
-      <th>Cuenta</th>
-      <th>Comercio</th>
-      <th>Categoría</th>
+      <th data-column="descripcion">Descripción <span class="sort-indicator" data-column="descripcion"></span></th>
+      <th data-column="lugar">Lugar <span class="sort-indicator" data-column="lugar"></span></th>
+      <th data-column="documento">Documento <span class="sort-indicator" data-column="documento"></span></th>
+      <th data-column="monto">Monto <span class="sort-indicator" data-column="monto"></span></th>
+      <th data-column="moneda">Moneda <span class="sort-indicator" data-column="moneda"></span></th>
+      <th data-column="cuenta">Cuenta <span class="sort-indicator" data-column="cuenta"></span></th>
+      <th data-column="comercio">Comercio <span class="sort-indicator" data-column="comercio"></span></th>
+      <th data-column="categoria">Categoría <span class="sort-indicator" data-column="categoria"></span></th>
       <th class="actions-col">Acciones</th>
     </tr>
   </thead>
   <tbody>
     {% for m in movimientos %}
-    <tr{% if m.excluir_dashboard %} class="table-warning"{% endif %}>
+    <tr{% if m.excluir_dashboard %} class="table-warning"{% endif %} data-fecha="{{ m.fecha }}" data-descripcion="{{ m.descripcion.lower() }}" data-lugar="{{ (m.lugar or '').lower() }}" data-documento="{{ (m.numero_documento or '').lower() }}" data-monto="{{ m.monto }}" data-moneda="{{ m.moneda }}" data-cuenta="{{ m.cuenta.numero_cuenta }}" data-comercio="{{ (m.comercio.nombre if m.comercio else '').lower() }}" data-categoria="{{ (m.comercio.categoria.nombre.lower() if m.comercio and m.comercio.categoria else '') }}"{% if current_user.is_authenticated and current_user.is_admin() %} data-usuario="{{ (m.user.username if m.user else '').lower() }}"{% endif %}>
   <td>{{ m.fecha }}</td>
   {% if current_user.is_authenticated and current_user.is_admin() %}
   <td>{{ m.user.username if m.user else '-' }}</td>
@@ -161,6 +210,8 @@
     {% endfor %}
   </tbody>
 </table>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -169,11 +220,15 @@
       const colClass = 'actions-col';
       const storageKey = 'show_mov_actions';
       const toggleBtn = document.getElementById('toggle-actions-btn');
+      const tableWrapper = document.querySelector('.movimientos-table-wrapper');
 
       function setVisibility(show){
         document.querySelectorAll('.' + colClass).forEach(el => {
-          el.style.display = show ? '' : 'none';
+          el.style.display = show ? 'table-cell' : 'none';
         });
+        if (tableWrapper) {
+          tableWrapper.classList.toggle('with-actions', show);
+        }
         toggleBtn.textContent = show ? 'Ocultar acciones' : 'Mostrar acciones';
       }
 

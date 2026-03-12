@@ -35,7 +35,10 @@ def list_comercios():
     if tipo:
         query = query.filter(Comercio.tipo_contabilizacion == tipo)
     if nombre_q:
-        query = query.filter(Comercio.nombre.ilike(f"%{nombre_q}%"))
+            query = query.filter(
+                (Comercio.nombre.ilike(f"%{nombre_q}%")) |
+                (Comercio.descripcion.ilike(f"%{nombre_q}%"))
+            )
     if regla_q:
         # Buscar dentro de las reglas (descripcion, criterio o tipo)
         query = query.join(Regla).filter(
@@ -59,7 +62,7 @@ def list_comercios():
     for c in comercios:
         c.movimientos_count = movimiento_counts.get(c.id, 0)
 
-    # Ordenar por nombre
+    # Ordenar por nombre (el ordenamiento final se hace en el frontend)
     comercios.sort(key=lambda c: c.nombre.lower())
 
     # Pasar listas auxiliares (categorias) y valores de filtro actuales para la plantilla
@@ -84,12 +87,14 @@ def add_comercio():
     
     if request.method == 'POST':
         nombre = request.form['nombre']
+        descripcion = request.form.get('descripcion') or None
         categoria_id = request.form['categoria_id']
         tipo_contabilizacion  = request.form['tipo_contabilizacion']
 
         # Crear nuevo comercio
         nuevo_comercio = Comercio(
             nombre=nombre,
+            descripcion=descripcion,
             categoria_id=categoria_id,
             tipo_contabilizacion=tipo_contabilizacion
         )
@@ -127,6 +132,7 @@ def edit_comercio(comercio_id):
     categorias = Categoria.query.order_by(Categoria.nombre).all()
     if request.method == 'POST':
         comercio.nombre = request.form['nombre']
+        comercio.descripcion = request.form.get('descripcion') or None
         comercio.categoria_id = request.form['categoria_id']
         comercio.tipo_contabilizacion = request.form['tipo_contabilizacion']
         

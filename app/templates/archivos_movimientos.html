@@ -7,24 +7,26 @@
 
 <a href="{{ url_for('main.list_archivos') }}" class="btn btn-secondary mb-3"><< Volver a Archivos</a>
 
-<table class="table table-striped">
+<div class="table-container">
+  <div class="table-wrapper">
+    <table class="table table-hover mb-0" id="archivos-movimientos-table">
   <thead>
     <tr>
-      <th>Fecha</th>
-      <th>Descripción</th>
-      <th>Lugar</th>
-      <th>Documento</th>
-      <th>Monto</th>
-      <th>Moneda</th>
-      <th>Cuenta</th>
-      <th>Comercio</th>
-      <th>Categoría</th>
+      <th data-column="fecha">Fecha <span class="sort-indicator" data-column="fecha"></span></th>
+      <th data-column="descripcion">Descripción <span class="sort-indicator" data-column="descripcion"></span></th>
+      <th data-column="lugar">Lugar <span class="sort-indicator" data-column="lugar"></span></th>
+      <th data-column="documento">Documento <span class="sort-indicator" data-column="documento"></span></th>
+      <th data-column="monto">Monto <span class="sort-indicator" data-column="monto"></span></th>
+      <th data-column="moneda">Moneda <span class="sort-indicator" data-column="moneda"></span></th>
+      <th data-column="cuenta">Cuenta <span class="sort-indicator" data-column="cuenta"></span></th>
+      <th data-column="comercio">Comercio <span class="sort-indicator" data-column="comercio"></span></th>
+      <th data-column="categoria">Categoría <span class="sort-indicator" data-column="categoria"></span></th>
       <th></th>
     </tr>
   </thead>
   <tbody>
     {% for m in movimientos %}
-    <tr>
+    <tr data-fecha="{{ m.fecha }}" data-descripcion="{{ m.descripcion.lower() }}" data-lugar="{{ (m.lugar or '').lower() }}" data-documento="{{ (m.numero_documento or '').lower() }}" data-monto="{{ m.monto }}" data-moneda="{{ m.moneda }}" data-cuenta="{{ m.cuenta.numero_cuenta }}" data-comercio="{{ (m.comercio.nombre if m.comercio else '').lower() }}" data-categoria="{{ (m.comercio.categoria.nombre.lower() if m.comercio and m.comercio.categoria else '') }}">
       <td>{{ m.fecha }}</td>
       <td>{{ m.descripcion }}</td>
       <td>{{ m.lugar or '—' }}</td>
@@ -57,5 +59,7 @@
     {% endfor %}
   </tbody>
 </table>
+  </div>
+</div>
 
 {% endblock %}

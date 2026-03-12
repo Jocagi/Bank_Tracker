@@ -1,55 +1,56 @@
 {% extends 'base.html' %}
-{% block title %}Editar Movimiento{% endblock %}
+{% block title %}Nuevo Movimiento{% endblock %}
 
 {% block content %}
-<h1>Editar Movimiento</h1>
+<h1>Nuevo Movimiento</h1>
 
 <form method="post">
   <div class="row g-3">
     <div class="col-md-3">
       <label for="fecha" class="form-label">Fecha</label>
-      <input type="date" id="fecha" name="fecha" class="form-control" value="{{ mov.fecha }}">
+      <input type="date" id="fecha" name="fecha" class="form-control" value="{{ today }}" required>
     </div>
     <div class="col-md-9">
       <label for="descripcion" class="form-label">Descripción</label>
-      <input type="text" id="descripcion" name="descripcion" class="form-control" value="{{ mov.descripcion or '' }}">
+      <input type="text" id="descripcion" name="descripcion" class="form-control" required>
     </div>
 
     <div class="col-12">
       <label for="detalle" class="form-label">Detalle</label>
-      <textarea id="detalle" name="detalle" class="form-control" rows="2">{{ mov.detalle or '' }}</textarea>
+      <textarea id="detalle" name="detalle" class="form-control" rows="2"></textarea>
     </div>
 
     <div class="col-md-4">
       <label for="lugar" class="form-label">Lugar</label>
-      <input type="text" id="lugar" name="lugar" class="form-control" value="{{ mov.lugar or '' }}">
+      <input type="text" id="lugar" name="lugar" class="form-control" value="Efectivo">
     </div>
     <div class="col-md-4">
       <label for="numero_documento" class="form-label">Documento</label>
-      <input type="text" id="numero_documento" name="numero_documento" class="form-control" value="{{ mov.numero_documento or '' }}">
+      <input type="text" id="numero_documento" name="numero_documento" class="form-control">
     </div>
     <div class="col-md-4">
       <label for="monto" class="form-label">Monto</label>
-      <input type="text" id="monto" name="monto" class="form-control" value="{{ mov.monto or '' }}">
+      <input type="number" step="0.01" id="monto" name="monto" class="form-control" required>
     </div>
 
     <div class="col-md-3">
       <label for="moneda" class="form-label">Moneda</label>
-      <input type="text" id="moneda" name="moneda" class="form-control" value="{{ mov.moneda or '' }}">
+      <input type="text" id="moneda" name="moneda" class="form-control" value="GTQ">
     </div>
     <div class="col-md-3">
       <label for="tipo" class="form-label">Tipo</label>
       <select id="tipo" name="tipo" class="form-select">
-        <option value="debito" {% if mov.tipo=='debito' %}selected{% endif %}>Débito</option>
-        <option value="credito" {% if mov.tipo=='credito' %}selected{% endif %}>Crédito</option>
+        <option value="debito">Débito</option>
+        <option value="credito">Crédito</option>
       </select>
     </div>
 
     <div class="col-md-6">
       <label for="cuenta_id" class="form-label">Cuenta</label>
-      <select id="cuenta_id" name="cuenta_id" class="form-select">
+      <select id="cuenta_id" name="cuenta_id" class="form-select" required>
+        <option value="">-- Seleccionar cuenta --</option>
         {% for c in cuentas %}
-          <option value="{{ c.id }}" {% if c.id==mov.cuenta_id %}selected{% endif %}>{{ c.alias or c.numero_cuenta }}</option>
+          <option value="{{ c.id }}">{{ c.alias or c.numero_cuenta }}</option>
         {% endfor %}
       </select>
     </div>
@@ -59,20 +60,20 @@
       <select id="comercio_id" name="comercio_id" class="form-select">
         <option value="">-- Ninguno --</option>
         {% for c in comercios %}
-          <option value="{{ c.id }}" {% if mov.comercio and c.id==mov.comercio.id %}selected{% endif %}>{{ c.nombre }}</option>
+          <option value="{{ c.id }}">{{ c.nombre }}</option>
         {% endfor %}
       </select>
     </div>
 
     <div class="col-12 mt-3">
       <div class="form-check mb-3">
-        <input class="form-check-input" type="checkbox" value="1" id="excluir_clasificacion" name="excluir_clasificacion" {% if mov.excluir_clasificacion %}checked{% endif %}>
+        <input class="form-check-input" type="checkbox" value="1" id="excluir_clasificacion" name="excluir_clasificacion" checked>
         <label class="form-check-label" for="excluir_clasificacion">
           Excluir de la clasificación automática
         </label>
       </div>
       <div class="form-check mb-3">
-        <input class="form-check-input" type="checkbox" value="1" id="excluir_dashboard" name="excluir_dashboard" {% if mov.excluir_dashboard %}checked{% endif %}>
+        <input class="form-check-input" type="checkbox" value="1" id="excluir_dashboard" name="excluir_dashboard">
         <label class="form-check-label" for="excluir_dashboard">
           Excluir de los dashboards
         </label>

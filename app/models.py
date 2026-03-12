@@ -14,6 +14,7 @@ class Comercio(db.Model):
     __tablename__ = 'comercios'
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False, unique=True)
+    descripcion = db.Column(db.Text, nullable=True)
     categoria_id = db.Column(db.Integer, db.ForeignKey('categorias.id'), nullable=False)
     tipo_contabilizacion = db.Column(db.String(20), nullable=False, default='gastos') # Indica si es ingreso, gasto o transferencia
     reglas = db.relationship('Regla', backref='comercio', lazy=True)
@@ -32,6 +33,7 @@ class Movimiento(db.Model):
     fecha = db.Column(db.Date)
     cuenta_id = db.Column(db.Integer, db.ForeignKey('cuentas.id'), nullable=False)
     descripcion = db.Column(db.String(200))
+    detalle = db.Column(db.Text, nullable=True)
     lugar = db.Column(db.String(200), nullable=True)
     numero_documento = db.Column(db.String(100), nullable=True)
     monto = db.Column(db.Float)

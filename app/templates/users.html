@@ -5,13 +5,15 @@
 <div class="mb-2">
   <a href="{{ url_for('main.add_user') }}" class="btn btn-primary">Agregar Usuario</a>
 </div>
-<table class="table table-striped">
+<div class="table-container">
+  <div class="table-wrapper">
+    <table class="table table-hover mb-0" id="users-table">
   <thead>
-    <tr><th>Usuario</th><th>Rol</th><th>Acciones</th></tr>
+    <tr><th data-column="usuario">Usuario <span class="sort-indicator" data-column="usuario"></span></th><th data-column="rol">Rol <span class="sort-indicator" data-column="rol"></span></th><th>Acciones</th></tr>
   </thead>
   <tbody>
     {% for u in users %}
-    <tr>
+    <tr data-usuario="{{ u.username.lower() }}" data-rol="{{ u.role.lower() }}">
       <td>{{ u.username }}</td>
       <td>{{ u.role }}</td>
       <td>
@@ -24,4 +26,6 @@
     {% endfor %}
   </tbody>
 </table>
+  </div>
+</div>
 {% endblock %}

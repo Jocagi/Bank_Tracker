@@ -174,21 +174,18 @@ def dashboard():
         if unclassified and unclassified[0][1] != 0:
             prev_commerce_data.extend(unclassified)
 
-    if prev_commerce_data:
-        prev_month_commerce_labels, prev_month_commerce_raw = zip(*prev_commerce_data)
-        prev_month_commerce_values = [abs(v) if v is not None else 0 for v in prev_month_commerce_raw]
+    prev_month_commerce_pairs = [
+        (lbl, max(0, -(total if total is not None else 0)))
+        for lbl, total in prev_commerce_data
+    ]
+    prev_month_commerce_pairs = [pair for pair in prev_month_commerce_pairs if pair[1] > 0]
+
+    if prev_month_commerce_pairs:
+        prev_month_commerce_pairs.sort(key=lambda x: x[1], reverse=True)
+        prev_month_commerce_labels = [lbl for lbl, _ in prev_month_commerce_pairs]
+        prev_month_commerce_values = [val for _, val in prev_month_commerce_pairs]
     else:
         prev_month_commerce_labels = prev_month_commerce_values = []
-
-    if prev_month_commerce_labels:
-        prev_month_commerce_pairs = sorted(
-            zip(prev_month_commerce_labels, prev_month_commerce_values),
-            key=lambda x: x[1],
-            reverse=True
-        )
-        prev_month_commerce_labels, prev_month_commerce_values = zip(*prev_month_commerce_pairs)
-        prev_month_commerce_labels = list(prev_month_commerce_labels)
-        prev_month_commerce_values = list(prev_month_commerce_values)
 
     prev_category_data = list(prev_category_q.group_by(Categoria.id).order_by(func.sum(Movimiento.monto * TipoCambio.valor).desc()).all())
     if prev_category_unclassified_q and not cat_id:
@@ -196,21 +193,18 @@ def dashboard():
         if unclassified and unclassified[0][1] != 0:
             prev_category_data.extend(unclassified)
 
-    if prev_category_data:
-        prev_month_category_labels, prev_month_category_raw = zip(*prev_category_data)
-        prev_month_category_values = [abs(v) if v is not None else 0 for v in prev_month_category_raw]
+    prev_month_category_pairs = [
+        (lbl, max(0, -(total if total is not None else 0)))
+        for lbl, total in prev_category_data
+    ]
+    prev_month_category_pairs = [pair for pair in prev_month_category_pairs if pair[1] > 0]
+
+    if prev_month_category_pairs:
+        prev_month_category_pairs.sort(key=lambda x: x[1], reverse=True)
+        prev_month_category_labels = [lbl for lbl, _ in prev_month_category_pairs]
+        prev_month_category_values = [val for _, val in prev_month_category_pairs]
     else:
         prev_month_category_labels = prev_month_category_values = []
-
-    if prev_month_category_labels:
-        prev_month_category_pairs = sorted(
-            zip(prev_month_category_labels, prev_month_category_values),
-            key=lambda x: x[1],
-            reverse=True
-        )
-        prev_month_category_labels, prev_month_category_values = zip(*prev_month_category_pairs)
-        prev_month_category_labels = list(prev_month_category_labels)
-        prev_month_category_values = list(prev_month_category_values)
 
     prev_account_data = prev_account_q.group_by(
         Cuenta.alias,
@@ -218,7 +212,9 @@ def dashboard():
     ).all()
     prev_accounts_dict = {}
     for alias, cuenta_nombre, total in prev_account_data:
-        monto_abs = abs(total) if total else 0
+        monto_abs = max(0, -(total if total is not None else 0))
+        if monto_abs <= 0:
+            continue
         cuenta_key = alias if alias else (cuenta_nombre or 'Sin cuenta')
         prev_accounts_dict[cuenta_key] = prev_accounts_dict.get(cuenta_key, 0) + monto_abs
 

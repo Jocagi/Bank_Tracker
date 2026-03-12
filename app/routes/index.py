@@ -1,10 +1,11 @@
 import os
+import hashlib
 from datetime import datetime
 from flask import render_template, request, flash
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
 from .. import db
-from ..models import Movimiento, Cuenta, Comercio, Categoria, TipoCambio, User
+from ..models import Movimiento, Cuenta, Comercio, Categoria, TipoCambio, User, Archivo
 from ..models import Movimiento as MovimientoModel
 from . import bp
 from flask import redirect, url_for
@@ -143,6 +144,7 @@ def edit_movimiento(mov_id):
             return redirect(url_for('main.edit_movimiento', mov_id=mov.id))
 
         mov.descripcion = request.form.get('descripcion')
+        mov.detalle = request.form.get('detalle') or None
         mov.lugar = request.form.get('lugar') or None
         mov.numero_documento = request.form.get('numero_documento') or None
         monto = request.form.get('monto')
@@ -197,6 +199,89 @@ def edit_movimiento(mov_id):
 
     return render_template('movimiento_edit.html', mov=mov, cuentas=cuentas, comercios=comercios)
 
+
+def _get_or_create_archivo_manual(user_id):
+    """Obtiene o crea el registro Archivo 'manual' para un usuario dado."""
+    hash_key = hashlib.sha256(f'manual_{user_id}'.encode()).hexdigest()
+    archivo = Archivo.query.filter_by(file_hash=hash_key).first()
+    if not archivo:
+        archivo = Archivo(
+            tipo_archivo='manual',
+            filename='manual',
+            file_hash=hash_key,
+            user_id=user_id,
+        )
+        db.session.add(archivo)
+        db.session.flush()  # obtener el id sin hacer commit completo
+    return archivo
+
+
+@bp.route('/movimiento/nuevo', methods=['GET', 'POST'])
+@login_required
+def add_movimiento():
+    from datetime import date as _date
+    cuentas   = Cuenta.query.order_by(Cuenta.numero_cuenta).all()
+    comercios = Comercio.query.order_by(Comercio.nombre).all()
+    today = _date.today().isoformat()
+
+    if request.method == 'POST':
+        # Fecha
+        try:
+            fecha = datetime.strptime(request.form.get('fecha', ''), '%Y-%m-%d').date()
+        except ValueError:
+            flash('Fecha inválida.', 'warning')
+            return redirect(url_for('main.add_movimiento'))
+
+        descripcion     = request.form.get('descripcion', '').strip()
+        detalle         = request.form.get('detalle') or None
+        lugar           = request.form.get('lugar') or None
+        numero_documento = request.form.get('numero_documento') or None
+
+        monto_raw = request.form.get('monto', '')
+        try:
+            monto = float(monto_raw) if monto_raw not in (None, '') else None
+        except ValueError:
+            flash('Monto inválido.', 'warning')
+            return redirect(url_for('main.add_movimiento'))
+
+        moneda  = request.form.get('moneda', '').strip() or None
+        tipo    = request.form.get('tipo', 'debito')
+
+        cuenta_id = request.form.get('cuenta_id')
+        if not cuenta_id:
+            flash('Debe seleccionar una cuenta.', 'warning')
+            return redirect(url_for('main.add_movimiento'))
+
+        comercio_id = request.form.get('comercio_id') or None
+        excluir     = request.form.get('excluir_clasificacion')
+        excluir_clasificacion = excluir in ('on', '1', 'true', 'True')
+        excluir_db  = request.form.get('excluir_dashboard')
+        excluir_dashboard = excluir_db in ('on', '1', 'true', 'True')
+
+        archivo = _get_or_create_archivo_manual(current_user.id)
+
+        mov = Movimiento(
+            fecha=fecha,
+            descripcion=descripcion,
+            detalle=detalle,
+            lugar=lugar,
+            numero_documento=numero_documento,
+            monto=monto,
+            moneda=moneda,
+            tipo=tipo,
+            cuenta_id=int(cuenta_id),
+            comercio_id=int(comercio_id) if comercio_id else None,
+            excluir_clasificacion=excluir_clasificacion,
+            excluir_dashboard=excluir_dashboard,
+            archivo_id=archivo.id,
+            user_id=current_user.id,
+        )
+        db.session.add(mov)
+        db.session.commit()
+        flash('Movimiento creado correctamente.', 'success')
+        return redirect(url_for('main.index'))
+
+    return render_template('movimiento_add.html', cuentas=cuentas, comercios=comercios, today=today)
 
 
 @bp.route('/movimiento/<int:mov_id>/delete', methods=['POST'])

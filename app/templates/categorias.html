@@ -19,12 +19,14 @@
   </form>
 </div>
 
-<table class="table table-striped">
+<div class="table-container">
+  <div class="table-wrapper">
+    <table class="table table-hover mb-0" id="categorias-table">
   <thead>
     <tr>
-      <th>Nombre</th>
-      <th># Comercios</th>
-      <th>Movs</th>
+      <th data-column="nombre">Nombre <span class="sort-indicator" data-column="nombre"></span></th>
+      <th data-column="comercios"># Comercios <span class="sort-indicator" data-column="comercios"></span></th>
+      <th data-column="movimientos">Movs <span class="sort-indicator" data-column="movimientos"></span></th>
       <th>Acciones</th>
     </tr>
   </thead>
@@ -32,7 +34,7 @@
     {% if categorias %}
       {% for entry in categorias %}
         {% set cat = entry.categoria %}
-    <tr>
+    <tr data-nombre="{{ cat.nombre.lower() }}" data-comercios="{{ entry.comercios_count }}" data-movimientos="{{ entry.movimientos_count }}">
       <td>{{ cat.nombre }}</td>
       <td>
         {% if filters.owner_id %}
@@ -59,9 +61,11 @@
       {% endfor %}
     {% else %}
       <tr>
-        <td colspan="3" class="text-center text-muted">No hay categorías registradas.</td>
+        <td colspan="4" class="text-center text-muted">No hay categorías registradas.</td>
       </tr>
     {% endif %}
   </tbody>
 </table>
+  </div>
+</div>
 {% endblock %}
