@@ -158,8 +158,30 @@ class Factura(db.Model):
 
     emisor_nit = db.Column(db.String(50), nullable=True)
     emisor_nombre = db.Column(db.String(255), nullable=True)
+    emisor_nombre_comercial = db.Column(db.String(255), nullable=True)
     receptor_id = db.Column(db.String(50), nullable=True)
     receptor_nombre = db.Column(db.String(255), nullable=True)
+
+    emisor_afiliacion_iva = db.Column(db.String(20), nullable=True)
+    emisor_codigo_establecimiento = db.Column(db.String(20), nullable=True)
+    emisor_correo = db.Column(db.String(255), nullable=True)
+    emisor_direccion = db.Column(db.Text, nullable=True)
+    emisor_codigo_postal = db.Column(db.String(20), nullable=True)
+    emisor_municipio = db.Column(db.String(100), nullable=True)
+    emisor_departamento = db.Column(db.String(100), nullable=True)
+    emisor_pais = db.Column(db.String(5), nullable=True)
+
+    receptor_correo = db.Column(db.String(255), nullable=True)
+    receptor_direccion = db.Column(db.Text, nullable=True)
+    receptor_codigo_postal = db.Column(db.String(20), nullable=True)
+    receptor_municipio = db.Column(db.String(100), nullable=True)
+    receptor_departamento = db.Column(db.String(100), nullable=True)
+    receptor_pais = db.Column(db.String(5), nullable=True)
+
+    nit_certificador = db.Column(db.String(50), nullable=True)
+    nombre_certificador = db.Column(db.String(255), nullable=True)
+    frases_resumen = db.Column(db.Text, nullable=True)
+    total_impuestos_monto = db.Column(db.Float, nullable=True)
 
     gran_total = db.Column(db.Float, nullable=True)
     total_impuesto_iva = db.Column(db.Float, nullable=True)

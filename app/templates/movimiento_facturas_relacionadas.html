@@ -63,7 +63,7 @@
             <tr>
               <td>{{ rec.factura.uuid }}</td>
               <td>{{ rec.factura.tipo_documento or '—' }}</td>
-              <td>{{ rec.factura.emisor_nombre or '—' }}</td>
+              <td>{{ rec.factura.emisor_nombre_comercial or rec.factura.emisor_nombre or '—' }}</td>
               <td>{{ rec.factura.fecha_emision.strftime('%Y-%m-%d %H:%M:%S') if rec.factura.fecha_emision else '—' }}</td>
               <td>{{ '%.2f'|format(rec.factura.gran_total) if rec.factura.gran_total is not none else '—' }} {{ rec.factura.moneda or '' }}</td>
               <td>{{ '%.2f'|format(rec.diff_monto) }} ({{ '%.4f'|format(rec.pct_diff * 100) }}%)</td>

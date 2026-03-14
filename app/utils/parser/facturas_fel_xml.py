@@ -35,6 +35,18 @@ def _safe_datetime(value):
         return None
 
 
+def _frases_resumen(frases):
+    if not frases:
+        return None
+    partes = []
+    for f in frases:
+        tipo = (f.get('TipoFrase') or '').strip()
+        escenario = (f.get('CodigoEscenario') or '').strip()
+        if tipo or escenario:
+            partes.append(f"{tipo}:{escenario}")
+    return ', '.join(partes) if partes else None
+
+
 def parse_factura_fel_xml(filepath):
     """
     Parsea un XML FEL (GTDocumento) y retorna un dict con:
@@ -69,9 +81,25 @@ def parse_factura_fel_xml(filepath):
     retencion_iva = _safe_float(_safe_text(datos_emision.find('.//cfe:RetencionIVA', ns)))
     total_menos_retenciones = _safe_float(_safe_text(datos_emision.find('.//cfe:TotalMenosRetenciones', ns)))
 
+    emisor_direccion = emisor.find('dte:DireccionEmisor', ns) if emisor is not None else None
+    receptor_direccion = receptor.find('dte:DireccionReceptor', ns) if receptor is not None else None
+
+    frases = []
+    for frase in datos_emision.findall('dte:Frases/dte:Frase', ns):
+        frases.append(dict(frase.attrib))
+
+    total_impuestos = []
+    for impuesto in datos_emision.findall('dte:Totales/dte:TotalImpuestos/dte:TotalImpuesto', ns):
+        total_impuestos.append({
+            'nombre_corto': impuesto.attrib.get('NombreCorto'),
+            'total_monto_impuesto': _safe_float(impuesto.attrib.get('TotalMontoImpuesto')),
+        })
+
     uuid = _safe_text(numero_autorizacion)
     if not uuid:
         raise ValueError('No se encontró UUID de factura (NumeroAutorizacion).')
+
+    total_impuestos_monto = sum((t.get('total_monto_impuesto') or 0.0) for t in total_impuestos) if total_impuestos else None
 
     factura = {
         'uuid': uuid,
@@ -83,8 +111,27 @@ def parse_factura_fel_xml(filepath):
         'moneda': datos_generales.attrib.get('CodigoMoneda') if datos_generales is not None else None,
         'emisor_nit': emisor.attrib.get('NITEmisor') if emisor is not None else None,
         'emisor_nombre': emisor.attrib.get('NombreEmisor') if emisor is not None else None,
+        'emisor_nombre_comercial': emisor.attrib.get('NombreComercial') if emisor is not None else None,
+        'emisor_afiliacion_iva': emisor.attrib.get('AfiliacionIVA') if emisor is not None else None,
+        'emisor_codigo_establecimiento': emisor.attrib.get('CodigoEstablecimiento') if emisor is not None else None,
+        'emisor_correo': emisor.attrib.get('CorreoEmisor') if emisor is not None else None,
+        'emisor_direccion': _safe_text(emisor_direccion.find('dte:Direccion', ns)) if emisor_direccion is not None else None,
+        'emisor_codigo_postal': _safe_text(emisor_direccion.find('dte:CodigoPostal', ns)) if emisor_direccion is not None else None,
+        'emisor_municipio': _safe_text(emisor_direccion.find('dte:Municipio', ns)) if emisor_direccion is not None else None,
+        'emisor_departamento': _safe_text(emisor_direccion.find('dte:Departamento', ns)) if emisor_direccion is not None else None,
+        'emisor_pais': _safe_text(emisor_direccion.find('dte:Pais', ns)) if emisor_direccion is not None else None,
         'receptor_id': receptor.attrib.get('IDReceptor') if receptor is not None else None,
         'receptor_nombre': receptor.attrib.get('NombreReceptor') if receptor is not None else None,
+        'receptor_correo': receptor.attrib.get('CorreoReceptor') if receptor is not None else None,
+        'receptor_direccion': _safe_text(receptor_direccion.find('dte:Direccion', ns)) if receptor_direccion is not None else None,
+        'receptor_codigo_postal': _safe_text(receptor_direccion.find('dte:CodigoPostal', ns)) if receptor_direccion is not None else None,
+        'receptor_municipio': _safe_text(receptor_direccion.find('dte:Municipio', ns)) if receptor_direccion is not None else None,
+        'receptor_departamento': _safe_text(receptor_direccion.find('dte:Departamento', ns)) if receptor_direccion is not None else None,
+        'receptor_pais': _safe_text(receptor_direccion.find('dte:Pais', ns)) if receptor_direccion is not None else None,
+        'nit_certificador': _safe_text(cert.find('dte:NITCertificador', ns)) if cert is not None else None,
+        'nombre_certificador': _safe_text(cert.find('dte:NombreCertificador', ns)) if cert is not None else None,
+        'frases_resumen': _frases_resumen(frases),
+        'total_impuestos_monto': total_impuestos_monto,
         'gran_total': _safe_float(_safe_text(datos_emision.find('dte:Totales/dte:GranTotal', ns))),
         'total_impuesto_iva': total_impuesto_iva,
         'retencion_isr': retencion_isr,

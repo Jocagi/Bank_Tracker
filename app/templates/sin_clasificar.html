@@ -73,7 +73,7 @@
           <div class="small {% if not loop.last %}mb-2 pb-2 border-bottom{% endif %}">
             <div><strong>{{ rec.factura.uuid }}</strong></div>
             <div>Tipo: {{ rec.factura.tipo_documento or '—' }}</div>
-            <div>Emisor: {{ rec.factura.emisor_nombre or '—' }}</div>
+            <div>Emisor: {{ rec.factura.emisor_nombre_comercial or rec.factura.emisor_nombre or '—' }}</div>
             <div>Total: {{ '%.2f'|format(rec.factura.gran_total) if rec.factura.gran_total is not none else '—' }} {{ rec.factura.moneda or '' }}</div>
             <div>Diferencia: {{ '%.2f'|format(rec.diff_monto) }} ({{ '%.4f'|format(rec.pct_diff * 100) }}%)</div>
             <div>Días: {{ rec.diff_dias }}</div>

@@ -2,6 +2,7 @@ from datetime import datetime
 from urllib.parse import urlencode
 from flask import render_template, request, flash, redirect, url_for
 from flask_login import login_required, current_user
+from sqlalchemy import or_
 
 from . import bp
 from ..models import Factura, User
@@ -52,7 +53,12 @@ def list_facturas():
             flash('Fecha "Hasta" inválida', 'warning')
 
     if emisor_q:
-        query = query.filter(Factura.emisor_nombre.ilike(f'%{emisor_q}%'))
+        query = query.filter(
+            or_(
+                Factura.emisor_nombre.ilike(f'%{emisor_q}%'),
+                Factura.emisor_nombre_comercial.ilike(f'%{emisor_q}%'),
+            )
+        )
 
     if receptor_q:
         query = query.filter(Factura.receptor_nombre.ilike(f'%{receptor_q}%'))

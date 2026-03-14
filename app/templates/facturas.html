@@ -82,7 +82,7 @@
           data-fecha="{{ f.fecha_emision.strftime('%Y-%m-%d %H:%M:%S') if f.fecha_emision else '' }}"
           data-tipo="{{ (f.tipo_documento or '').lower() }}"
           data-uuid="{{ (f.uuid or '').lower() }}"
-          data-emisor="{{ (f.emisor_nombre or '').lower() }}"
+          data-emisor="{{ (f.emisor_nombre_comercial or f.emisor_nombre or '').lower() }}"
           data-receptor="{{ (f.receptor_nombre or '').lower() }}"
           data-moneda="{{ (f.moneda or '').lower() }}"
           data-total="{{ f.gran_total or 0 }}"
@@ -90,7 +90,7 @@
           <td>{{ f.fecha_emision.strftime('%Y-%m-%d %H:%M:%S') if f.fecha_emision else '—' }}</td>
           <td>{{ f.tipo_documento or '—' }}</td>
           <td>{{ f.uuid }}</td>
-          <td>{{ f.emisor_nombre or '—' }}</td>
+          <td>{{ f.emisor_nombre_comercial or f.emisor_nombre or '—' }}</td>
           <td>{{ f.receptor_nombre or '—' }}</td>
           <td>{{ f.moneda or '—' }}</td>
           <td>{{ '%.2f'|format(f.gran_total) if f.gran_total is not none else '—' }}</td>

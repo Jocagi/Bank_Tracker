@@ -23,7 +23,8 @@
       <div class="col-md-3"><strong>Emisor NIT:</strong><br>{{ factura.emisor_nit or '—' }}</div>
       <div class="col-md-3"><strong>Receptor ID:</strong><br>{{ factura.receptor_id or '—' }}</div>
 
-      <div class="col-md-6"><strong>Emisor:</strong><br>{{ factura.emisor_nombre or '—' }}</div>
+      <div class="col-md-6"><strong>Emisor Comercial:</strong><br>{{ factura.emisor_nombre_comercial or factura.emisor_nombre or '—' }}</div>
+      <div class="col-md-6"><strong>Emisor Legal:</strong><br>{{ factura.emisor_nombre or '—' }}</div>
       <div class="col-md-6"><strong>Receptor:</strong><br>{{ factura.receptor_nombre or '—' }}</div>
 
       <div class="col-md-3"><strong>Gran Total:</strong> {{ '%.2f'|format(factura.gran_total) if factura.gran_total is not none else '—' }}</div>
