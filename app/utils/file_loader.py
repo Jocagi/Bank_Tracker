@@ -1,7 +1,8 @@
 import os
 import hashlib
+from datetime import datetime
 from .. import db
-from ..models import Archivo
+from ..models import Archivo, Factura, FacturaDetalle
 from .parser.monet_aho_gyt_xlsx import load_movements_monet_aho_gyt_xlsx
 from .parser.monet_aho_gyt_pdf import load_movements_monet_aho_gyt_pdf
 from .parser.tc_gyt_xlsx import load_movements_tc_gyt_xlsx
@@ -18,6 +19,7 @@ from .parser.tc_bi_virtual_xls import load_movements_bi_tc_virtual_xls
 from .parser.generic_movimientos import load_movements_generic
 from .parser.ahorro_interbanco_pdf import parse_ahorro_interbanco_pdf_file
 from .classifier import clasificar_movimientos
+from .parser.facturas_fel_xml import parse_factura_fel_xml
 
 
 def compute_file_hash(filepath):
@@ -50,6 +52,28 @@ def register_file(filepath, tipo_archivo, user_id=None):
     db.session.add(nuevo)
     db.session.commit()
     return filepath, nuevo
+
+
+def register_batch_folder(folderpath, tipo_archivo, user_id=None):
+    """
+    Registra una carpeta/lote como un único Archivo.
+    Útil para cargas masivas de facturas en una subcarpeta.
+    """
+    basename = os.path.basename(folderpath.rstrip(os.sep))
+    raw = f"batch::{tipo_archivo}::{folderpath}::{datetime.utcnow().isoformat()}"
+    batch_hash = hashlib.sha256(raw.encode('utf-8')).hexdigest()
+
+    nuevo = Archivo(
+        tipo_archivo=tipo_archivo,
+        filename=basename,
+        file_hash=batch_hash,
+    )
+    if user_id is not None:
+        nuevo.user_id = user_id
+
+    db.session.add(nuevo)
+    db.session.commit()
+    return nuevo
 
 
 def load_movements(filepath, archivo_obj, tipo_archivo):
@@ -150,3 +174,72 @@ def load_movements(filepath, archivo_obj, tipo_archivo):
     clasificar_movimientos()
 
     return count
+
+
+def load_facturas(filepath, archivo_obj, tipo_archivo):
+    """
+    Carga facturas FEL XML en estructura separada de movimientos.
+    Retorna un dict con el resultado de la importación.
+    """
+    extension = os.path.splitext(filepath)[1].lower()
+    if extension not in ('.xml',):
+        raise ValueError('Extensión no válida para facturas FEL. Se espera .xml')
+
+    if tipo_archivo != 'factura-fel-xml':
+        raise ValueError(f'Tipo de archivo "{tipo_archivo}" no soportado para facturas.')
+
+    parsed = parse_factura_fel_xml(filepath)
+    factura_data = parsed['factura']
+    detalles_data = parsed['detalles']
+
+    existing = Factura.query.filter_by(uuid=factura_data['uuid']).first()
+    if existing:
+        return {
+            'facturas': 0,
+            'detalles': 0,
+            'duplicates': 1,
+        }
+
+    factura = Factura(
+        uuid=factura_data['uuid'],
+        serie=factura_data['serie'],
+        numero_autorizacion=factura_data['numero_autorizacion'],
+        tipo_documento=factura_data['tipo_documento'],
+        fecha_emision=factura_data['fecha_emision'],
+        fecha_certificacion=factura_data['fecha_certificacion'],
+        moneda=factura_data['moneda'],
+        emisor_nit=factura_data['emisor_nit'],
+        emisor_nombre=factura_data['emisor_nombre'],
+        receptor_id=factura_data['receptor_id'],
+        receptor_nombre=factura_data['receptor_nombre'],
+        gran_total=factura_data['gran_total'],
+        total_impuesto_iva=factura_data['total_impuesto_iva'],
+        retencion_isr=factura_data['retencion_isr'],
+        retencion_iva=factura_data['retencion_iva'],
+        total_menos_retenciones=factura_data['total_menos_retenciones'],
+        archivo_id=archivo_obj.id,
+        user_id=archivo_obj.user_id,
+    )
+    db.session.add(factura)
+    db.session.flush()
+
+    detalle_count = 0
+    for d in detalles_data:
+        db.session.add(FacturaDetalle(
+            factura_id=factura.id,
+            numero_linea=d['numero_linea'],
+            descripcion=d['descripcion'],
+            cantidad=d['cantidad'],
+            unidad_medida=d['unidad_medida'],
+            precio_unitario=d['precio_unitario'],
+            total_linea=d['total_linea'],
+        ))
+        detalle_count += 1
+
+    db.session.commit()
+
+    return {
+        'facturas': 1,
+        'detalles': detalle_count,
+        'duplicates': 0,
+    }

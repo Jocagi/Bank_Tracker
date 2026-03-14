@@ -5,10 +5,9 @@
 {% block content %}
 <h1>Movimientos Sin Clasificar</h1>
 
-{# Filtro de usuario solo para administradores #}
-{% if current_user.is_authenticated and current_user.is_admin() %}
 <form method="get" class="mb-3">
   <div class="row g-3">
+    {% if current_user.is_authenticated and current_user.is_admin() %}
     <div class="col-md-3">
       <label for="owner_id" class="form-label">Usuario</label>
       <select id="owner_id" name="owner_id" class="form-select">
@@ -18,12 +17,29 @@
         {% endfor %}
       </select>
     </div>
-    <div class="col-md-2 align-self-end">
+    {% endif %}
+
+    <div class="col-md-2">
+      <label for="fact_days" class="form-label">Ventana (días)</label>
+      <input id="fact_days" name="fact_days" type="number" min="0" class="form-control" value="{{ fact_days }}">
+    </div>
+
+    <div class="col-md-2">
+      <label for="fact_pct" class="form-label">Tolerancia %</label>
+      <input id="fact_pct" name="fact_pct" type="number" min="0" step="0.1" class="form-control" value="{{ '%.1f'|format(fact_pct) }}">
+    </div>
+
+    <div class="col-md-2">
+      <label for="fact_abs" class="form-label">Tolerancia abs</label>
+      <input id="fact_abs" name="fact_abs" type="number" min="0" step="0.01" class="form-control" value="{{ '%.2f'|format(fact_abs) }}">
+    </div>
+
+    <div class="col-md-3 align-self-end">
       <button type="submit" class="btn btn-primary">Filtrar</button>
+      <a href="{{ url_for('main.sin_clasificar') }}" class="btn btn-secondary ms-2">Limpiar</a>
     </div>
   </div>
 </form>
-{% endif %}
 
 <div class="table-container">
   <div class="table-wrapper">
@@ -36,6 +52,7 @@
       {% endif %}
       <th data-column="descripcion">Descripción <span class="sort-indicator" data-column="descripcion"></span></th>
       <th data-column="monto">Monto <span class="sort-indicator" data-column="monto"></span></th>
+      <th>Factura sugerida</th>
       <th style="width: 380px;">Comercio</th>
       <th>Acciones</th>
     </tr>
@@ -49,6 +66,24 @@
       {% endif %}
       <td>{{ m.descripcion }}</td>
       <td>{{ m.monto }}</td>
+      <td>
+        {% set recs = recomendaciones_factura.get(m.id) %}
+        {% if recs %}
+          {% for rec in recs %}
+          <div class="small {% if not loop.last %}mb-2 pb-2 border-bottom{% endif %}">
+            <div><strong>{{ rec.factura.uuid }}</strong></div>
+            <div>Tipo: {{ rec.factura.tipo_documento or '—' }}</div>
+            <div>Emisor: {{ rec.factura.emisor_nombre or '—' }}</div>
+            <div>Total: {{ '%.2f'|format(rec.factura.gran_total) if rec.factura.gran_total is not none else '—' }} {{ rec.factura.moneda or '' }}</div>
+            <div>Diferencia: {{ '%.2f'|format(rec.diff_monto) }} ({{ '%.4f'|format(rec.pct_diff * 100) }}%)</div>
+            <div>Días: {{ rec.diff_dias }}</div>
+            <a href="{{ url_for('main.factura_detalle', factura_id=rec.factura.id) }}" class="btn btn-xs btn-outline-primary mt-1" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">Ver factura</a>
+          </div>
+          {% endfor %}
+        {% else %}
+          <span class="text-muted">Sin sugerencia</span>
+        {% endif %}
+      </td>
       <td>
         <div class="mb-2">
           <form method="post"

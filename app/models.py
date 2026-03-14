@@ -144,6 +144,62 @@ class Archivo(db.Model):
 
     user = db.relationship('User', backref=db.backref('archivos', lazy=True), foreign_keys=[user_id])
 
+
+class Factura(db.Model):
+    __tablename__ = 'facturas'
+    id = db.Column(db.Integer, primary_key=True)
+    uuid = db.Column(db.String(100), nullable=False, unique=True, index=True)
+    serie = db.Column(db.String(50), nullable=True)
+    numero_autorizacion = db.Column(db.String(100), nullable=True)
+    tipo_documento = db.Column(db.String(20), nullable=True)
+    fecha_emision = db.Column(db.DateTime, nullable=True)
+    fecha_certificacion = db.Column(db.DateTime, nullable=True)
+    moneda = db.Column(db.String(10), nullable=True)
+
+    emisor_nit = db.Column(db.String(50), nullable=True)
+    emisor_nombre = db.Column(db.String(255), nullable=True)
+    receptor_id = db.Column(db.String(50), nullable=True)
+    receptor_nombre = db.Column(db.String(255), nullable=True)
+
+    gran_total = db.Column(db.Float, nullable=True)
+    total_impuesto_iva = db.Column(db.Float, nullable=True)
+    retencion_isr = db.Column(db.Float, nullable=True)
+    retencion_iva = db.Column(db.Float, nullable=True)
+    total_menos_retenciones = db.Column(db.Float, nullable=True)
+
+    archivo_id = db.Column(db.Integer, db.ForeignKey('archivos.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    archivo = db.relationship(
+        'Archivo',
+        backref=db.backref('facturas', lazy=True),
+        foreign_keys=[archivo_id]
+    )
+    user = db.relationship(
+        'User',
+        backref=db.backref('facturas', lazy=True),
+        foreign_keys=[user_id]
+    )
+
+
+class FacturaDetalle(db.Model):
+    __tablename__ = 'facturas_detalle'
+    id = db.Column(db.Integer, primary_key=True)
+    factura_id = db.Column(db.Integer, db.ForeignKey('facturas.id'), nullable=False, index=True)
+    numero_linea = db.Column(db.String(20), nullable=True)
+    descripcion = db.Column(db.Text, nullable=True)
+    cantidad = db.Column(db.Float, nullable=True)
+    unidad_medida = db.Column(db.String(20), nullable=True)
+    precio_unitario = db.Column(db.Float, nullable=True)
+    total_linea = db.Column(db.Float, nullable=True)
+
+    factura = db.relationship(
+        'Factura',
+        backref=db.backref('detalles', lazy=True, cascade='all, delete-orphan'),
+        foreign_keys=[factura_id]
+    )
+
 class TipoCambio(db.Model):
     __tablename__ = 'tipos_cambio'
     id         = db.Column(db.Integer, primary_key=True)

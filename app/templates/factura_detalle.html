@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}Detalle Factura{% endblock %}
+
+{% block content %}
+<h1>Detalle de Factura</h1>
+
+<div class="mb-3">
+  <a href="{{ url_for('main.list_facturas') }}" class="btn btn-secondary"><< Volver a Facturas</a>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">Datos Generales</div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-4"><strong>UUID:</strong> {{ factura.uuid }}</div>
+      <div class="col-md-2"><strong>Serie:</strong> {{ factura.serie or '—' }}</div>
+      <div class="col-md-2"><strong>Número:</strong> {{ factura.numero_autorizacion or '—' }}</div>
+      <div class="col-md-2"><strong>Tipo:</strong> {{ factura.tipo_documento or '—' }}</div>
+      <div class="col-md-2"><strong>Moneda:</strong> {{ factura.moneda or '—' }}</div>
+
+      <div class="col-md-3"><strong>Fecha Emisión:</strong><br>{{ factura.fecha_emision.strftime('%Y-%m-%d %H:%M:%S') if factura.fecha_emision else '—' }}</div>
+      <div class="col-md-3"><strong>Fecha Certificación:</strong><br>{{ factura.fecha_certificacion.strftime('%Y-%m-%d %H:%M:%S') if factura.fecha_certificacion else '—' }}</div>
+      <div class="col-md-3"><strong>Emisor NIT:</strong><br>{{ factura.emisor_nit or '—' }}</div>
+      <div class="col-md-3"><strong>Receptor ID:</strong><br>{{ factura.receptor_id or '—' }}</div>
+
+      <div class="col-md-6"><strong>Emisor:</strong><br>{{ factura.emisor_nombre or '—' }}</div>
+      <div class="col-md-6"><strong>Receptor:</strong><br>{{ factura.receptor_nombre or '—' }}</div>
+
+      <div class="col-md-3"><strong>Gran Total:</strong> {{ '%.2f'|format(factura.gran_total) if factura.gran_total is not none else '—' }}</div>
+      <div class="col-md-3"><strong>IVA:</strong> {{ '%.2f'|format(factura.total_impuesto_iva) if factura.total_impuesto_iva is not none else '—' }}</div>
+      <div class="col-md-3"><strong>Retención ISR:</strong> {{ '%.2f'|format(factura.retencion_isr) if factura.retencion_isr is not none else '—' }}</div>
+      <div class="col-md-3"><strong>Retención IVA:</strong> {{ '%.2f'|format(factura.retencion_iva) if factura.retencion_iva is not none else '—' }}</div>
+      <div class="col-md-3"><strong>Total - Retenciones:</strong> {{ '%.2f'|format(factura.total_menos_retenciones) if factura.total_menos_retenciones is not none else '—' }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Detalle de Ítems</div>
+  <div class="card-body p-0">
+    <div class="table-container">
+      <div class="table-wrapper">
+        <table class="table table-hover mb-0" id="factura-detalle-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Descripción</th>
+              <th>Cantidad</th>
+              <th>Unidad</th>
+              <th>Precio Unitario</th>
+              <th>Total Línea</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in factura.detalles %}
+            <tr>
+              <td>{{ d.numero_linea or '—' }}</td>
+              <td>{{ d.descripcion or '—' }}</td>
+              <td>{{ d.cantidad if d.cantidad is not none else '—' }}</td>
+              <td>{{ d.unidad_medida or '—' }}</td>
+              <td>{{ '%.2f'|format(d.precio_unitario) if d.precio_unitario is not none else '—' }}</td>
+              <td>{{ '%.2f'|format(d.total_linea) if d.total_linea is not none else '—' }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6" class="text-center text-muted">No hay detalle registrado para esta factura.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

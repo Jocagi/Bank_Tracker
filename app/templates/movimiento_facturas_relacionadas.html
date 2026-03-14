@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Facturas Relacionadas{% endblock %}
+
+{% block content %}
+<h1>Facturas Relacionadas al Movimiento</h1>
+
+<div class="mb-3">
+  <a href="{{ url_for('main.index') }}" class="btn btn-secondary"><< Volver a Movimientos</a>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">Movimiento</div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-3"><strong>Fecha:</strong> {{ movimiento.fecha }}</div>
+      <div class="col-md-3"><strong>Monto:</strong> {{ movimiento.monto }}</div>
+      <div class="col-md-3"><strong>Moneda:</strong> {{ movimiento.moneda or '—' }}</div>
+      <div class="col-md-3"><strong>Cuenta:</strong> {{ movimiento.cuenta.numero_cuenta if movimiento.cuenta else '—' }}</div>
+      <div class="col-md-12"><strong>Descripción:</strong> {{ movimiento.descripcion }}</div>
+    </div>
+  </div>
+</div>
+
+<form method="get" class="row g-3 mb-4">
+  <input type="hidden" name="mov_id" value="{{ movimiento.id }}">
+  <div class="col-md-2">
+    <label for="fact_days" class="form-label">Ventana (días)</label>
+    <input id="fact_days" name="fact_days" type="number" min="0" class="form-control" value="{{ fact_days }}">
+  </div>
+  <div class="col-md-2">
+    <label for="fact_pct" class="form-label">Tolerancia %</label>
+    <input id="fact_pct" name="fact_pct" type="number" min="0" step="0.1" class="form-control" value="{{ '%.4f'|format(fact_pct) }}">
+  </div>
+  <div class="col-md-2">
+    <label for="fact_abs" class="form-label">Tolerancia abs</label>
+    <input id="fact_abs" name="fact_abs" type="number" min="0" step="0.01" class="form-control" value="{{ '%.2f'|format(fact_abs) }}">
+  </div>
+  <div class="col-md-3 align-self-end">
+    <button type="submit" class="btn btn-primary">Buscar</button>
+  </div>
+</form>
+
+<div class="card">
+  <div class="card-header">Coincidencias (máximo 3)</div>
+  <div class="card-body p-0">
+    <div class="table-container">
+      <div class="table-wrapper">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>UUID</th>
+              <th>Tipo</th>
+              <th>Emisor</th>
+              <th>Fecha Emisión</th>
+              <th>Total</th>
+              <th>Diferencia</th>
+              <th>Días</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for rec in matches %}
+            <tr>
+              <td>{{ rec.factura.uuid }}</td>
+              <td>{{ rec.factura.tipo_documento or '—' }}</td>
+              <td>{{ rec.factura.emisor_nombre or '—' }}</td>
+              <td>{{ rec.factura.fecha_emision.strftime('%Y-%m-%d %H:%M:%S') if rec.factura.fecha_emision else '—' }}</td>
+              <td>{{ '%.2f'|format(rec.factura.gran_total) if rec.factura.gran_total is not none else '—' }} {{ rec.factura.moneda or '' }}</td>
+              <td>{{ '%.2f'|format(rec.diff_monto) }} ({{ '%.4f'|format(rec.pct_diff * 100) }}%)</td>
+              <td>{{ rec.diff_dias }}</td>
+              <td>
+                <a href="{{ url_for('main.factura_detalle', factura_id=rec.factura.id) }}" class="btn btn-sm btn-outline-primary">Ver factura</a>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="8" class="text-center text-muted">No se encontraron facturas relacionadas con los criterios actuales.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

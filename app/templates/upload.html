@@ -19,11 +19,12 @@
       <option value="tc-promerica">Tarjeta de Crédito Promerica</option>
       <option value="tc-bac">Tarjeta de Crédito BAC</option>
       <option value="ahorro-interbanco">Ahorro Interbanco</option>
+      <option value="factura-fel-xml">Factura FEL (XML)</option>
     </select>
   </div>
   <div class="mb-3">
-    <input class="form-control" type="file" name="files" id="files" accept=".xlsx,.xls,.pdf,.csv" multiple required>
-    <div id="file_help" class="form-text">Extensiones permitidas: .xlsx, .xls, .pdf, .csv. Puedes seleccionar múltiples archivos de la misma categoría.</div>
+    <input class="form-control" type="file" name="files" id="files" accept=".xlsx,.xls,.pdf,.csv,.xml" multiple required>
+    <div id="file_help" class="form-text">Extensiones permitidas: .xlsx, .xls, .pdf, .csv, .xml. Puedes seleccionar múltiples archivos de la misma categoría.</div>
     <div id="template-link" class="mt-2" style="display: none;">
       <a class="link-primary" href="{{ url_for('static', filename='templates/generic_movimientos_template.csv') }}">Descargar plantilla genérica (CSV)</a>
     </div>
@@ -50,7 +51,8 @@
       'generic-movimientos': ['.xls', '.xlsx', '.csv'],
       'tc-promerica': ['.xls', '.xlsx'],
       'tc-bac': ['.csv'],
-      'ahorro-interbanco': ['.pdf']
+      'ahorro-interbanco': ['.pdf'],
+      'factura-fel-xml': ['.xml']
     };
 
     function extsToAccept(exts){ return exts.join(','); }

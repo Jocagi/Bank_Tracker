@@ -72,22 +72,26 @@
       <th data-column="nombre">Nombre <span class="sort-indicator" data-column="nombre"></span></th>
       <th data-column="tipo">Tipo <span class="sort-indicator" data-column="tipo"></span></th>
       <th data-column="fecha">Fecha Carga <span class="sort-indicator" data-column="fecha"></span></th>
-      <th data-column="movimientos"># Movimientos <span class="sort-indicator" data-column="movimientos"></span></th>
+      <th data-column="movimientos"># Registros <span class="sort-indicator" data-column="movimientos"></span></th>
       <th>Acciones</th>
     </tr>
   </thead>
   <tbody>
     {% for a in archivos %}
-    <tr data-id="{{ a.id }}" data-usuario="{{ (a.user.username if a.user else '').lower() }}" data-nombre="{{ a.filename.lower() }}" data-tipo="{{ a.tipo_archivo.lower() }}" data-fecha="{{ a.upload_date.strftime('%Y-%m-%d %H:%M:%S') }}" data-movimientos="{{ a.movimientos|length }}">
+    <tr data-id="{{ a.id }}" data-usuario="{{ (a.user.username if a.user else '').lower() }}" data-nombre="{{ a.filename.lower() }}" data-tipo="{{ a.tipo_archivo.lower() }}" data-fecha="{{ a.upload_date.strftime('%Y-%m-%d %H:%M:%S') }}" data-movimientos="{{ a.facturas|length if a.tipo_archivo == 'factura-fel-xml' else a.movimientos|length }}">
       <td>{{ a.id }}</td>
       <td>{{ a.user.username if a.user else '-' }}</td>
       <td>{{ a.filename }}</td>
       <td>{{ a.tipo_archivo }}</td>
       <td>{{ a.upload_date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-      <td>{{ a.movimientos|length }}</td>
+      <td>{{ a.facturas|length if a.tipo_archivo == 'factura-fel-xml' else a.movimientos|length }}</td>
       <td>
         <div class="btn-group" role="group" aria-label="Acciones archivo">
+          {% if a.tipo_archivo == 'factura-fel-xml' %}
+          <a href="{{ url_for('main.archivos_facturas', archivo_id=a.id) }}" class="btn btn-sm btn-outline-primary">Ver facturas</a>
+          {% else %}
           <a href="{{ url_for('main.archivos_movimientos', archivo_id=a.id) }}" class="btn btn-sm btn-outline-primary">Ver movimientos</a>
+          {% endif %}
           <form method="post"
                 action="{{ url_for('main.delete_archivo', archivo_id=a.id) }}"
                 style="display:inline-block; margin:0;"

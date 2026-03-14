@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Facturas del Archivo #{{ archivo.id }}{% endblock %}
+
+{% block content %}
+<h1>Facturas del Archivo: {{ archivo.filename }}</h1>
+<p>Tipo: {{ archivo.tipo_archivo }} | Fecha carga: {{ archivo.upload_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+
+<a href="{{ url_for('main.list_archivos') }}" class="btn btn-secondary mb-3"><< Volver a Archivos</a>
+
+<div class="table-container">
+  <div class="table-wrapper">
+    <table class="table table-hover mb-0" id="archivos-facturas-table">
+      <thead>
+        <tr>
+          <th data-column="fecha">Fecha <span class="sort-indicator" data-column="fecha"></span></th>
+          <th data-column="tipo">Tipo <span class="sort-indicator" data-column="tipo"></span></th>
+          <th data-column="uuid">UUID <span class="sort-indicator" data-column="uuid"></span></th>
+          <th data-column="emisor">Emisor <span class="sort-indicator" data-column="emisor"></span></th>
+          <th data-column="receptor">Receptor <span class="sort-indicator" data-column="receptor"></span></th>
+          <th data-column="total">Total <span class="sort-indicator" data-column="total"></span></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in facturas %}
+        <tr
+          data-fecha="{{ f.fecha_emision.strftime('%Y-%m-%d %H:%M:%S') if f.fecha_emision else '' }}"
+          data-tipo="{{ (f.tipo_documento or '').lower() }}"
+          data-uuid="{{ (f.uuid or '').lower() }}"
+          data-emisor="{{ (f.emisor_nombre or '').lower() }}"
+          data-receptor="{{ (f.receptor_nombre or '').lower() }}"
+          data-total="{{ f.gran_total or 0 }}"
+        >
+          <td>{{ f.fecha_emision.strftime('%Y-%m-%d %H:%M:%S') if f.fecha_emision else '—' }}</td>
+          <td>{{ f.tipo_documento or '—' }}</td>
+          <td>{{ f.uuid }}</td>
+          <td>{{ f.emisor_nombre or '—' }}</td>
+          <td>{{ f.receptor_nombre or '—' }}</td>
+          <td>{{ '%.2f'|format(f.gran_total) if f.gran_total is not none else '—' }}</td>
+          <td>
+            <a href="{{ url_for('main.factura_detalle', factura_id=f.id) }}" class="btn btn-sm btn-outline-primary">Ver detalle</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center text-muted">No hay facturas para este archivo.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,7 +1,7 @@
 from datetime import datetime
 from flask import render_template, request, flash, redirect, url_for
 from . import bp
-from ..models import Archivo, Movimiento
+from ..models import Archivo, Movimiento, Factura, FacturaDetalle
 from .. import db
 from flask_login import login_required, current_user
 from ..models import User
@@ -82,10 +82,16 @@ def delete_archivo(archivo_id):
             return redirect(url_for('main.list_archivos'))
     # Borra movimientos asociados
     Movimiento.query.filter_by(archivo_id=archivo.id).delete()
+    # Borra facturas y su detalle asociadas
+    facturas = Factura.query.filter_by(archivo_id=archivo.id).all()
+    factura_ids = [f.id for f in facturas]
+    if factura_ids:
+        FacturaDetalle.query.filter(FacturaDetalle.factura_id.in_(factura_ids)).delete(synchronize_session=False)
+        Factura.query.filter(Factura.id.in_(factura_ids)).delete(synchronize_session=False)
     # Borra el registro de archivo
     db.session.delete(archivo)
     db.session.commit()
-    flash('Archivo y movimientos asociados eliminados.', 'warning')
+    flash('Archivo y registros asociados eliminados.', 'warning')
     return redirect(url_for('main.list_archivos'))
 
 
@@ -100,3 +106,15 @@ def archivos_movimientos(archivo_id):
             return redirect(url_for('main.list_archivos'))
     movimientos = Movimiento.query.filter_by(archivo_id=archivo.id).order_by(Movimiento.fecha.desc()).all()
     return render_template('archivos_movimientos.html', archivo=archivo, movimientos=movimientos)
+
+
+@bp.route('/archivos/<int:archivo_id>/facturas', methods=['GET'])
+@login_required
+def archivos_facturas(archivo_id):
+    archivo = Archivo.query.get_or_404(archivo_id)
+    if not (hasattr(current_user, 'is_admin') and current_user.is_admin()):
+        if archivo.user_id != current_user.id:
+            flash('Acceso denegado', 'danger')
+            return redirect(url_for('main.list_archivos'))
+    facturas = Factura.query.filter_by(archivo_id=archivo.id).order_by(Factura.fecha_emision.desc()).all()
+    return render_template('archivos_facturas.html', archivo=archivo, facturas=facturas)

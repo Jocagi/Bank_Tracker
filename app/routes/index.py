@@ -1,11 +1,11 @@
 import os
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import render_template, request, flash
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
 from .. import db
-from ..models import Movimiento, Cuenta, Comercio, Categoria, TipoCambio, User, Archivo
+from ..models import Movimiento, Cuenta, Comercio, Categoria, TipoCambio, User, Archivo, Factura
 from ..models import Movimiento as MovimientoModel
 from . import bp
 from flask import redirect, url_for
@@ -295,4 +295,80 @@ def delete_movimiento(mov_id):
     if next_url:
         return redirect(next_url)
     return redirect(url_for('main.index'))
+
+
+@bp.route('/movimiento/<int:mov_id>/facturas-relacionadas', methods=['GET'])
+@login_required
+def movimiento_facturas_relacionadas(mov_id):
+    movimiento = Movimiento.query.get_or_404(mov_id)
+
+    if not (hasattr(current_user, 'is_admin') and current_user.is_admin()):
+        if movimiento.user_id != current_user.id:
+            flash('Acceso denegado', 'danger')
+            return redirect(url_for('main.index'))
+
+    days_window = request.args.get('fact_days', '7')
+    pct_tolerance = request.args.get('fact_pct', '0.01')
+    abs_tolerance = request.args.get('fact_abs', '0.01')
+
+    try:
+        days_window_int = max(0, int(days_window))
+    except ValueError:
+        days_window_int = 7
+
+    try:
+        pct_tolerance_float = max(0.0, float(pct_tolerance)) / 100.0
+    except ValueError:
+        pct_tolerance_float = 0.0001
+
+    try:
+        abs_tolerance_float = max(0.0, float(abs_tolerance))
+    except ValueError:
+        abs_tolerance_float = 0.01
+
+    matches = []
+    if movimiento.fecha is not None and movimiento.monto is not None:
+        monto_mov = abs(float(movimiento.monto))
+        if monto_mov > 0:
+            facturas = Factura.query.filter(
+                Factura.user_id == movimiento.user_id,
+                Factura.fecha_emision >= (movimiento.fecha - timedelta(days=days_window_int)),
+                Factura.fecha_emision <= (movimiento.fecha + timedelta(days=days_window_int)),
+            ).all()
+
+            for f in facturas:
+                if f.fecha_emision is None or f.gran_total is None:
+                    continue
+
+                diff_dias = abs((f.fecha_emision.date() - movimiento.fecha).days)
+                if diff_dias > days_window_int:
+                    continue
+
+                monto_factura = abs(float(f.gran_total))
+                diff_monto = abs(monto_mov - monto_factura)
+                pct_diff = diff_monto / monto_mov
+
+                if pct_diff > pct_tolerance_float and diff_monto > abs_tolerance_float:
+                    continue
+
+                score = (pct_diff, diff_monto, diff_dias)
+                matches.append({
+                    'factura': f,
+                    'diff_monto': diff_monto,
+                    'pct_diff': pct_diff,
+                    'diff_dias': diff_dias,
+                    'score': score,
+                })
+
+            matches.sort(key=lambda x: x['score'])
+            matches = matches[:3]
+
+    return render_template(
+        'movimiento_facturas_relacionadas.html',
+        movimiento=movimiento,
+        matches=matches,
+        fact_days=days_window_int,
+        fact_pct=(pct_tolerance_float * 100.0),
+        fact_abs=abs_tolerance_float,
+    )
 
