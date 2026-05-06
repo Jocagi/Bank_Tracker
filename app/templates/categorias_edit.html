@@ -20,4 +20,110 @@
     {% endif %}
   {% endwith %}
 </form>
+
+<!-- Sección de Subcategorías -->
+<div class="mt-5">
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h2 class="h4 mb-0">Subcategorías</h2>
+    <button type="button" class="btn btn-primary btn-sm toggle-add-subcategoria">Agregar Subcategoría</button>
+  </div>
+  <div class="table-container">
+    <div class="table-wrapper">
+      <table class="table table-hover mb-0" id="subcategorias-table">
+        <thead>
+          <tr>
+            <th data-column="nombre">Nombre</th>
+            <th data-column="comercios"># Comercios</th>
+            <th data-column="movimientos">Movs</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr id="add-subcategoria-form" class="d-none">
+            <td colspan="4" class="bg-light">
+              <form method="post" action="{{ url_for('main.add_subcategoria') }}" class="row g-2 align-items-end py-2">
+                <input type="hidden" name="categoria_id" value="{{ categoria.id }}">
+                <div class="col-12 col-md-8">
+                  <label class="form-label mb-1">Nombre de la subcategoría</label>
+                  <input type="text" name="nombre" class="form-control" placeholder="Nombre" required autofocus>
+                </div>
+                <div class="col-12 col-md-4">
+                  <button type="submit" class="btn btn-success">Agregar</button>
+                  <button type="button" class="btn btn-link toggle-add-subcategoria">Cancelar</button>
+                </div>
+              </form>
+            </td>
+          </tr>
+          {% if subcategorias %}
+            {% for subcategoria in subcategorias %}
+              {% set comercios_count = subcategoria.comercios|length %}
+              {% set movimientos_count = mov_counts.get(subcategoria.id, 0) %}
+              <tr data-nombre="{{ subcategoria.nombre.lower() }}" data-comercios="{{ comercios_count }}" data-movimientos="{{ movimientos_count }}">
+                <td>{{ subcategoria.nombre }}</td>
+                <td>
+                  <a href="{{ url_for('main.list_comercios', categoria_id=categoria.id, subcategoria_id=subcategoria.id) }}">{{ comercios_count }}</a>
+                </td>
+                <td>
+                  <a href="{{ url_for('main.index', subcategoria_id=subcategoria.id) }}">{{ movimientos_count }}</a>
+                </td>
+                <td>
+                  <button type="button" class="btn btn-sm btn-secondary toggle-subcategoria-edit" data-target="edit-subcategoria-{{ subcategoria.id }}">Editar</button>
+                  <form method="post" action="{{ url_for('main.delete_subcategoria', subcategoria_id=subcategoria.id) }}" style="display:inline" onsubmit="return confirm('¿Eliminar subcategoría {{ subcategoria.nombre }}?');">
+                    <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                  </form>
+                </td>
+              </tr>
+              <tr id="edit-subcategoria-{{ subcategoria.id }}" class="d-none">
+                <td colspan="4" class="bg-light">
+                  <form method="post" action="{{ url_for('main.edit_subcategoria', subcategoria_id=subcategoria.id) }}" class="row g-2 align-items-end py-2">
+                    <input type="hidden" name="categoria_id" value="{{ categoria.id }}">
+                    <div class="col-12 col-md-8">
+                      <label class="form-label mb-1">Nombre</label>
+                      <input type="text" name="nombre" class="form-control" value="{{ subcategoria.nombre }}" required>
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                      <button type="button" class="btn btn-link toggle-subcategoria-edit" data-target="edit-subcategoria-{{ subcategoria.id }}">Cancelar</button>
+                    </div>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="4" class="text-center text-muted">No hay subcategorías registradas.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // Toggle subcategoria edit forms
+    document.querySelectorAll('.toggle-subcategoria-edit').forEach(function (button) {
+      button.addEventListener('click', function () {
+        const targetId = button.getAttribute('data-target');
+        const row = document.getElementById(targetId);
+        if (!row) return;
+        row.classList.toggle('d-none');
+      });
+    });
+
+    // Toggle add subcategoria form
+    document.querySelectorAll('.toggle-add-subcategoria').forEach(function (button) {
+      button.addEventListener('click', function () {
+        const form = document.getElementById('add-subcategoria-form');
+        if (!form) return;
+        form.classList.toggle('d-none');
+        // Clear form when toggling to visible
+        if (!form.classList.contains('d-none')) {
+          form.querySelector('input[name="nombre"]').focus();
+        }
+      });
+    });
+  });
+</script>
 {% endblock %}

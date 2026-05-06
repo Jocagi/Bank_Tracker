@@ -8,7 +8,19 @@ class Categoria(db.Model):
     __tablename__ = 'categorias'
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False, unique=True)
+    subcategorias = db.relationship('Subcategoria', backref='categoria', lazy=True, cascade='all, delete-orphan')
     comercios = db.relationship('Comercio', backref='categoria', lazy=True)
+
+
+class Subcategoria(db.Model):
+    __tablename__ = 'subcategorias'
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(100), nullable=False)
+    categoria_id = db.Column(db.Integer, db.ForeignKey('categorias.id'), nullable=False, index=True)
+
+    __table_args__ = (
+        db.UniqueConstraint('categoria_id', 'nombre', name='uq_subcategoria_categoria_nombre'),
+    )
 
 class Comercio(db.Model):
     __tablename__ = 'comercios'
@@ -16,8 +28,10 @@ class Comercio(db.Model):
     nombre = db.Column(db.String(100), nullable=False, unique=True)
     descripcion = db.Column(db.Text, nullable=True)
     categoria_id = db.Column(db.Integer, db.ForeignKey('categorias.id'), nullable=False)
+    subcategoria_id = db.Column(db.Integer, db.ForeignKey('subcategorias.id', ondelete='SET NULL'), nullable=True)
     tipo_contabilizacion = db.Column(db.String(20), nullable=False, default='gastos') # Indica si es ingreso, gasto o transferencia
     reglas = db.relationship('Regla', backref='comercio', lazy=True)
+    subcategoria = db.relationship('Subcategoria', backref=db.backref('comercios', lazy=True), foreign_keys=[subcategoria_id])
 
 class Regla(db.Model):
     __tablename__ = 'reglas'
@@ -71,6 +85,8 @@ class Cuenta(db.Model):
     alias = db.Column(db.String(100), nullable=True)
     titular = db.Column(db.String(200), nullable=False)
     moneda = db.Column(db.String(10), nullable=False)
+    activa = db.Column(db.Boolean, nullable=False, default=True)
+    saldo = db.Column(db.Float, nullable=False, default=0.0)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 

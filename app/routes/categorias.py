@@ -1,12 +1,13 @@
 from flask import render_template, request, redirect, url_for, flash
 from . import bp
 from .. import db
-from ..models import Categoria, Comercio, Movimiento
+from ..models import Categoria, Comercio, Movimiento, Subcategoria
 from sqlalchemy import func
-from flask_login import current_user
+from flask_login import current_user, login_required
 
 
 @bp.route('/categorias')
+@login_required
 def list_categorias():
     # Filtro por nombre desde query string
     q_name = request.args.get('q_name', '').strip()
@@ -41,15 +42,24 @@ def list_categorias():
         mov_query = mov_query.filter(Movimiento.user_id == current_user.id)
     mov_counts = {row[0]: row[1] for row in mov_query.group_by(Comercio.categoria_id).all()}
 
+    # Contar subcategorías por categoría
+    subcat_counts = db.session.query(
+        Subcategoria.categoria_id,
+        func.count(Subcategoria.id).label('subcategorias_count')
+    ).group_by(Subcategoria.categoria_id).all()
+    subcat_counts_dict = {row[0]: row[1] for row in subcat_counts}
+
     for entry in categorias:
         cat = entry['categoria']
         entry['movimientos_count'] = mov_counts.get(cat.id, 0)
+        entry['subcategorias_count'] = subcat_counts_dict.get(cat.id, 0)
 
     filters = {'q_name': q_name, 'owner_id': owner_id or ''}
     return render_template('categorias.html', categorias=categorias, filters=filters)
 
 
 @bp.route('/categorias/add', methods=['GET', 'POST'])
+@login_required
 def add_categoria():
     if request.method == 'POST':
         nombre = request.form['nombre']
@@ -62,8 +72,35 @@ def add_categoria():
 
 
 @bp.route('/categorias/<int:categoria_id>/edit', methods=['GET', 'POST'])
+@login_required
 def edit_categoria(categoria_id):
     categoria = Categoria.query.get_or_404(categoria_id)
+    # Obtener subcategorías de esta categoría
+    subcategorias = Subcategoria.query.filter_by(categoria_id=categoria_id).all()
+    
+    # Contar movimientos por subcategoría para esta categoría
+    mov_query = db.session.query(
+        Comercio.subcategoria_id,
+        func.count(Movimiento.id)
+    ).join(
+        Movimiento, Movimiento.comercio_id == Comercio.id
+    ).filter(
+        Comercio.categoria_id == categoria_id,
+        Comercio.subcategoria_id.isnot(None)
+    )
+
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        owner_id = request.args.get('owner_id', type=int)
+        if owner_id:
+            mov_query = mov_query.filter(Movimiento.user_id == owner_id)
+    else:
+        mov_query = mov_query.filter(Movimiento.user_id == current_user.id)
+
+    mov_counts = {
+        row[0]: row[1]
+        for row in mov_query.group_by(Comercio.subcategoria_id).all()
+    }
+    
     if request.method == 'POST':
         nombre = request.form['nombre'].strip()
         if not nombre:
@@ -75,10 +112,12 @@ def edit_categoria(categoria_id):
             db.session.commit()
             flash('Categoría actualizada correctamente.', 'success')
             return redirect(url_for('main.list_categorias'))
-    return render_template('categorias_edit.html', categoria=categoria)
+
+    return render_template('categorias_edit.html', categoria=categoria, subcategorias=subcategorias, mov_counts=mov_counts)
 
 
 @bp.route('/categorias/<int:categoria_id>/delete', methods=['POST'])
+@login_required
 def delete_categoria(categoria_id):
     categoria = Categoria.query.get_or_404(categoria_id)
     db.session.delete(categoria)

@@ -10,7 +10,7 @@
 <div class="card mb-3">
   <div class="card-body">
     <h5 class="card-title">Exportar configuración</h5>
-    <p class="card-text">Descarga un archivo JSON con los tipos de cambio, categorías, comercios y reglas.</p>
+    <p class="card-text">Descarga un archivo JSON con los tipos de cambio, categorías, subcategorías, comercios y reglas.</p>
     <a class="btn btn-primary" href="{{ url_for('main.export_config') }}">Exportar configuración (JSON)</a>
   </div>
 </div>
@@ -18,7 +18,7 @@
 <div class="card">
   <div class="card-body">
     <h5 class="card-title">Importar configuración</h5>
-    <p class="card-text">Sube un archivo JSON exportado previamente para importar o actualizar la configuración.</p>
+    <p class="card-text">Sube un archivo JSON exportado previamente para importar o actualizar la configuración, incluyendo subcategorías.</p>
 
     <form action="{{ url_for('main.import_config') }}" method="post" enctype="multipart/form-data">
       <div class="mb-3">

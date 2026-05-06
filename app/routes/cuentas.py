@@ -181,6 +181,8 @@ def add_cuenta():
         alias = request.form.get('alias', '').strip()
         titular = request.form.get('titular', '').strip()
         moneda = request.form.get('moneda', '').strip()
+        activa = request.form.get('activa', '1') == '1'
+        saldo_raw = request.form.get('saldo', '0').strip()
         user_id = request.form.get('user_id', '')
 
         if not (banco and tipo_cuenta and numero_cuenta and titular and moneda):
@@ -192,13 +194,21 @@ def add_cuenta():
             flash('Ya existe una cuenta con ese número.', 'warning')
             return render_template('cuentas_add.html', users=users)
 
+        try:
+            saldo = float(saldo_raw) if saldo_raw else 0.0
+        except ValueError:
+            flash('El saldo debe ser un número válido.', 'warning')
+            return render_template('cuentas_add.html', users=users)
+
         nueva = Cuenta(
             banco=banco,
             tipo_cuenta=tipo_cuenta,
             numero_cuenta=numero_cuenta,
             alias=alias or None,
             titular=titular,
-            moneda=moneda
+            moneda=moneda,
+            activa=activa,
+            saldo=saldo
         )
         
         # Asignar propietario
@@ -244,6 +254,8 @@ def edit_cuenta(cuenta_id):
         alias = request.form.get('alias', '').strip()
         titular = request.form.get('titular', '').strip()
         moneda = request.form.get('moneda', '').strip()
+        activa = request.form.get('activa', '1') == '1'
+        saldo_raw = request.form.get('saldo', '0').strip()
         user_id = request.form.get('user_id', '')
 
         if not (banco and tipo_cuenta and numero_cuenta and titular and moneda):
@@ -256,12 +268,20 @@ def edit_cuenta(cuenta_id):
             flash('Otra cuenta ya usa ese número.', 'warning')
             return render_template('cuentas_edit.html', cuenta=cuenta, users=users)
 
+        try:
+            saldo = float(saldo_raw) if saldo_raw else 0.0
+        except ValueError:
+            flash('El saldo debe ser un número válido.', 'warning')
+            return render_template('cuentas_edit.html', cuenta=cuenta, users=users)
+
         cuenta.banco = banco
         cuenta.tipo_cuenta = tipo_cuenta
         cuenta.numero_cuenta = numero_cuenta
         cuenta.alias = alias or None
         cuenta.titular = titular
         cuenta.moneda = moneda
+        cuenta.activa = activa
+        cuenta.saldo = saldo
         
         # Solo los administradores pueden cambiar el propietario
         if hasattr(current_user, 'is_admin') and current_user.is_admin() and user_id:

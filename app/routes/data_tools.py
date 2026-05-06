@@ -1,7 +1,7 @@
 from flask import render_template, request, flash, redirect, url_for, Response, abort
 from sqlalchemy import func
 from .. import db
-from ..models import Comercio, Categoria, TipoCambio, Regla
+from ..models import Comercio, Categoria, Subcategoria, TipoCambio, Regla
 from . import bp
 from flask_login import login_required, current_user
 import json
@@ -32,6 +32,16 @@ def export_config():
             'nombre': c.nombre
         })
 
+    # Subcategorías
+    subcategorias = []
+    for s in Subcategoria.query.join(Categoria).order_by(Categoria.nombre, Subcategoria.nombre).all():
+        subcategorias.append({
+            'id': s.id,
+            'nombre': s.nombre,
+            'categoria_id': s.categoria_id,
+            'categoria_nombre': s.categoria.nombre if s.categoria else None
+        })
+
     # Comercios + reglas
     comercios = []
     for cm in Comercio.query.order_by(Comercio.nombre).all():
@@ -47,6 +57,9 @@ def export_config():
             'id': cm.id,
             'nombre': cm.nombre,
             'categoria_id': cm.categoria_id,
+            'categoria_nombre': cm.categoria.nombre if cm.categoria else None,
+            'subcategoria_id': cm.subcategoria_id,
+            'subcategoria_nombre': cm.subcategoria.nombre if cm.subcategoria else None,
             'tipo_contabilizacion': cm.tipo_contabilizacion,
             'reglas': reglas
         })
@@ -54,6 +67,7 @@ def export_config():
     payload = {
         'tipos_cambio': tipos,
         'categorias': categorias,
+        'subcategorias': subcategorias,
         'comercios': comercios
     }
 
@@ -84,7 +98,7 @@ def import_config():
         return redirect(url_for('main.dashboard'))
 
     # We'll collect counts for feedback
-    added = {'tipos_cambio': 0, 'categorias': 0, 'comercios': 0, 'reglas': 0, 'updated_tipos': 0, 'updated_comercios': 0}
+    added = {'tipos_cambio': 0, 'categorias': 0, 'subcategorias': 0, 'comercios': 0, 'reglas': 0, 'updated_tipos': 0, 'updated_subcategorias': 0, 'updated_comercios': 0}
 
     # Tipos de cambio
     for t in data.get('tipos_cambio', []):
@@ -112,6 +126,46 @@ def import_config():
 
     db.session.flush()
 
+    categoria_by_name = {
+        c.nombre.strip().lower(): c
+        for c in Categoria.query.order_by(Categoria.id).all()
+    }
+
+    # Subcategorías
+    for s in data.get('subcategorias', []):
+        nombre = (s.get('nombre') or '').strip()
+        if not nombre:
+            continue
+
+        categoria = None
+        categoria_id = s.get('categoria_id')
+        if categoria_id:
+            categoria = Categoria.query.get(categoria_id)
+        if not categoria:
+            categoria_nombre = (s.get('categoria_nombre') or '').strip().lower()
+            if categoria_nombre:
+                categoria = categoria_by_name.get(categoria_nombre)
+
+        if not categoria:
+            continue
+
+        existing = Subcategoria.query.filter(
+            func.lower(Subcategoria.nombre) == nombre.lower(),
+            Subcategoria.categoria_id == categoria.id
+        ).first()
+        if existing:
+            continue
+
+        db.session.add(Subcategoria(nombre=nombre, categoria_id=categoria.id))
+        added['subcategorias'] += 1
+
+    db.session.flush()
+
+    subcategoria_lookup = {
+        (s.categoria_id, s.nombre.strip().lower()): s
+        for s in Subcategoria.query.all()
+    }
+
     # Comercios and reglas
     for cm in data.get('comercios', []):
         nombre = cm.get('nombre')
@@ -124,18 +178,33 @@ def import_config():
         if cat_id:
             categoria = Categoria.query.get(cat_id)
         if not categoria:
+            categoria_nombre = (cm.get('categoria_nombre') or '').strip().lower()
+            if categoria_nombre:
+                categoria = categoria_by_name.get(categoria_nombre)
+        if not categoria:
             categoria = Categoria.query.first()
+
+        subcategoria = None
+        subcategoria_id = cm.get('subcategoria_id')
+        if subcategoria_id:
+            subcategoria = Subcategoria.query.get(subcategoria_id)
+        if not subcategoria:
+            subcategoria_nombre = (cm.get('subcategoria_nombre') or '').strip().lower()
+            if categoria and subcategoria_nombre:
+                subcategoria = subcategoria_lookup.get((categoria.id, subcategoria_nombre))
 
         if comercio:
             # update fields
             comercio.tipo_contabilizacion = cm.get('tipo_contabilizacion', comercio.tipo_contabilizacion)
             if categoria:
                 comercio.categoria_id = categoria.id
+            comercio.subcategoria_id = subcategoria.id if subcategoria else None
             added['updated_comercios'] += 1
         else:
             newc = Comercio(
                 nombre=nombre,
                 categoria_id=(categoria.id if categoria else None) or (Categoria.query.first().id if Categoria.query.first() else None),
+                subcategoria_id=subcategoria.id if subcategoria else None,
                 tipo_contabilizacion=cm.get('tipo_contabilizacion') or 'gastos'
             )
             db.session.add(newc)
@@ -163,7 +232,7 @@ def import_config():
         flash(f'Error al importar configuración: {e}', 'danger')
         return redirect(url_for('main.dashboard'))
 
-    flash(f"Importación finalizada. Tipos añadidos: {added['tipos_cambio']}, actualizados: {added['updated_tipos']}; Categorías añadidas: {added['categorias']}; Comercios añadidos: {added['comercios']}, actualizados: {added['updated_comercios']}; Reglas añadidas: {added['reglas']}", 'success')
+    flash(f"Importación finalizada. Tipos añadidos: {added['tipos_cambio']}, actualizados: {added['updated_tipos']}; Categorías añadidas: {added['categorias']}; Subcategorías añadidas: {added['subcategorias']}, actualizadas: {added['updated_subcategorias']}; Comercios añadidos: {added['comercios']}, actualizados: {added['updated_comercios']}; Reglas añadidas: {added['reglas']}", 'success')
     return redirect(url_for('main.dashboard'))
 
 

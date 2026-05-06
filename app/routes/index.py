@@ -22,6 +22,7 @@ def index():
     selected_cuenta     = request.args.get('cuenta_id', '')
     selected_comercio   = request.args.get('comercio_id', '')
     selected_categoria  = request.args.get('categoria_id', '')
+    selected_subcategoria = request.args.get('subcategoria_id', '')
     selected_tipo_cont  = request.args.get('tipo_contabilizacion', '')
     selected_owner = request.args.get('owner_id', '')
 
@@ -66,6 +67,10 @@ def index():
     if selected_categoria:
         query = query.filter(
             Movimiento.comercio.has(categoria_id=int(selected_categoria))
+        )
+    if selected_subcategoria:
+        query = query.filter(
+            Movimiento.comercio.has(subcategoria_id=int(selected_subcategoria))
         )
     if selected_tipo_cont:
         query = query.filter(
@@ -116,6 +121,7 @@ def index():
         selected_cuenta=selected_cuenta,
         selected_comercio=selected_comercio,
         selected_categoria=selected_categoria,
+        selected_subcategoria=selected_subcategoria,
         selected_tipo_cont=selected_tipo_cont,
         # listas para los selects
         cuentas=cuentas,

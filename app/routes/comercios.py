@@ -1,7 +1,7 @@
 from flask import render_template, request, redirect, url_for, flash
 from . import bp
 from .. import db
-from ..models import Comercio, Regla, Categoria, Movimiento
+from ..models import Comercio, Regla, Categoria, Subcategoria, Movimiento
 from flask_login import current_user
 from ..utils.classifier import reclasificar_movimientos
 from sqlalchemy.orm import joinedload
@@ -49,7 +49,11 @@ def list_comercios():
 
     # Eager-load reglas y categoria para evitar N+1
     # Añadir un conteo de movimientos por comercio (LEFT JOIN semantics)
-    comercios = query.options(joinedload(Comercio.reglas), joinedload(Comercio.categoria)).all()
+    comercios = query.options(
+        joinedload(Comercio.reglas),
+        joinedload(Comercio.categoria),
+        joinedload(Comercio.subcategoria)
+    ).all()
 
     # Precalcular counts para evitar N+1
     # Conteo de movimientos: si admin puede filtrar por owner_id, sino solo del usuario actual
@@ -80,6 +84,7 @@ def list_comercios():
 @bp.route('/comercios/add', methods=['GET', 'POST'])
 def add_comercio():
     categorias = Categoria.query.order_by(Categoria.nombre).all()
+    subcategorias = Subcategoria.query.options(joinedload(Subcategoria.categoria)).order_by(Subcategoria.nombre).all()
     
     # Obtener datos pre-llenados de la URL
     pre_nombre = format_sentence_case(request.args.get('nombre', ''))
@@ -88,14 +93,23 @@ def add_comercio():
     if request.method == 'POST':
         nombre = request.form['nombre']
         descripcion = request.form.get('descripcion') or None
-        categoria_id = request.form['categoria_id']
+        categoria_id = int(request.form['categoria_id'])
+        subcategoria_id_raw = request.form.get('subcategoria_id') or ''
+        subcategoria_id = int(subcategoria_id_raw) if subcategoria_id_raw else None
         tipo_contabilizacion  = request.form['tipo_contabilizacion']
+
+        if subcategoria_id is not None:
+            subcategoria = Subcategoria.query.get_or_404(subcategoria_id)
+            if subcategoria.categoria_id != categoria_id:
+                flash('La subcategoría debe pertenecer a la categoría seleccionada.', 'danger')
+                return render_template('comercios_add.html', categorias=categorias, subcategorias=subcategorias, pre_nombre=pre_nombre, pre_regla=pre_regla)
 
         # Crear nuevo comercio
         nuevo_comercio = Comercio(
             nombre=nombre,
             descripcion=descripcion,
             categoria_id=categoria_id,
+            subcategoria_id=subcategoria_id,
             tipo_contabilizacion=tipo_contabilizacion
         )
         db.session.add(nuevo_comercio)
@@ -123,17 +137,26 @@ def add_comercio():
 
         flash('Comercio y reglas agregados correctamente.', 'success')
         return redirect(url_for('main.list_comercios'))
-    return render_template('comercios_add.html', categorias=categorias, pre_nombre=pre_nombre, pre_regla=pre_regla)
+    return render_template('comercios_add.html', categorias=categorias, subcategorias=subcategorias, pre_nombre=pre_nombre, pre_regla=pre_regla)
 
 
 @bp.route('/comercios/<int:comercio_id>/edit', methods=['GET', 'POST'])
 def edit_comercio(comercio_id):
     comercio = Comercio.query.get_or_404(comercio_id)
     categorias = Categoria.query.order_by(Categoria.nombre).all()
+    subcategorias = Subcategoria.query.options(joinedload(Subcategoria.categoria)).order_by(Subcategoria.nombre).all()
     if request.method == 'POST':
         comercio.nombre = request.form['nombre']
         comercio.descripcion = request.form.get('descripcion') or None
-        comercio.categoria_id = request.form['categoria_id']
+        comercio.categoria_id = int(request.form['categoria_id'])
+        subcategoria_id_raw = request.form.get('subcategoria_id') or ''
+        subcategoria_id = int(subcategoria_id_raw) if subcategoria_id_raw else None
+        if subcategoria_id is not None:
+            subcategoria = Subcategoria.query.get_or_404(subcategoria_id)
+            if subcategoria.categoria_id != comercio.categoria_id:
+                flash('La subcategoría debe pertenecer a la categoría seleccionada.', 'danger')
+                return render_template('comercios_edit.html', comercio=comercio, categorias=categorias, subcategorias=subcategorias)
+        comercio.subcategoria_id = subcategoria_id
         comercio.tipo_contabilizacion = request.form['tipo_contabilizacion']
         
         # Eliminar reglas antiguas
@@ -159,7 +182,7 @@ def edit_comercio(comercio_id):
 
         flash('Comercio actualizado', 'success')
         return redirect(url_for('main.list_comercios'))
-    return render_template('comercios_edit.html', comercio=comercio, categorias=categorias)
+    return render_template('comercios_edit.html', comercio=comercio, categorias=categorias, subcategorias=subcategorias)
 
 
 @bp.route('/comercios/<int:comercio_id>/delete', methods=['POST'])

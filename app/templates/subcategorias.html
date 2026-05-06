@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Subcategorías{% endblock %}
+{% block content %}
+<h1>Subcategorías</h1>
+<div class="mb-2">
+  <a href="{{ url_for('main.add_subcategoria') }}" class="btn btn-primary">Agregar Subcategoría</a>
+</div>
+<div class="mb-3">
+  <form method="get" action="{{ url_for('main.list_subcategorias') }}">
+    <div class="row g-2 align-items-center">
+      <div class="col-auto col-md-4">
+        <input type="text" name="q_name" class="form-control" placeholder="Nombre" value="{{ filters.q_name }}">
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-outline-primary">Filtrar</button>
+        <a href="{{ url_for('main.list_subcategorias') }}" class="btn btn-link">Limpiar</a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="table-container">
+  <div class="table-wrapper">
+    <table class="table table-hover mb-0" id="subcategorias-table">
+      <thead>
+        <tr>
+          <th data-column="nombre">Nombre <span class="sort-indicator" data-column="nombre"></span></th>
+          <th data-column="categoria">Categoría <span class="sort-indicator" data-column="categoria"></span></th>
+          <th data-column="comercios"># Comercios <span class="sort-indicator" data-column="comercios"></span></th>
+          <th data-column="movimientos">Movs <span class="sort-indicator" data-column="movimientos"></span></th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if subcategorias %}
+          {% for entry in subcategorias %}
+            {% set subcategoria = entry.subcategoria %}
+            <tr data-nombre="{{ subcategoria.nombre.lower() }}" data-categoria="{{ subcategoria.categoria.nombre.lower() }}" data-comercios="{{ entry.comercios_count }}" data-movimientos="{{ entry.movimientos_count }}">
+              <td>{{ subcategoria.nombre }}</td>
+              <td>{{ subcategoria.categoria.nombre }}</td>
+              <td>{{ entry.comercios_count }}</td>
+              <td>{{ entry.movimientos_count }}</td>
+              <td>
+                <a href="{{ url_for('main.edit_subcategoria', subcategoria_id=subcategoria.id) }}" class="btn btn-sm btn-secondary">Editar</a>
+                <form method="post" action="{{ url_for('main.delete_subcategoria', subcategoria_id=subcategoria.id) }}" style="display:inline" onsubmit="return confirm('¿Eliminar subcategoría {{ subcategoria.nombre }}?');">
+                  <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="5" class="text-center text-muted">No hay subcategorías registradas.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

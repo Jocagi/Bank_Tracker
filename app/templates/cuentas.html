@@ -37,13 +37,15 @@
       <th data-column="numero">Número <span class="sort-indicator" data-column="numero"></span></th>
       <th data-column="titular">Titular <span class="sort-indicator" data-column="titular"></span></th>
       <th data-column="moneda">Moneda <span class="sort-indicator" data-column="moneda"></span></th>
+      <th data-column="estado">Estado <span class="sort-indicator" data-column="estado"></span></th>
+      <th data-column="saldo">Saldo <span class="sort-indicator" data-column="saldo"></span></th>
   <th data-column="movimientos">Movs <span class="sort-indicator" data-column="movimientos"></span></th>
       <th>Acciones</th>
     </tr>
   </thead>
   <tbody id="cuentas-table-body">
     {% for c in cuentas %}
-    <tr data-banco="{{ c.banco.lower() }}" data-tipo="{{ c.tipo_cuenta.lower() }}" data-alias="{{ (c.alias or '').lower() }}" data-numero="{{ c.numero_cuenta }}" data-titular="{{ c.titular.lower() }}" data-moneda="{{ c.moneda }}" data-movimientos="{{ c.movimientos_count }}"{% if current_user.is_authenticated and current_user.is_admin() %} data-usuario="{{ (c.user.username if c.user else '').lower() }}"{% endif %}>
+    <tr data-banco="{{ c.banco.lower() }}" data-tipo="{{ c.tipo_cuenta.lower() }}" data-alias="{{ (c.alias or '').lower() }}" data-numero="{{ c.numero_cuenta }}" data-titular="{{ c.titular.lower() }}" data-moneda="{{ c.moneda }}" data-estado="{{ 'activa' if c.activa else 'inactiva' }}" data-saldo="{{ c.saldo or 0 }}" data-movimientos="{{ c.movimientos_count }}"{% if current_user.is_authenticated and current_user.is_admin() %} data-usuario="{{ (c.user.username if c.user else '').lower() }}"{% endif %}{% if not c.activa %} class="table-danger"{% endif %}>
   <td>
     {% if c.bank_logo_filename %}
       <img src="{{ url_for('static', filename='img/banks/' ~ c.bank_logo_filename) }}" alt="Logo {{ c.banco }}" style="height: 20px; width: 20px; object-fit: contain; margin-right: 6px;" onerror="this.style.display='none'">
@@ -58,6 +60,8 @@
       <td>{{ c.numero_cuenta }}</td>
       <td>{{ c.titular }}</td>
       <td>{{ c.moneda }}</td>
+      <td>{% if c.activa %}Activa{% else %}<span class="text-danger fw-semibold">Inactiva</span>{% endif %}</td>
+      <td class="text-end {% if not c.activa %}text-danger{% endif %}">{{ '%.2f'|format(c.saldo or 0) }}</td>
       <td>
         <a href="{{ url_for('main.index', cuenta_id=c.id) }}">{{ c.movimientos_count }}</a>
       </td>

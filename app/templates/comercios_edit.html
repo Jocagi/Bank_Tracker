@@ -22,6 +22,17 @@
     </select>
   </div>
   <div class="mb-3">
+    <label class="form-label">Subcategoría <span class="text-muted">(opcional)</span></label>
+    <select class="form-select" name="subcategoria_id" id="subcategoria_id">
+      <option value="">Sin subcategoría</option>
+      {% for subcategoria in subcategorias %}
+      <option value="{{ subcategoria.id }}" data-categoria-id="{{ subcategoria.categoria_id }}" {% if comercio.subcategoria_id == subcategoria.id %}selected{% endif %}>
+        {{ subcategoria.categoria.nombre }} - {{ subcategoria.nombre }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
   <label class="form-label">Tipo de contabilización</label>
   <select name="tipo_contabilizacion" class="form-select" required>
     <option value="ingresos"
@@ -97,6 +108,36 @@
 </form>
 
 <script>
+  const categoriaSelect = document.querySelector('select[name="categoria_id"]');
+  const subcategoriaSelect = document.getElementById('subcategoria_id');
+
+  function filtrarSubcategorias() {
+    if (!categoriaSelect || !subcategoriaSelect) return;
+    const categoriaId = categoriaSelect.value;
+    let selectedStillValid = false;
+
+    Array.from(subcategoriaSelect.options).forEach(option => {
+      if (!option.value) {
+        option.hidden = false;
+        return;
+      }
+      const matches = option.dataset.categoriaId === categoriaId;
+      option.hidden = !matches;
+      if (matches && option.selected) {
+        selectedStillValid = true;
+      }
+    });
+
+    if (!selectedStillValid) {
+      subcategoriaSelect.value = '';
+    }
+  }
+
+  if (categoriaSelect && subcategoriaSelect) {
+    categoriaSelect.addEventListener('change', filtrarSubcategorias);
+    filtrarSubcategorias();
+  }
+
   document.getElementById('reglas-container').addEventListener('click', function(e) {
     if (e.target.classList.contains('remove-regla')) {
       e.target.closest('.regla-row').remove();

@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Editar Subcategoría{% endblock %}
+{% block content %}
+<h1>Editar Subcategoría</h1>
+<form method="post">
+  <div class="mb-3">
+    <label class="form-label">Nombre</label>
+    <input class="form-control" name="nombre" value="{{ subcategoria.nombre }}" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Categoría</label>
+    <select class="form-select" name="categoria_id" required>
+      {% for cat in categorias %}
+      <option value="{{ cat.id }}" {% if cat.id == subcategoria.categoria_id %}selected{% endif %}>{{ cat.nombre }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="btn btn-primary">Guardar</button>
+  <a href="{{ url_for('main.list_subcategorias') }}" class="btn btn-secondary ms-2">Cancelar</a>
+</form>
+{% endblock %}

@@ -3,7 +3,7 @@ from dateutil.relativedelta import relativedelta
 from flask import render_template, request, flash
 from sqlalchemy import func
 from .. import db
-from ..models import Comercio, Categoria, Movimiento, TipoCambio, User, Cuenta, Regla
+from ..models import Comercio, Categoria, Subcategoria, Movimiento, TipoCambio, User, Cuenta, Regla
 from . import bp
 from flask_login import login_required, current_user
 
@@ -96,13 +96,29 @@ def dashboard():
     )
     prev_commerce_unclassified_q = apply_dashboard_exclusion(prev_commerce_unclassified_q)
 
-    prev_category_q = (
+    prev_subcategory_q = (
         db.session.query(
-            Categoria.nombre.label('nombre'),
+            func.coalesce(Subcategoria.nombre, db.literal('Sin subcategoría')).label('subnombre'),
+            Categoria.nombre.label('catnombre'),
             func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
         )
-        .join(Comercio, Comercio.categoria_id == Categoria.id)
-        .join(Movimiento, Movimiento.comercio_id == Comercio.id)
+        .join(Comercio, Movimiento.comercio_id == Comercio.id)
+        .outerjoin(Subcategoria, Comercio.subcategoria_id == Subcategoria.id)
+        .join(Categoria, Comercio.categoria_id == Categoria.id)
+        .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
+        .filter(Comercio.tipo_contabilizacion == 'gastos')
+        .filter(Movimiento.fecha >= prev_month_start)
+        .filter(Movimiento.fecha <= prev_month_end)
+    )
+    prev_subcategory_q = apply_dashboard_exclusion(prev_subcategory_q)
+
+    prev_category_q = (
+        db.session.query(
+            Categoria.nombre.label('catnombre'),
+            func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
+        )
+        .join(Comercio, Movimiento.comercio_id == Comercio.id)
+        .join(Categoria, Comercio.categoria_id == Categoria.id)
         .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
         .filter(Comercio.tipo_contabilizacion == 'gastos')
         .filter(Movimiento.fecha >= prev_month_start)
@@ -174,10 +190,69 @@ def dashboard():
         if unclassified and unclassified[0][1] != 0:
             prev_commerce_data.extend(unclassified)
 
+    # Execute category query
+    prev_category_data = list(prev_category_q.group_by(Categoria.id).order_by(func.sum(Movimiento.monto * TipoCambio.valor).desc()).all())
+    if prev_category_unclassified_q and not cat_id:
+        unclassified = prev_category_unclassified_q.all()
+        if unclassified and unclassified[0][1] != 0:
+            prev_category_data.extend(unclassified)
+
+    # Redefine and execute subcategory query for the month
+    prev_subcategory_q_month = (
+        db.session.query(
+            func.coalesce(Subcategoria.nombre, db.literal('Sin subcategoría')).label('subnombre'),
+            Categoria.nombre.label('catnombre'),
+            func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
+        )
+        .join(Comercio, Movimiento.comercio_id == Comercio.id)
+        .outerjoin(Subcategoria, Comercio.subcategoria_id == Subcategoria.id)
+        .join(Categoria, Comercio.categoria_id == Categoria.id)
+        .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
+        .filter(Comercio.tipo_contabilizacion == 'gastos')
+        .filter(Movimiento.fecha >= prev_month_start)
+        .filter(Movimiento.fecha <= prev_month_end)
+    )
+    prev_subcategory_q_month = apply_dashboard_exclusion(prev_subcategory_q_month)
+
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        if owner_id:
+            try:
+                oid = int(owner_id)
+                prev_subcategory_q_month = prev_subcategory_q_month.filter(Movimiento.user_id == oid)
+            except ValueError:
+                pass
+    else:
+        prev_subcategory_q_month = prev_subcategory_q_month.filter(Movimiento.user_id == current_user.id)
+
+    if cat_id:
+        try:
+            cat_id_int = int(cat_id)
+            prev_subcategory_q_month = prev_subcategory_q_month.filter(Comercio.categoria_id == cat_id_int)
+        except ValueError:
+            pass
+
+    prev_subcategory_data = prev_subcategory_q_month.group_by(func.coalesce(Subcategoria.nombre, db.literal('Sin subcategoría')), Categoria.nombre).order_by(func.sum(Movimiento.monto * TipoCambio.valor).asc()).all()
+
+    # NOW process all the data into pairs for charts
+    # Ensure data structure integrity before unpacking
     prev_month_commerce_pairs = [
         (lbl, max(0, -(total if total is not None else 0)))
         for lbl, total in prev_commerce_data
+        if isinstance(lbl, str) and isinstance(total, (int, float))
     ]
+
+    prev_month_category_pairs = [
+        (lbl, max(0, -(total if total is not None else 0)))
+        for lbl, total in prev_category_data
+        if isinstance(lbl, str) and isinstance(total, (int, float))
+    ]
+
+    prev_month_subcategory_pairs = [
+        (f"{cat} - {sub}", max(0, -(total if total is not None else 0)))
+        for sub, cat, total in prev_subcategory_data
+        if isinstance(sub, str) and isinstance(cat, str) and isinstance(total, (int, float))
+    ]
+
     prev_month_commerce_pairs = [pair for pair in prev_month_commerce_pairs if pair[1] > 0]
 
     if prev_month_commerce_pairs:
@@ -187,16 +262,6 @@ def dashboard():
     else:
         prev_month_commerce_labels = prev_month_commerce_values = []
 
-    prev_category_data = list(prev_category_q.group_by(Categoria.id).order_by(func.sum(Movimiento.monto * TipoCambio.valor).desc()).all())
-    if prev_category_unclassified_q and not cat_id:
-        unclassified = prev_category_unclassified_q.all()
-        if unclassified and unclassified[0][1] != 0:
-            prev_category_data.extend(unclassified)
-
-    prev_month_category_pairs = [
-        (lbl, max(0, -(total if total is not None else 0)))
-        for lbl, total in prev_category_data
-    ]
     prev_month_category_pairs = [pair for pair in prev_month_category_pairs if pair[1] > 0]
 
     if prev_month_category_pairs:
@@ -205,6 +270,22 @@ def dashboard():
         prev_month_category_values = [val for _, val in prev_month_category_pairs]
     else:
         prev_month_category_labels = prev_month_category_values = []
+
+    if prev_subcategory_data:
+        prev_month_subcategory_pairs = [
+            (f"{cat} - {sub}", max(0, -(total if total is not None else 0)))
+            for sub, cat, total in prev_subcategory_data
+            if isinstance(sub, str) and isinstance(cat, str) and total is not None
+        ]
+        prev_month_subcategory_pairs = [pair for pair in prev_month_subcategory_pairs if pair[1] > 0]
+        if prev_month_subcategory_pairs:
+            prev_month_subcategory_pairs.sort(key=lambda x: x[1], reverse=True)
+            prev_month_subcategory_labels = [lbl for lbl, _ in prev_month_subcategory_pairs]
+            prev_month_subcategory_values = [val for _, val in prev_month_subcategory_pairs]
+        else:
+            prev_month_subcategory_labels = prev_month_subcategory_values = []
+    else:
+        prev_month_subcategory_labels = prev_month_subcategory_values = []
 
     prev_account_data = prev_account_q.group_by(
         Cuenta.alias,
@@ -374,6 +455,64 @@ def dashboard():
     category_table = [
         (lbl, abs(total) if total is not None else 0) for lbl, total in cat_data
     ]
+
+    # ————————————————————————————————————————
+    # 4.b) Gastos por Subcategoría (GTQ) - Incluye comercio sin subcategoría
+    subcategory_q = (
+        db.session.query(
+            func.coalesce(Subcategoria.nombre, db.literal('Sin subcategoría')).label('subnombre'),
+            Categoria.nombre.label('catnombre'),
+            func.sum(Movimiento.monto * TipoCambio.valor).label('total_gtq')
+        )
+        .join(Comercio, Movimiento.comercio_id == Comercio.id)
+        .outerjoin(Subcategoria, Comercio.subcategoria_id == Subcategoria.id)
+        .join(Categoria, Comercio.categoria_id == Categoria.id)
+        .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
+        .filter(Comercio.tipo_contabilizacion == 'gastos')
+    )
+    subcategory_q = apply_dashboard_exclusion(subcategory_q)
+
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        if owner_id:
+            try:
+                oid = int(owner_id)
+                subcategory_q = subcategory_q.filter(Movimiento.user_id == oid)
+            except ValueError:
+                pass
+    else:
+        subcategory_q = subcategory_q.filter(Movimiento.user_id == current_user.id)
+
+    if d_start:
+        subcategory_q = subcategory_q.filter(Movimiento.fecha >= d_start)
+    if d_end:
+        subcategory_q = subcategory_q.filter(Movimiento.fecha <= d_end)
+    if cat_id:
+        try:
+            cat_id_int = int(cat_id)
+            subcategory_q = subcategory_q.filter(Comercio.categoria_id == cat_id_int)
+        except ValueError:
+            pass
+
+    subcategory_data = subcategory_q.group_by(func.coalesce(Subcategoria.nombre, db.literal('Sin subcategoría')), Categoria.nombre).order_by(func.sum(Movimiento.monto * TipoCambio.valor).asc()).all()
+
+    if subcategory_data:
+        subcategory_pairs = [
+            (f"{cat} - {sub}", max(0, -(total if total is not None else 0)))
+            for sub, cat, total in subcategory_data
+            if isinstance(sub, str) and isinstance(cat, str) and total is not None
+        ]
+        subcategory_pairs = [pair for pair in subcategory_pairs if pair[1] > 0]
+        if subcategory_pairs:
+            subcategory_pairs.sort(key=lambda x: x[1], reverse=True)
+            subcategory_labels = [lbl for lbl, _ in subcategory_pairs]
+            subcategory_values = [val for _, val in subcategory_pairs]
+            subcategory_table = subcategory_pairs
+        else:
+            subcategory_labels = subcategory_values = []
+            subcategory_table = []
+    else:
+        subcategory_labels = subcategory_values = []
+        subcategory_table = []
 
     # ————————————————————————————————————————
     # 5) Evolución Mensual de Gastos (GTQ) - Incluye movimientos sin clasificar
@@ -1035,10 +1174,15 @@ def dashboard():
         prev_month_label=prev_month_label,
         prev_month_category_labels=prev_month_category_labels,
         prev_month_category_values=prev_month_category_values,
+        prev_month_subcategory_labels=prev_month_subcategory_labels,
+        prev_month_subcategory_values=prev_month_subcategory_values,
         prev_month_commerce_labels=prev_month_commerce_labels,
         prev_month_commerce_values=prev_month_commerce_values,
         prev_month_account_labels=prev_month_account_labels,
         prev_month_account_values=prev_month_account_values,
+        subcategory_labels=subcategory_labels,
+        subcategory_values=subcategory_values,
+        subcategory_table=subcategory_table,
         # Tablas de gastos
         commerce_table=commerce_table,
         category_table=category_table,

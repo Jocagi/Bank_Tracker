@@ -108,6 +108,10 @@
         Categoría 
         <span class="sort-indicator" data-column="categoria"></span>
       </th>
+      <th data-column="subcategoria">
+        Subcategoría 
+        <span class="sort-indicator" data-column="subcategoria"></span>
+      </th>
       <th data-column="tipo">
         Tipo 
         <span class="sort-indicator" data-column="tipo"></span>
@@ -122,11 +126,12 @@
   </thead>
   <tbody id="comercios-table-body">
     {% for c in comercios %}
-    <tr data-nombre="{{ c.nombre.lower() }}" data-categoria="{{ c.categoria.nombre.lower() }}" data-tipo="{{ c.tipo_contabilizacion.lower() }}" data-movimientos="{{ c.movimientos_count }}">
+    <tr data-nombre="{{ c.nombre.lower() }}" data-categoria="{{ c.categoria.nombre.lower() }}" data-subcategoria="{{ c.subcategoria.nombre.lower() if c.subcategoria else '' }}" data-tipo="{{ c.tipo_contabilizacion.lower() }}" data-movimientos="{{ c.movimientos_count }}">
       <td>
         <span{% if c.descripcion %} title="{{ c.descripcion }}"{% endif %}>{{ c.nombre }}</span>
       </td>
       <td>{{ c.categoria.nombre }}</td>
+      <td>{{ c.subcategoria.nombre if c.subcategoria else 'Sin subcategoría' }}</td>
       <td>{{ c.tipo_contabilizacion.capitalize() }}</td>
       <td>
         {% if filters.owner_id %}

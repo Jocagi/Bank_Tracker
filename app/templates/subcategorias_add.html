@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}Agregar Subcategoría{% endblock %}
+{% block content %}
+<h1>Agregar Subcategoría</h1>
+<form method="post">
+  <div class="mb-3">
+    <label class="form-label">Nombre</label>
+    <input class="form-control" name="nombre" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Categoría</label>
+    <select class="form-select" name="categoria_id" required>
+      <option value="">Selecciona una categoría</option>
+      {% for cat in categorias %}
+      <option value="{{ cat.id }}">{{ cat.nombre }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="btn btn-primary">Guardar</button>
+  <a href="{{ url_for('main.list_subcategorias') }}" class="btn btn-secondary ms-2">Cancelar</a>
+</form>
+{% endblock %}
