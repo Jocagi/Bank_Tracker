@@ -79,7 +79,7 @@
         <select name="subcategoria_id" id="comercios-subcategoria-id" class="form-select">
           <option value="">Todas las subcategorías</option>
           <option value="0">Sin subcategoría</option>
-          {% for sub in all_subcategorias %}
+          {% for sub in subcategorias %}
           <option value="{{ sub.id }}" data-categoria-id="{{ sub.categoria_id }}" {% if filters.subcategoria_id|string == sub.id|string %}selected{% endif %}>{{ sub.categoria.nombre if sub.categoria else 'Sin categoría' }} - {{ sub.nombre }}</option>
           {% endfor %}
         </select>

@@ -86,7 +86,7 @@ def list_comercios():
         'regla': regla_q,
         'owner_id': owner_id or ''
     }
-    return render_template('comercios.html', comercios=comercios, categorias=categorias, subcategorias=subcategorias, all_subcategorias=all_subcategorias, filters=filters)
+    return render_template('comercios.html', comercios=comercios, categorias=categorias, subcategorias=subcategorias, filters=filters)
 
 
 @bp.route('/comercios/add', methods=['GET', 'POST'])
