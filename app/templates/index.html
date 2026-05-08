@@ -55,7 +55,8 @@
   #movimientos-table td:nth-child(4),
   #movimientos-table td:nth-child(5),
   #movimientos-table td:nth-child(9),
-  #movimientos-table td:nth-child(10) {
+  #movimientos-table td:nth-child(10),
+  #movimientos-table td:nth-child(11) {
     max-width: 140px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -137,6 +138,16 @@
       </select>
     </div>
     <div class="col-md-3">
+      <label for="subcategoria_id" class="form-label">Subcategoría</label>
+      <select id="subcategoria_id" name="subcategoria_id" class="form-select">
+        <option value="">-- Todas --</option>
+        <option value="0">Sin subcategoría</option>
+        {% for sub in all_subcategorias %}
+          <option value="{{ sub.id }}" data-categoria-id="{{ sub.categoria_id }}" {% if sub.id|string == selected_subcategoria %}selected{% endif %}>{{ sub.categoria.nombre if sub.categoria else 'Sin categoría' }} - {{ sub.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
       <label for="tipo_contabilizacion" class="form-label">Tipo</label>
       <select id="tipo_contabilizacion" name="tipo_contabilizacion" class="form-select">
         <option value="">-- Todos --</option>
@@ -185,13 +196,14 @@
       <th data-column="moneda">Moneda <span class="sort-indicator" data-column="moneda"></span></th>
       <th data-column="cuenta">Cuenta <span class="sort-indicator" data-column="cuenta"></span></th>
       <th data-column="comercio">Comercio <span class="sort-indicator" data-column="comercio"></span></th>
+          <th data-column="subcategoria">Subcategoría <span class="sort-indicator" data-column="subcategoria"></span></th>
       <th data-column="categoria">Categoría <span class="sort-indicator" data-column="categoria"></span></th>
       <th class="actions-col">Acciones</th>
     </tr>
   </thead>
   <tbody>
     {% for m in movimientos %}
-    <tr{% if m.excluir_dashboard %} class="table-warning"{% endif %} data-fecha="{{ m.fecha }}" data-descripcion="{{ m.descripcion.lower() }}" data-lugar="{{ (m.lugar or '').lower() }}" data-documento="{{ (m.numero_documento or '').lower() }}" data-monto="{{ m.monto }}" data-moneda="{{ m.moneda }}" data-cuenta="{{ m.cuenta.numero_cuenta }}" data-comercio="{{ (m.comercio.nombre if m.comercio else '').lower() }}" data-categoria="{{ (m.comercio.categoria.nombre.lower() if m.comercio and m.comercio.categoria else '') }}"{% if current_user.is_authenticated and current_user.is_admin() %} data-usuario="{{ (m.user.username if m.user else '').lower() }}"{% endif %}>
+    <tr{% if m.excluir_dashboard %} class="table-warning"{% endif %} data-fecha="{{ m.fecha }}" data-descripcion="{{ m.descripcion.lower() }}" data-lugar="{{ (m.lugar or '').lower() }}" data-documento="{{ (m.numero_documento or '').lower() }}" data-monto="{{ m.monto }}" data-moneda="{{ m.moneda }}" data-cuenta="{{ m.cuenta.numero_cuenta }}" data-comercio="{{ (m.comercio.nombre if m.comercio else '').lower() }}" data-subcategoria="{{ (m.comercio.subcategoria.nombre.lower() if m.comercio and m.comercio.subcategoria else '') }}" data-categoria="{{ (m.comercio.categoria.nombre.lower() if m.comercio and m.comercio.categoria else '') }}"{% if current_user.is_authenticated and current_user.is_admin() %} data-usuario="{{ (m.user.username if m.user else '').lower() }}"{% endif %}>
   <td>{{ m.fecha }}</td>
   {% if current_user.is_authenticated and current_user.is_admin() %}
   <td>{{ m.user.username if m.user else '-' }}</td>
@@ -203,6 +215,13 @@
       <td>{{ m.moneda }}</td>
       <td>{{ m.cuenta.numero_cuenta }}</td>
       <td>{{ m.comercio.nombre if m.comercio else '—' }}</td>
+      <td>
+        {% if m.comercio and m.comercio.subcategoria %}
+          {{ m.comercio.subcategoria.nombre }}
+        {% else %}
+          —
+        {% endif %}
+      </td>
       <td>
         {% if m.comercio and m.comercio.categoria %}
           {{ m.comercio.categoria.nombre }}
@@ -229,6 +248,42 @@
 {% endblock %}
 
 {% block scripts %}
+  <script>
+    // Filtrado dinámico de subcategorías
+    (function(){
+      const categorySelect = document.getElementById('categoria_id');
+      const subcategorySelect = document.getElementById('subcategoria_id');
+      if (!categorySelect || !subcategorySelect) return;
+
+      function updateSubcategories() {
+        const selectedCatId = categorySelect.value;
+        const currentSubcatValue = subcategorySelect.value;
+        
+        Array.from(subcategorySelect.options).forEach(option => {
+          if (option.value === '' || option.value === '0') {
+            option.style.display = 'block';
+          } else {
+            const optCatId = option.getAttribute('data-categoria-id');
+            if (selectedCatId === '') {
+              option.style.display = 'block';
+            } else {
+              option.style.display = optCatId === selectedCatId ? 'block' : 'none';
+            }
+          }
+        });
+
+        const isCurrentSubcatVisible = Array.from(subcategorySelect.options).some(
+          opt => opt.value === currentSubcatValue && opt.style.display !== 'none'
+        );
+        if (!isCurrentSubcatVisible && currentSubcatValue !== '') {
+          subcategorySelect.value = '';
+        }
+      }
+      
+      categorySelect.addEventListener('change', updateSubcategories);
+      updateSubcategories();
+    })();
+  </script>
   <script>
     (function(){
       const colClass = 'actions-col';

@@ -2,6 +2,7 @@ from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 from flask import render_template, request, flash
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 from .. import db
 from ..models import Comercio, Categoria, Subcategoria, Movimiento, TipoCambio, User, Cuenta, Regla
 from . import bp
@@ -18,8 +19,13 @@ def dashboard():
     start = request.args.get('start_date', '')
     end = request.args.get('end_date', '')
     cat_id = request.args.get('category_id', '')
+    subcat_id = request.args.get('subcategoria_id', '')
     owner_id = request.args.get('owner_id', '')
     table_limit = request.args.get('table_limit', '10')  # Valor por defecto: 10
+    try:
+        subcat_id_int = int(subcat_id) if subcat_id else None
+    except ValueError:
+        subcat_id_int = None
     
     # Verificar si hay filtros de fechas o categoría aplicados
     has_date_filters = bool(start or end)
@@ -48,6 +54,15 @@ def dashboard():
     # ————————————————————————————————————————
     # 2) Lista de categorías para el dropdown
     categorias = Categoria.query.order_by(Categoria.nombre).all()
+    all_subcategorias = Subcategoria.query.options(joinedload(Subcategoria.categoria)).order_by(Subcategoria.nombre).all()
+    subcategorias_query = Subcategoria.query.options(joinedload(Subcategoria.categoria)).order_by(Subcategoria.nombre)
+    if cat_id:
+        try:
+            cat_id_int = int(cat_id)
+            subcategorias_query = subcategorias_query.filter(Subcategoria.categoria_id == cat_id_int)
+        except ValueError:
+            pass
+    subcategorias = subcategorias_query.all()
 
     # Lista de usuarios (solo necesaria si es admin)
     users = []
@@ -183,6 +198,13 @@ def dashboard():
             prev_category_unclassified_q = None
         except ValueError:
             pass
+    if subcat_id_int is not None:
+        prev_commerce_q = prev_commerce_q.filter(Comercio.subcategoria_id == subcat_id_int)
+        prev_category_q = prev_category_q.filter(Comercio.subcategoria_id == subcat_id_int)
+        prev_subcategory_q = prev_subcategory_q.filter(Comercio.subcategoria_id == subcat_id_int)
+        prev_account_q = prev_account_q.filter(Comercio.subcategoria_id == subcat_id_int)
+        prev_commerce_unclassified_q = None
+        prev_category_unclassified_q = None
 
     prev_commerce_data = list(prev_commerce_q.group_by(Comercio.id).order_by(func.sum(Movimiento.monto * TipoCambio.valor).desc()).all())
     if prev_commerce_unclassified_q and not cat_id:
@@ -230,6 +252,8 @@ def dashboard():
             prev_subcategory_q_month = prev_subcategory_q_month.filter(Comercio.categoria_id == cat_id_int)
         except ValueError:
             pass
+    if subcat_id_int is not None:
+        prev_subcategory_q_month = prev_subcategory_q_month.filter(Comercio.subcategoria_id == subcat_id_int)
 
     prev_subcategory_data = prev_subcategory_q_month.group_by(func.coalesce(Subcategoria.nombre, db.literal('Sin subcategoría')), Categoria.nombre).order_by(func.sum(Movimiento.monto * TipoCambio.valor).asc()).all()
 
@@ -569,6 +593,9 @@ def dashboard():
             month_unclassified_q = None
         except ValueError:
             pass
+    if subcat_id_int is not None:
+        month_classified_q = month_classified_q.filter(Comercio.subcategoria_id == subcat_id_int)
+        month_unclassified_q = None
 
     # Ejecutar consultas y combinar resultados por mes
     month_classified_data = month_classified_q.group_by(mes).order_by(mes).all()
@@ -644,6 +671,9 @@ def dashboard():
             income_month_unclassified_q = None
         except ValueError:
             pass
+    if subcat_id_int is not None:
+        income_month_classified_q = income_month_classified_q.filter(Comercio.subcategoria_id == subcat_id_int)
+        income_month_unclassified_q = None
 
     # Ejecutar consultas y combinar resultados por mes
     income_month_classified_data = income_month_classified_q.group_by(mes).order_by(mes).all()
@@ -733,6 +763,9 @@ def dashboard():
     if d_end:
         income_classified_q = income_classified_q.filter(Movimiento.fecha <= d_end)
         income_unclassified_q = income_unclassified_q.filter(Movimiento.fecha <= d_end)
+    if subcat_id_int is not None:
+        income_classified_q = income_classified_q.filter(Comercio.subcategoria_id == subcat_id_int)
+        income_unclassified_q = None
     
     # Ejecutar consultas y combinar resultados
     income_classified_data = income_classified_q.group_by(Comercio.id).all()
@@ -787,6 +820,8 @@ def dashboard():
             top_gastos_q = top_gastos_q.filter(Comercio.categoria_id == cat_id_int)
         except ValueError:
             pass
+    if subcat_id_int is not None:
+        top_gastos_q = top_gastos_q.filter(Comercio.subcategoria_id == subcat_id_int)
     
     # Ejecutar consulta y obtener top 10
     top_gastos_data = top_gastos_q.order_by((Movimiento.monto * TipoCambio.valor).asc()).limit(10).all()
@@ -839,6 +874,8 @@ def dashboard():
             gastos_dia_q = gastos_dia_q.filter(Comercio.categoria_id == cat_id_int)
         except ValueError:
             pass
+    if subcat_id_int is not None:
+        gastos_dia_q = gastos_dia_q.filter(Comercio.subcategoria_id == subcat_id_int)
     
     # Ejecutar consulta
     gastos_dia_data = gastos_dia_q.group_by(dia_semana).all()
@@ -889,6 +926,8 @@ def dashboard():
             rangos_gastos_q = rangos_gastos_q.filter(Comercio.categoria_id == cat_id_int)
         except ValueError:
             pass
+    if subcat_id_int is not None:
+        rangos_gastos_q = rangos_gastos_q.filter(Comercio.subcategoria_id == subcat_id_int)
     
     # Obtener todos los gastos
     rangos_data = rangos_gastos_q.all()
@@ -954,6 +993,8 @@ def dashboard():
             heatmap_gastos_q = heatmap_gastos_q.filter(Comercio.categoria_id == cat_id_int)
         except ValueError:
             pass
+    if subcat_id_int is not None:
+        heatmap_gastos_q = heatmap_gastos_q.filter(Comercio.subcategoria_id == subcat_id_int)
     
     heatmap_data = heatmap_gastos_q.group_by(Movimiento.fecha).all()
     
@@ -1012,6 +1053,8 @@ def dashboard():
             recurrentes_q = recurrentes_q.filter(Comercio.categoria_id == cat_id_int)
         except ValueError:
             pass
+    if subcat_id_int is not None:
+        recurrentes_q = recurrentes_q.filter(Comercio.subcategoria_id == subcat_id_int)
     
     recurrentes_data = recurrentes_q.group_by(Movimiento.descripcion).all()
     
@@ -1067,6 +1110,8 @@ def dashboard():
             cuentas_q = cuentas_q.filter(Comercio.categoria_id == cat_id_int)
         except ValueError:
             pass
+    if subcat_id_int is not None:
+        cuentas_q = cuentas_q.filter(Comercio.subcategoria_id == subcat_id_int)
 
     cuentas_data = cuentas_q.group_by(Cuenta.alias, func.concat(Cuenta.banco, ' - ', Cuenta.tipo_cuenta), Movimiento.moneda).all()
 
@@ -1133,6 +1178,8 @@ def dashboard():
             comercios_recurrentes_query = comercios_recurrentes_query.filter(Comercio.categoria_id == cat_id_int)
         except ValueError:
             pass
+    if subcat_id_int is not None:
+        comercios_recurrentes_query = comercios_recurrentes_query.filter(Comercio.subcategoria_id == subcat_id_int)
 
     # Agrupar, ordenar y limitar a top 10
     comercios_recurrentes_result = comercios_recurrentes_query.group_by(
@@ -1195,5 +1242,8 @@ def dashboard():
         start_date=start,
         end_date=end,
         selected_cat=cat_id,
+        selected_subcat=subcat_id,
+        subcategorias=subcategorias,
+        all_subcategorias=all_subcategorias,
         table_limit=table_limit
     )

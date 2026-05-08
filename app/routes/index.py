@@ -5,7 +5,7 @@ from flask import render_template, request, flash
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
 from .. import db
-from ..models import Movimiento, Cuenta, Comercio, Categoria, TipoCambio, User, Archivo, Factura
+from ..models import Movimiento, Cuenta, Comercio, Categoria, Subcategoria, TipoCambio, User, Archivo, Factura
 from ..models import Movimiento as MovimientoModel
 from . import bp
 from flask import redirect, url_for
@@ -88,6 +88,7 @@ def index():
         selected_cuenta,
         selected_comercio,
         selected_categoria,
+        selected_subcategoria,
         selected_tipo_cont,
     ])
 
@@ -106,6 +107,15 @@ def index():
     cuentas     = Cuenta.query.order_by(Cuenta.numero_cuenta).all()
     comercios   = Comercio.query.order_by(Comercio.nombre).all()
     categorias  = Categoria.query.order_by(Categoria.nombre).all()
+    all_subcategorias = Subcategoria.query.options(joinedload(Subcategoria.categoria)).order_by(Subcategoria.nombre).all()
+    subcategorias_query = Subcategoria.query.options(joinedload(Subcategoria.categoria)).order_by(Subcategoria.nombre)
+    if selected_categoria:
+        try:
+            selected_categoria_id = int(selected_categoria)
+            subcategorias_query = subcategorias_query.filter(Subcategoria.categoria_id == selected_categoria_id)
+        except ValueError:
+            pass
+    subcategorias = subcategorias_query.all()
     tipos       = ['ingresos', 'gastos', 'transferencias']
 
     return render_template(
@@ -127,6 +137,8 @@ def index():
         cuentas=cuentas,
         comercios=comercios,
         categorias=categorias,
+        subcategorias=subcategorias,
+        all_subcategorias=all_subcategorias,
         tipos_contabilizacion=tipos
         , users=users, selected_owner=selected_owner
     )

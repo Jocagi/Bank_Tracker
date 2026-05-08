@@ -2,7 +2,7 @@ import os
 import hashlib
 from datetime import datetime
 from .. import db
-from ..models import Archivo, Factura, FacturaDetalle
+from ..models import Archivo, Factura, FacturaDetalle, Cuenta, Movimiento
 from .parser.monet_aho_gyt_xlsx import load_movements_monet_aho_gyt_xlsx
 from .parser.monet_aho_gyt_pdf import load_movements_monet_aho_gyt_pdf
 from .parser.tc_gyt_xlsx import load_movements_tc_gyt_xlsx
@@ -15,9 +15,11 @@ from .parser.tc_bi_xls import load_movements_bi_tc_xls
 from .parser.tc_bi_email_pdf import load_movements_bi_tc_email_pdf
 from .parser.tc_promerica_xls import load_movements_promerica_tc_xls
 from .parser.tc_bac_csv import load_movements_bac_tc_csv
+from .parser.ahorro_bac_csv import load_movements_ahorro_bac_csv
 from .parser.tc_bi_virtual_xls import load_movements_bi_tc_virtual_xls
 from .parser.generic_movimientos import load_movements_generic
 from .parser.ahorro_interbanco_pdf import parse_ahorro_interbanco_pdf_file
+from .parser.monet_nexa_pdf import load_movements_monet_nexa_pdf
 from .classifier import clasificar_movimientos
 from .parser.facturas_fel_xml import parse_factura_fel_xml
 
@@ -126,6 +128,12 @@ def load_movements(filepath, archivo_obj, tipo_archivo):
             count = load_movements_monet_bi_ec_integrado_pdf(filepath, archivo_obj)
         else:
             raise ValueError('Extensión no válida para formato monet_bi_ec_integrado.')
+    elif tipo_archivo == 'monet-nexa':
+        archivo_obj.banco = 'NEXA'
+        if extension in ('.pdf',):
+            count = load_movements_monet_nexa_pdf(filepath, archivo_obj)
+        else:
+            raise ValueError('Extensión no válida para formato monet-nexa.')
     elif tipo_archivo == 'tc-bi':
         archivo_obj.banco = 'BI'
         if extension in ('.xls', '.xlsx'):
@@ -161,6 +169,12 @@ def load_movements(filepath, archivo_obj, tipo_archivo):
             count = load_movements_bac_tc_csv(filepath, archivo_obj)
         else:
             raise ValueError('Extensión no válida para formato tc-bac.')
+    elif tipo_archivo == 'ahorro-bac':
+        archivo_obj.banco = 'BAC'
+        if extension in ('.csv',):
+            count = load_movements_ahorro_bac_csv(filepath, archivo_obj)
+        else:
+            raise ValueError('Extensión no válida para formato ahorro-bac.')
     elif tipo_archivo == 'ahorro-interbanco':
         archivo_obj.banco = 'Interbanco'
         if extension in ('.pdf',):
@@ -170,8 +184,22 @@ def load_movements(filepath, archivo_obj, tipo_archivo):
     else:
         raise ValueError(f'Tipo de archivo "{tipo_archivo}" no soportado.')
 
+    # Marcar la última carga de estado de cuenta para las cuentas afectadas por este archivo.
+    cuenta_ids = [
+        row[0]
+        for row in db.session.query(Movimiento.cuenta_id)
+        .filter(Movimiento.archivo_id == archivo_obj.id)
+        .distinct()
+        .all()
+    ]
+    if cuenta_ids:
+        now = datetime.utcnow()
+        for cuenta in Cuenta.query.filter(Cuenta.id.in_(cuenta_ids)).all():
+            cuenta.ultima_carga_estado_cuenta = now
+
     # 3) Clasificar todos los movimientos nuevos
     clasificar_movimientos()
+    db.session.commit()
 
     return count
 

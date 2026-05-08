@@ -1,5 +1,6 @@
 from flask import render_template, request, redirect, url_for, flash
 import re
+from datetime import datetime
 from . import bp
 from .. import db
 from ..models import Cuenta, Movimiento
@@ -17,27 +18,41 @@ def list_cuentas():
 
     # Support optional owner filter for admins
     selected_owner = request.args.get('owner_id', '')
+    stale_month = request.args.get('stale_month', '') == '1'
+    owner_id = None
+    if selected_owner:
+        try:
+            owner_id = int(selected_owner)
+        except ValueError:
+            selected_owner = ''
     users = []
+    cuentas_query = Cuenta.query
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
         users = User.query.order_by(User.username).all()
-        if selected_owner:
-            cuentas = Cuenta.query.filter_by(user_id=int(selected_owner)).order_by(
-                Cuenta.banco, Cuenta.tipo_cuenta, Cuenta.moneda, Cuenta.alias, Cuenta.numero_cuenta
-            ).all()
-        else:
-            cuentas = Cuenta.query.order_by(
-                Cuenta.banco, Cuenta.tipo_cuenta, Cuenta.moneda, Cuenta.alias, Cuenta.numero_cuenta
-            ).all()
+        if owner_id is not None:
+            cuentas_query = cuentas_query.filter(Cuenta.user_id == owner_id)
     else:
-        cuentas = Cuenta.query.filter_by(user_id=current_user.id).order_by(
-            Cuenta.banco, Cuenta.tipo_cuenta, Cuenta.moneda, Cuenta.alias, Cuenta.numero_cuenta
-        ).all()
+        cuentas_query = cuentas_query.filter(Cuenta.user_id == current_user.id)
+
+    if stale_month:
+        start_of_month = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        cuentas_query = cuentas_query.filter(
+            Cuenta.activa.is_(True),
+            db.or_(
+                Cuenta.ultima_carga_estado_cuenta.is_(None),
+                Cuenta.ultima_carga_estado_cuenta < start_of_month,
+            ),
+        )
+
+    cuentas = cuentas_query.order_by(
+        Cuenta.banco, Cuenta.tipo_cuenta, Cuenta.moneda, Cuenta.alias, Cuenta.numero_cuenta
+    ).all()
     # Precalcular conteo de movimientos por cuenta (solo movimientos del usuario filtrado o del admin segun selection)
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
         # Si hay filtro de owner, limitar a ese usuario; si no, conteo global
         mov_query = db.session.query(Movimiento.cuenta_id, db.func.count(Movimiento.id)).group_by(Movimiento.cuenta_id)
-        if selected_owner:
-            mov_query = mov_query.filter(Movimiento.user_id == int(selected_owner))
+        if owner_id is not None:
+            mov_query = mov_query.filter(Movimiento.user_id == owner_id)
     else:
         mov_query = db.session.query(Movimiento.cuenta_id, db.func.count(Movimiento.id))\
             .filter(Movimiento.user_id == current_user.id)\
@@ -49,7 +64,14 @@ def list_cuentas():
     cuentas_all = None
     if hasattr(current_user, 'is_admin') and current_user.is_admin():
         cuentas_all = Cuenta.query.order_by(Cuenta.banco, Cuenta.tipo_cuenta, Cuenta.moneda, Cuenta.alias, Cuenta.numero_cuenta).all()
-    return render_template('cuentas.html', cuentas=cuentas, users=users, selected_owner=selected_owner, cuentas_all=cuentas_all)
+    return render_template(
+        'cuentas.html',
+        cuentas=cuentas,
+        users=users,
+        selected_owner=selected_owner,
+        cuentas_all=cuentas_all,
+        stale_month=stale_month,
+    )
 
 
 @bp.route('/cuentas/<int:source_id>/merge', methods=['POST'])

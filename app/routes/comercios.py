@@ -24,6 +24,7 @@ def list_comercios():
     # Filtros desde query string
     nombre_q = request.args.get('q_name', '').strip()
     categoria_id = request.args.get('categoria_id', type=int)
+    subcategoria_id = request.args.get('subcategoria_id', type=int)
     tipo = request.args.get('tipo', '').strip()
     regla_q = request.args.get('regla', '').strip()
     owner_id = request.args.get('owner_id', type=int)
@@ -32,6 +33,8 @@ def list_comercios():
     query = Comercio.query
     if categoria_id:
         query = query.filter(Comercio.categoria_id == categoria_id)
+    if subcategoria_id:
+        query = query.filter(Comercio.subcategoria_id == subcategoria_id)
     if tipo:
         query = query.filter(Comercio.tipo_contabilizacion == tipo)
     if nombre_q:
@@ -71,14 +74,19 @@ def list_comercios():
 
     # Pasar listas auxiliares (categorias) y valores de filtro actuales para la plantilla
     categorias = Categoria.query.order_by(Categoria.nombre).all()
+    subcategorias_query = Subcategoria.query.options(joinedload(Subcategoria.categoria)).order_by(Subcategoria.nombre)
+    if categoria_id:
+        subcategorias_query = subcategorias_query.filter(Subcategoria.categoria_id == categoria_id)
+    subcategorias = subcategorias_query.all()
     filters = {
         'q_name': nombre_q,
         'categoria_id': categoria_id or '',
+        'subcategoria_id': subcategoria_id or '',
         'tipo': tipo,
         'regla': regla_q,
         'owner_id': owner_id or ''
     }
-    return render_template('comercios.html', comercios=comercios, categorias=categorias, filters=filters)
+    return render_template('comercios.html', comercios=comercios, categorias=categorias, subcategorias=subcategorias, all_subcategorias=all_subcategorias, filters=filters)
 
 
 @bp.route('/comercios/add', methods=['GET', 'POST'])

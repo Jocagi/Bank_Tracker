@@ -87,6 +87,7 @@ class Cuenta(db.Model):
     moneda = db.Column(db.String(10), nullable=False)
     activa = db.Column(db.Boolean, nullable=False, default=True)
     saldo = db.Column(db.Float, nullable=False, default=0.0)
+    ultima_carga_estado_cuenta = db.Column(db.DateTime, nullable=True)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 

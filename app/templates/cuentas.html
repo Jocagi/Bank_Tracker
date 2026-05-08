@@ -6,8 +6,8 @@
   <a href="{{ url_for('main.add_cuenta') }}" class="btn btn-primary">Agregar Cuenta</a>
 </div>
 {# Owner filter for admins #}
-{% if current_user.is_authenticated and current_user.is_admin() %}
 <form method="get" class="mb-3 row g-3">
+  {% if current_user.is_authenticated and current_user.is_admin() %}
   <div class="col-md-4">
     <label class="form-label">Usuario</label>
     <select name="owner_id" class="form-select">
@@ -17,12 +17,13 @@
       {% endfor %}
     </select>
   </div>
-  <div class="col-md-2 align-self-end">
-    <button class="btn btn-primary">Filtrar</button>
-    <a href="{{ url_for('main.list_cuentas') }}" class="btn btn-secondary ms-2">Limpiar</a>
+  {% endif %}
+  <div class="{% if current_user.is_authenticated and current_user.is_admin() %}col-md-5{% else %}col-md-7{% endif %} align-self-end">
+    <button class="btn {% if stale_month %}btn-warning{% else %}btn-outline-warning{% endif %}" {% if not stale_month %}name="stale_month" value="1"{% endif %}>
+      {% if stale_month %}Mostrar todas las cuentas{% else %}Solo activas sin estado de cuenta este mes{% endif %}
+    </button>
   </div>
 </form>
-{% endif %}
 <div class="table-container">
   <div class="table-wrapper">
     <table class="table table-hover mb-0">
@@ -38,6 +39,7 @@
       <th data-column="titular">Titular <span class="sort-indicator" data-column="titular"></span></th>
       <th data-column="moneda">Moneda <span class="sort-indicator" data-column="moneda"></span></th>
       <th data-column="estado">Estado <span class="sort-indicator" data-column="estado"></span></th>
+        <th data-column="ultima-actualizacion">Últ. Estado Cuenta <span class="sort-indicator" data-column="ultima-actualizacion"></span></th>
       <th data-column="saldo">Saldo <span class="sort-indicator" data-column="saldo"></span></th>
   <th data-column="movimientos">Movs <span class="sort-indicator" data-column="movimientos"></span></th>
       <th>Acciones</th>
@@ -45,7 +47,7 @@
   </thead>
   <tbody id="cuentas-table-body">
     {% for c in cuentas %}
-    <tr data-banco="{{ c.banco.lower() }}" data-tipo="{{ c.tipo_cuenta.lower() }}" data-alias="{{ (c.alias or '').lower() }}" data-numero="{{ c.numero_cuenta }}" data-titular="{{ c.titular.lower() }}" data-moneda="{{ c.moneda }}" data-estado="{{ 'activa' if c.activa else 'inactiva' }}" data-saldo="{{ c.saldo or 0 }}" data-movimientos="{{ c.movimientos_count }}"{% if current_user.is_authenticated and current_user.is_admin() %} data-usuario="{{ (c.user.username if c.user else '').lower() }}"{% endif %}{% if not c.activa %} class="table-danger"{% endif %}>
+    <tr data-banco="{{ c.banco.lower() }}" data-tipo="{{ c.tipo_cuenta.lower() }}" data-alias="{{ (c.alias or '').lower() }}" data-numero="{{ c.numero_cuenta }}" data-titular="{{ c.titular.lower() }}" data-moneda="{{ c.moneda }}" data-estado="{{ 'activa' if c.activa else 'inactiva' }}" data-ultima-actualizacion="{{ c.ultima_carga_estado_cuenta.isoformat() if c.ultima_carga_estado_cuenta else '' }}" data-saldo="{{ c.saldo or 0 }}" data-movimientos="{{ c.movimientos_count }}"{% if current_user.is_authenticated and current_user.is_admin() %} data-usuario="{{ (c.user.username if c.user else '').lower() }}"{% endif %}{% if not c.activa %} class="table-danger"{% endif %}>
   <td>
     {% if c.bank_logo_filename %}
       <img src="{{ url_for('static', filename='img/banks/' ~ c.bank_logo_filename) }}" alt="Logo {{ c.banco }}" style="height: 20px; width: 20px; object-fit: contain; margin-right: 6px;" onerror="this.style.display='none'">
@@ -61,6 +63,7 @@
       <td>{{ c.titular }}</td>
       <td>{{ c.moneda }}</td>
       <td>{% if c.activa %}Activa{% else %}<span class="text-danger fw-semibold">Inactiva</span>{% endif %}</td>
+      <td>{{ c.ultima_carga_estado_cuenta.strftime('%d/%m/%Y %H:%M') if c.ultima_carga_estado_cuenta else '-' }}</td>
       <td class="text-end {% if not c.activa %}text-danger{% endif %}">{{ '%.2f'|format(c.saldo or 0) }}</td>
       <td>
         <a href="{{ url_for('main.index', cuenta_id=c.id) }}">{{ c.movimientos_count }}</a>
