@@ -3,7 +3,7 @@ import hashlib
 from datetime import datetime, timedelta
 from flask import render_template, request, flash
 from sqlalchemy.orm import joinedload
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from .. import db
 from ..models import Movimiento, Cuenta, Comercio, Categoria, Subcategoria, TipoCambio, User, Archivo, Factura
 from ..models import Movimiento as MovimientoModel
@@ -69,9 +69,21 @@ def index():
             Movimiento.comercio.has(categoria_id=int(selected_categoria))
         )
     if selected_subcategoria:
-        query = query.filter(
-            Movimiento.comercio.has(subcategoria_id=int(selected_subcategoria))
-        )
+        try:
+            selected_subcategoria_id = int(selected_subcategoria)
+            if selected_subcategoria_id == 0:
+                query = query.filter(
+                    or_(
+                        Movimiento.comercio_id.is_(None),
+                        Movimiento.comercio.has(Comercio.subcategoria_id.is_(None))
+                    )
+                )
+            else:
+                query = query.filter(
+                    Movimiento.comercio.has(subcategoria_id=selected_subcategoria_id)
+                )
+        except ValueError:
+            pass
     if selected_tipo_cont:
         query = query.filter(
             Movimiento.comercio.has(tipo_contabilizacion=selected_tipo_cont)

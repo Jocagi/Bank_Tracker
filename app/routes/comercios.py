@@ -24,7 +24,13 @@ def list_comercios():
     # Filtros desde query string
     nombre_q = request.args.get('q_name', '').strip()
     categoria_id = request.args.get('categoria_id', type=int)
-    subcategoria_id = request.args.get('subcategoria_id', type=int)
+    subcategoria_id_raw = request.args.get('subcategoria_id', '').strip()
+    subcategoria_id = None
+    if subcategoria_id_raw != '':
+        try:
+            subcategoria_id = int(subcategoria_id_raw)
+        except ValueError:
+            subcategoria_id = None
     tipo = request.args.get('tipo', '').strip()
     regla_q = request.args.get('regla', '').strip()
     owner_id = request.args.get('owner_id', type=int)
@@ -33,8 +39,11 @@ def list_comercios():
     query = Comercio.query
     if categoria_id:
         query = query.filter(Comercio.categoria_id == categoria_id)
-    if subcategoria_id:
-        query = query.filter(Comercio.subcategoria_id == subcategoria_id)
+    if subcategoria_id is not None:
+        if subcategoria_id == 0:
+            query = query.filter(Comercio.subcategoria_id.is_(None))
+        else:
+            query = query.filter(Comercio.subcategoria_id == subcategoria_id)
     if tipo:
         query = query.filter(Comercio.tipo_contabilizacion == tipo)
     if nombre_q:
@@ -81,7 +90,7 @@ def list_comercios():
     filters = {
         'q_name': nombre_q,
         'categoria_id': categoria_id or '',
-        'subcategoria_id': subcategoria_id or '',
+        'subcategoria_id': subcategoria_id_raw,
         'tipo': tipo,
         'regla': regla_q,
         'owner_id': owner_id or ''
