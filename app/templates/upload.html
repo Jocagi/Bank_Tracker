@@ -4,24 +4,33 @@
 <h1>Cargar Archivo</h1>
 <form method="post" enctype="multipart/form-data">
   <div class="mb-3">
-    <label for="tipo_archivo" class="form-label">Tipo Archivo</label>
+    <label for="banco" class="form-label">Banco</label>
+    <div class="input-group">
+      <select class="form-select" name="banco" id="banco">
+        <option value="">-- Selecciona un banco --</option>
+        <option value="GYT">GYT</option>
+        <option value="BI">BI</option>
+        <option value="Nexa">Nexa</option>
+        <option value="BAC">BAC</option>
+        <option value="Promerica">Promerica</option>
+        <option value="Interbanco">Interbanco</option>
+        <option value="generic">Genérico</option>
+      </select>
+      <img id="banco-logo" src="" alt="" style="max-height: 40px; max-width: 40px; object-fit: contain; padding: 8px; display: none;">
+    </div>
+  </div>
+
+  <div class="mb-3" id="tipo-cuenta-group" style="display: none;">
+    <label for="tipo_cuenta" class="form-label">Tipo de Cuenta</label>
+    <select class="form-select" name="tipo_cuenta" id="tipo_cuenta">
+      <option value="">-- Selecciona un tipo de cuenta --</option>
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label for="tipo_archivo" class="form-label">Parsers Disponibles</label>
     <select class="form-select" name="tipo_archivo" id="tipo_archivo" required>
-      <option value="generic-movimientos">Movimientos Genérico (xlsx/csv)</option>
-      <option value="monet-aho-gyt">Monetaria/Ahorro GYT</option>
-      <option value="tc-gyt">Tarjeta de Crédito GYT</option>
-      <option value="monet-bi">Monetaria BI</option>
-      <option value="monet-bi-email">Monetaria BI (Email)</option>
-      <option value="monet-bi-legacy">Monetaria BI (Legacy Pre-Feb 2023)</option>
-      <option value="monet_bi_ec_integrado">Monetaria BI (EC Integrado)</option>
-      <option value="monet-nexa">Monetaria Nexa (PDF)</option>
-      <option value="tc-bi">Tarjeta de Crédito BI</option>
-      <option value="tc-bi-email">Tarjeta de Crédito BI (Email)</option>
-      <option value="tc-online-bi">BI-Credit Online</option>
-      <option value="tc-promerica">Tarjeta de Crédito Promerica</option>
-      <option value="tc-bac">Tarjeta de Crédito BAC</option>
-      <option value="ahorro-bac">Ahorro BAC</option>
-      <option value="ahorro-interbanco">Ahorro Interbanco</option>
-      <option value="factura-fel-xml">Factura FEL (XML)</option>
+      <option value="">-- Selecciona un parser --</option>
     </select>
   </div>
   <div class="mb-3">
@@ -31,102 +40,312 @@
       <a class="link-primary" href="{{ url_for('static', filename='templates/generic_movimientos_template.csv') }}">Descargar plantilla genérica (CSV)</a>
     </div>
   </div>
-  <button type="submit" class="btn btn-primary" id="upload-btn">Cargar</button>
+  <button type="submit" class="btn btn-primary" id="upload-btn" disabled>Cargar</button>
   <div id="file-info" class="mt-2 text-muted" style="display: none;"></div>
 </form>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  // Mapeo de tipos a extensiones según app/utils/file_loader.py
-  (function(){
-    const mapping = {
-      'monet-aho-gyt': ['.xlsx', '.xls', '.pdf'],
-      'tc-gyt': ['.xlsx', '.xls', '.pdf'],
-      'monet-bi': ['.pdf'],
-      'monet-bi-email': ['.pdf'],
-      'monet-bi-legacy': ['.pdf'],
-      'monet_bi_ec_integrado_pdf': ['.pdf'],
-      'monet-nexa': ['.pdf'],
-      'tc-bi': ['.xls', '.xlsx'],
-      'tc-bi-email': ['.pdf'],
-      'tc-online-bi': ['.xls', '.xlsx'],
-      'generic-movimientos': ['.xls', '.xlsx', '.csv'],
-      'tc-promerica': ['.xls', '.xlsx'],
-      'tc-bac': ['.csv'],
-      'ahorro-bac': ['.csv'],
-      'ahorro-interbanco': ['.pdf'],
-      'factura-fel-xml': ['.xml']
-    };
-
-    function extsToAccept(exts){ return exts.join(','); }
-    function extsToLabel(exts, typeName){
-      return 'Archivo (' + typeName + ') [' + exts.join(' ') + ']';
-    }
-
-    function update(){
-      const select = document.getElementById('tipo_archivo');
-      const files = document.getElementById('files');
-      const help = document.getElementById('file_help');
-      const templateLink = document.getElementById('template-link');
-
-      if (!select) { console.warn('select #tipo_archivo not found'); return; }
-      if (!files || !help) { console.warn('files/help element missing', {files, help}); }
-
-      const val = select.value;
-      const typeName = (select.options && select.selectedIndex >= 0) ? select.options[select.selectedIndex].text : '';
-      const exts = mapping[val] || ['.csv', '.txt', '.xls', '.xlsx', '.pdf'];
-
-      if (files) files.setAttribute('accept', extsToAccept(exts));
-      if (help) help.textContent = 'Extensiones permitidas: ' + exts.join(', ') + '. Puedes seleccionar múltiples archivos de la misma categoría.';
-      
-      // Mostrar enlace de plantilla solo para genérico
-      if (templateLink) {
-        templateLink.style.display = (val === 'generic-movimientos') ? 'block' : 'none';
+  // Estructura de datos: Banco → Tipos de Cuenta → Parsers
+  const banksData = {
+    'GYT': {
+      image: 'img/banks/gyt.png',
+      types: {
+        'MONET': [
+          { value: 'monet-aho-gyt', label: 'Monetaria/Ahorro GYT (xlsx/pdf)', exts: ['.xlsx', '.xls', '.pdf'] }
+        ],
+        'TC': [
+          { value: 'tc-gyt', label: 'Tarjeta de Crédito GYT (xlsx/pdf)', exts: ['.xlsx', '.xls', '.pdf'] }
+        ],
+        'AHO': [
+          { value: 'monet-aho-gyt', label: 'Ahorro GYT (xlsx/pdf)', exts: ['.xlsx', '.xls', '.pdf'] }
+        ]
       }
-
-      console.debug('upload form updated', {tipo: val, typeName, exts});
-    }
-
-    function updateFileInfo(){
-      const filesInput = document.getElementById('files');
-      const fileInfo = document.getElementById('file-info');
-      
-      if (filesInput && fileInfo) {
-        const fileCount = filesInput.files.length;
-        if (fileCount === 0) {
-          fileInfo.style.display = 'none';
-        } else if (fileCount === 1) {
-          fileInfo.textContent = `1 archivo seleccionado: ${filesInput.files[0].name}`;
-          fileInfo.style.display = 'block';
-        } else {
-          fileInfo.textContent = `${fileCount} archivos seleccionados`;
-          fileInfo.style.display = 'block';
-        }
+    },
+    'BI': {
+      image: 'img/banks/bi.png',
+      types: {
+        'MONET': [
+          { value: 'monet-bi', label: 'Monetaria BI (PDF Standard)', exts: ['.pdf'] },
+          { value: 'monet-bi-email', label: 'Monetaria BI (PDF Email)', exts: ['.pdf'] },
+          { value: 'monet-bi-legacy', label: 'Monetaria BI (Legacy Pre-Feb 2023)', exts: ['.pdf'] },
+          { value: 'monet_bi_ec_integrado', label: 'Monetaria BI (EC Integrado)', exts: ['.pdf'] }
+        ],
+        'TC': [
+          { value: 'tc-bi', label: 'Tarjeta de Crédito BI (xls/xlsx)', exts: ['.xls', '.xlsx'] },
+          { value: 'tc-bi-email', label: 'Tarjeta de Crédito BI (Email)', exts: ['.pdf'] },
+          { value: 'tc-online-bi', label: 'BI-Credit Online (xls/xlsx)', exts: ['.xls', '.xlsx'] }
+        ]
+      }
+    },
+    'Nexa': {
+      image: 'img/banks/nexa.png',
+      types: {
+        'MONET': [
+          { value: 'monet-nexa', label: 'Monetaria Nexa (PDF)', exts: ['.pdf'] }
+        ]
+      }
+    },
+    'BAC': {
+      image: 'img/banks/bac.png',
+      types: {
+        'TC': [
+          { value: 'tc-bac', label: 'Tarjeta de Crédito BAC (CSV)', exts: ['.csv'] }
+        ],
+        'AHO': [
+          { value: 'ahorro-bac', label: 'Ahorro BAC (CSV)', exts: ['.csv'] }
+        ]
+      }
+    },
+    'Promerica': {
+      image: 'img/banks/promerica.png',
+      types: {
+        'TC': [
+          { value: 'tc-promerica', label: 'Tarjeta de Crédito Promerica (xls/xlsx)', exts: ['.xls', '.xlsx'] }
+        ]
+      }
+    },
+    'Interbanco': {
+      image: 'img/banks/interbanco.png',
+      types: {
+        'AHO': [
+          { value: 'ahorro-interbanco', label: 'Ahorro Interbanco (PDF)', exts: ['.pdf'] }
+        ]
+      }
+    },
+    'generic': {
+      image: '',
+      types: {
+        'Genérico': [
+          { value: 'generic-movimientos', label: 'Movimientos Genérico (xlsx/csv)', exts: ['.xls', '.xlsx', '.csv'] },
+          { value: 'factura-fel-xml', label: 'Factura FEL (XML)', exts: ['.xml'] }
+        ]
       }
     }
+  };
 
-    document.addEventListener('DOMContentLoaded', function(){
-      const select = document.getElementById('tipo_archivo');
-      const filesInput = document.getElementById('files');
-      const form = document.querySelector('form');
-      const uploadBtn = document.getElementById('upload-btn');
-      
-      if (select) select.addEventListener('change', update);
-      if (filesInput) filesInput.addEventListener('change', updateFileInfo);
-      
-      // Mostrar indicador de carga al enviar
-      if (form) {
-        form.addEventListener('submit', function(){
-          if (uploadBtn) {
-            uploadBtn.textContent = 'Cargando...';
-            uploadBtn.disabled = true;
-          }
+  // Mapeo de tipos_archivo a extensiones (fallback)
+  const extMapping = {
+    'monet-aho-gyt': ['.xlsx', '.xls', '.pdf'],
+    'tc-gyt': ['.xlsx', '.xls', '.pdf'],
+    'monet-bi': ['.pdf'],
+    'monet-bi-email': ['.pdf'],
+    'monet-bi-legacy': ['.pdf'],
+    'monet_bi_ec_integrado': ['.pdf'],
+    'monet-nexa': ['.pdf'],
+    'tc-bi': ['.xls', '.xlsx'],
+    'tc-bi-email': ['.pdf'],
+    'tc-online-bi': ['.xls', '.xlsx'],
+    'generic-movimientos': ['.xls', '.xlsx', '.csv'],
+    'tc-promerica': ['.xls', '.xlsx'],
+    'tc-bac': ['.csv'],
+    'ahorro-bac': ['.csv'],
+    'ahorro-interbanco': ['.pdf'],
+    'factura-fel-xml': ['.xml']
+  };
+
+  function updateUI() {
+    const bancoDrop = document.getElementById('banco');
+    const tipoDrop = document.getElementById('tipo_cuenta');
+    const archivoDrop = document.getElementById('tipo_archivo');
+    const tipoGroup = document.getElementById('tipo-cuenta-group');
+    const bancoLogo = document.getElementById('banco-logo');
+    const files = document.getElementById('files');
+    const help = document.getElementById('file_help');
+    const templateLink = document.getElementById('template-link');
+
+    const selectedBanco = bancoDrop.value;
+
+    // Mostrar logo del banco
+    if (selectedBanco && banksData[selectedBanco]) {
+      const logoPath = banksData[selectedBanco].image;
+      if (logoPath) {
+        bancoLogo.src = "{{ url_for('static', filename='') }}" + logoPath;
+        bancoLogo.style.display = 'block';
+      } else {
+        bancoLogo.style.display = 'none';
+      }
+    } else {
+      bancoLogo.style.display = 'none';
+    }
+
+    // Actualizar dropdown de tipo de cuenta
+    tipoDrop.innerHTML = '<option value="">-- Selecciona un tipo de cuenta --</option>';
+    archivoDrop.innerHTML = '<option value="">-- Selecciona un parser --</option>';
+
+    if (!selectedBanco) {
+      // Si no hay banco seleccionado, mostrar opciones genéricas (incluye FEL)
+      const generic = banksData['generic'];
+      if (generic) {
+        const entries = generic.types['Genérico'] || [];
+        entries.forEach(parser => {
+          const opt = document.createElement('option');
+          opt.value = parser.value;
+          opt.textContent = parser.label;
+          archivoDrop.appendChild(opt);
+        });
+        // Set accept based on generic entries
+        const allExts = new Set();
+        entries.forEach(p => p.exts.forEach(e => allExts.add(e)));
+        const extsArray = Array.from(allExts);
+        files.setAttribute('accept', extsArray.join(','));
+        help.textContent = 'Extensiones permitidas: ' + extsArray.join(', ') + '. Puedes seleccionar múltiples archivos.';
+        // Mostrar template link si aplica
+        if (templateLink) templateLink.style.display = 'block';
+      }
+      tipoGroup.style.display = 'none';
+    } else if (selectedBanco && banksData[selectedBanco]) {
+      const bankTypes = Object.keys(banksData[selectedBanco].types);
+      if (bankTypes.length > 0) {
+        // Siempre mostrar el selector de tipo aunque haya un solo tipo
+        tipoGroup.style.display = 'block';
+        tipoDrop.innerHTML = '';
+        bankTypes.forEach(type => {
+          const opt = document.createElement('option');
+          opt.value = type;
+          opt.textContent = type;
+          tipoDrop.appendChild(opt);
+        });
+
+        // Actualizar parsers disponibles mostrando por defecto todos los parsers del banco
+        updateParsers();
+      }
+    } else {
+      tipoGroup.style.display = 'none';
+    }
+
+    // ocultar plantilla por defecto si no es genérico
+    if (templateLink && archivoDrop.value !== 'generic-movimientos') {
+      templateLink.style.display = 'none';
+    }
+
+    updateFileInput();
+  }
+
+  function updateParsers() {
+    const bancoDrop = document.getElementById('banco');
+    const tipoDrop = document.getElementById('tipo_cuenta');
+    const archivoDrop = document.getElementById('tipo_archivo');
+    const files = document.getElementById('files');
+    const help = document.getElementById('file_help');
+
+    const selectedBanco = bancoDrop.value;
+    const selectedTipo = tipoDrop.value;
+
+    archivoDrop.innerHTML = '<option value="">-- Selecciona un parser --</option>';
+
+    if (selectedBanco && banksData[selectedBanco]) {
+      let parsers = [];
+      // Si hay un tipo seleccionado y existe, usar solo esos parsers
+      if (selectedTipo && banksData[selectedBanco].types[selectedTipo]) {
+        parsers = banksData[selectedBanco].types[selectedTipo];
+      } else {
+        // Agregar todos los parsers de todos los tipos del banco
+        Object.keys(banksData[selectedBanco].types).forEach(t => {
+          const list = banksData[selectedBanco].types[t] || [];
+          parsers = parsers.concat(list);
         });
       }
-      
-      update(); // inicial
-    });
-  })();
+
+      let allExts = new Set();
+      parsers.forEach(parser => {
+        const opt = document.createElement('option');
+        opt.value = parser.value;
+        opt.textContent = parser.label;
+        archivoDrop.appendChild(opt);
+        (parser.exts || []).forEach(ext => allExts.add(ext));
+      });
+
+      // Actualizar aceptancia de archivo con todas las extensiones
+      const extsArray = Array.from(allExts);
+      if (extsArray.length > 0) {
+        files.setAttribute('accept', extsArray.join(','));
+        help.textContent = 'Extensiones permitidas: ' + extsArray.join(', ') + '. Puedes seleccionar múltiples archivos.';
+      } else {
+        files.setAttribute('accept', '');
+        help.textContent = 'Extensiones permitidas: Selecciona un banco y tipo de cuenta.';
+      }
+      // Actualizar estado del botón de carga
+      updateUploadButton();
+    } else {
+      files.setAttribute('accept', '');
+      help.textContent = 'Extensiones permitidas: Selecciona un banco y tipo de cuenta.';
+      updateUploadButton();
+    }
+  }
+
+  function updateFileInput() {
+    const archivoDrop = document.getElementById('tipo_archivo');
+    const files = document.getElementById('files');
+    const help = document.getElementById('file_help');
+    const templateLink = document.getElementById('template-link');
+
+    const selectedTipo = archivoDrop.value;
+    const exts = extMapping[selectedTipo] || [];
+
+    if (exts.length > 0) {
+      files.setAttribute('accept', exts.join(','));
+      help.textContent = 'Extensiones permitidas: ' + exts.join(', ') + '. Puedes seleccionar múltiples archivos.';
+    }
+    // Mostrar enlace de plantilla solo para genérico
+    if (templateLink) {
+      templateLink.style.display = (selectedTipo === 'generic-movimientos') ? 'block' : 'none';
+    }
+    // Habilitar/deshabilitar botón según si hay parser seleccionado
+    updateUploadButton();
+  }
+
+  function updateUploadButton() {
+    const archivoDrop = document.getElementById('tipo_archivo');
+    const uploadBtn = document.getElementById('upload-btn');
+    if (!uploadBtn) return;
+    const enabled = archivoDrop && archivoDrop.value && archivoDrop.value !== '';
+    uploadBtn.disabled = !enabled;
+  }
+
+  function updateFileInfo() {
+    const filesInput = document.getElementById('files');
+    const fileInfo = document.getElementById('file-info');
+
+    if (filesInput && fileInfo) {
+      const fileCount = filesInput.files.length;
+      if (fileCount === 0) {
+        fileInfo.style.display = 'none';
+      } else if (fileCount === 1) {
+        fileInfo.textContent = `1 archivo seleccionado: ${filesInput.files[0].name}`;
+        fileInfo.style.display = 'block';
+      } else {
+        fileInfo.textContent = `${fileCount} archivos seleccionados`;
+        fileInfo.style.display = 'block';
+      }
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const bancoDrop = document.getElementById('banco');
+    const tipoDrop = document.getElementById('tipo_cuenta');
+    const archivoDrop = document.getElementById('tipo_archivo');
+    const filesInput = document.getElementById('files');
+    const form = document.querySelector('form');
+    const uploadBtn = document.getElementById('upload-btn');
+
+    if (bancoDrop) bancoDrop.addEventListener('change', updateUI);
+    if (tipoDrop) tipoDrop.addEventListener('change', updateParsers);
+    if (archivoDrop) archivoDrop.addEventListener('change', updateFileInput);
+    if (filesInput) filesInput.addEventListener('change', updateFileInfo);
+
+    if (form) {
+      form.addEventListener('submit', function() {
+        if (uploadBtn) {
+          uploadBtn.textContent = 'Cargando...';
+          uploadBtn.disabled = true;
+        }
+      });
+    }
+
+    updateUI(); // Inicialización
+    updateUploadButton();
+  });
 </script>
 {% endblock %}
