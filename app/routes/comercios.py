@@ -34,6 +34,10 @@ def list_comercios():
     tipo = request.args.get('tipo', '').strip()
     regla_q = request.args.get('regla', '').strip()
     owner_id = request.args.get('owner_id', type=int)
+    page = request.args.get('page', default=1, type=int)
+    per_page = request.args.get('per_page', default=50, type=int)
+    if per_page not in (25, 50, 100):
+        per_page = 50
 
     # Construir consulta dinámica
     query = Comercio.query
@@ -59,27 +63,32 @@ def list_comercios():
             (Regla.tipo.ilike(f"%{regla_q}%"))
         ).distinct()
 
-    # Eager-load reglas y categoria para evitar N+1
-    # Añadir un conteo de movimientos por comercio (LEFT JOIN semantics)
-    comercios = query.options(
+    # Eager-load reglas y categoria para evitar N+1 y paginar en DB
+    pagination = query.order_by(Comercio.nombre.asc()).options(
         joinedload(Comercio.reglas),
         joinedload(Comercio.categoria),
         joinedload(Comercio.subcategoria)
-    ).all()
+    ).paginate(page=page, per_page=per_page, error_out=False)
+    comercios = pagination.items
+    total_comercios = pagination.total
+    range_start = 0 if total_comercios == 0 else ((pagination.page - 1) * pagination.per_page) + 1
+    range_end = min(pagination.page * pagination.per_page, total_comercios)
 
     # Precalcular counts para evitar N+1
     # Conteo de movimientos: si admin puede filtrar por owner_id, sino solo del usuario actual
-    movimiento_query = db.session.query(Movimiento.comercio_id, db.func.count(Movimiento.id))
-    if hasattr(current_user, 'is_admin') and current_user.is_admin() and owner_id:
-        movimiento_query = movimiento_query.filter(Movimiento.user_id == owner_id)
-    else:
-        movimiento_query = movimiento_query.filter(Movimiento.user_id == current_user.id)
-    movimiento_counts = {row[0]: row[1] for row in movimiento_query.group_by(Movimiento.comercio_id).all()}
+    comercio_ids = [c.id for c in comercios]
+    movimiento_counts = {}
+    if comercio_ids:
+        movimiento_query = db.session.query(Movimiento.comercio_id, db.func.count(Movimiento.id)).filter(
+            Movimiento.comercio_id.in_(comercio_ids)
+        )
+        if hasattr(current_user, 'is_admin') and current_user.is_admin() and owner_id:
+            movimiento_query = movimiento_query.filter(Movimiento.user_id == owner_id)
+        else:
+            movimiento_query = movimiento_query.filter(Movimiento.user_id == current_user.id)
+        movimiento_counts = {row[0]: row[1] for row in movimiento_query.group_by(Movimiento.comercio_id).all()}
     for c in comercios:
         c.movimientos_count = movimiento_counts.get(c.id, 0)
-
-    # Ordenar por nombre (el ordenamiento final se hace en el frontend)
-    comercios.sort(key=lambda c: c.nombre.lower())
 
     # Pasar listas auxiliares (categorias) y valores de filtro actuales para la plantilla
     categorias = Categoria.query.order_by(Categoria.nombre).all()
@@ -93,9 +102,20 @@ def list_comercios():
         'subcategoria_id': subcategoria_id_raw,
         'tipo': tipo,
         'regla': regla_q,
-        'owner_id': owner_id or ''
+        'owner_id': owner_id or '',
+        'per_page': per_page
     }
-    return render_template('comercios.html', comercios=comercios, categorias=categorias, subcategorias=subcategorias, filters=filters)
+    return render_template(
+        'comercios.html',
+        comercios=comercios,
+        categorias=categorias,
+        subcategorias=subcategorias,
+        filters=filters,
+        pagination=pagination,
+        total_comercios=total_comercios,
+        range_start=range_start,
+        range_end=range_end
+    )
 
 
 @bp.route('/comercios/add', methods=['GET', 'POST'])

@@ -25,6 +25,10 @@ def index():
     selected_subcategoria = request.args.get('subcategoria_id', '')
     selected_tipo_cont  = request.args.get('tipo_contabilizacion', '')
     selected_owner = request.args.get('owner_id', '')
+    page = request.args.get('page', default=1, type=int)
+    per_page = request.args.get('per_page', default=50, type=int)
+    if per_page not in (25, 50, 100):
+        per_page = 50
 
     # Base de la consulta
     query = Movimiento.query.options(
@@ -91,29 +95,18 @@ def index():
     if selected_cuenta:
         query = query.filter(Movimiento.cuenta_id == int(selected_cuenta))
 
-    # Obtener los movimientos
-    # Aplicar límite de 100 solo cuando no hay filtros (para la vista por defecto)
-    has_filters = any([
-        start,
-        end,
-        desc,
-        selected_cuenta,
-        selected_comercio,
-        selected_categoria,
-        selected_subcategoria,
-        selected_tipo_cont,
-    ])
+    # Totales sobre el conjunto filtrado completo (antes de paginar)
+    sum_debito = query.filter(Movimiento.tipo == 'debito').with_entities(func.coalesce(func.sum(Movimiento.monto), 0)).scalar() or 0
+    sum_credito = query.filter(Movimiento.tipo == 'credito').with_entities(func.coalesce(func.sum(Movimiento.monto), 0)).scalar() or 0
 
-    q = query.order_by(Movimiento.fecha.desc())
-    if not has_filters:
-        q = q.limit(100)
-
-    movimientos = q.all()
+    # Obtener los movimientos paginados
+    pagination = query.order_by(Movimiento.fecha.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    movimientos = pagination.items
 
     # Totales
-    total_movs  = len(movimientos)
-    sum_debito  = sum(m.monto for m in movimientos if m.tipo == 'debito')
-    sum_credito = sum(m.monto for m in movimientos if m.tipo == 'credito')
+    total_movs = pagination.total
+    range_start = 0 if total_movs == 0 else ((pagination.page - 1) * pagination.per_page) + 1
+    range_end = min(pagination.page * pagination.per_page, total_movs)
 
     # Opciones para los selects
     cuentas     = Cuenta.query.order_by(Cuenta.numero_cuenta).all()
@@ -136,6 +129,8 @@ def index():
         total_movs=total_movs,
         sum_debito=sum_debito,
         sum_credito=sum_credito,
+        range_start=range_start,
+        range_end=range_end,
         # valores actuales de los filtros
         start_date=start,
         end_date=end,
@@ -145,13 +140,15 @@ def index():
         selected_categoria=selected_categoria,
         selected_subcategoria=selected_subcategoria,
         selected_tipo_cont=selected_tipo_cont,
+        per_page=per_page,
         # listas para los selects
         cuentas=cuentas,
         comercios=comercios,
         categorias=categorias,
         subcategorias=subcategorias,
         all_subcategorias=all_subcategorias,
-        tipos_contabilizacion=tipos
+        tipos_contabilizacion=tipos,
+        pagination=pagination
         , users=users, selected_owner=selected_owner
     )
 

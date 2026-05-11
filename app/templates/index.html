@@ -4,14 +4,138 @@
 
 {% block content %}
 <style>
+  .mov-page {
+    --panel-bg: #ffffff;
+    --panel-border: #e5eaf3;
+    --heading: #1f2a37;
+    --muted: #6b7280;
+    --primary-soft: #eef4ff;
+    --success-soft: #ecfdf3;
+    --danger-soft: #fef2f2;
+    background: radial-gradient(circle at 10% -10%, #eaf1ff 0%, #f8fbff 45%, #ffffff 100%);
+    border-radius: 16px;
+    padding: 1rem;
+  }
+
+  .mov-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .mov-title {
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    color: var(--heading);
+  }
+
+  .mov-subtitle {
+    margin: 0.15rem 0 0;
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+
+  .toolbar-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .filters-card,
+  .table-card {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  }
+
+  .filters-card {
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .filters-card .form-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+    color: #334155;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .stat-card {
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 0.75rem 0.9rem;
+    background: #fff;
+  }
+
+  .stat-card .label {
+    display: block;
+    color: var(--muted);
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.2rem;
+  }
+
+  .stat-card .value {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: #0f172a;
+  }
+
+  .stat-card.debito {
+    background: var(--danger-soft);
+  }
+
+  .stat-card.credito {
+    background: var(--success-soft);
+  }
+
+  .stat-card.total {
+    background: var(--primary-soft);
+  }
+
   .movimientos-table-wrapper {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    border-radius: 0 0 14px 14px;
   }
 
   #movimientos-table {
     width: 100%;
     table-layout: auto;
+    margin: 0;
+  }
+
+  #movimientos-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  #movimientos-table tbody tr:hover {
+    background: #f8fbff;
+  }
+
+  #movimientos-table td {
+    vertical-align: middle;
   }
 
   .movimientos-table-wrapper.with-actions #movimientos-table {
@@ -62,16 +186,128 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-</style>
-<h1>Movimientos</h1>
 
-<!-- Toggle para mostrar/ocultar acciones -->
-<div class="mb-3 d-flex gap-2">
-  <a href="{{ url_for('main.add_movimiento') }}" class="btn btn-sm btn-success">+</a>
-  <button id="toggle-actions-btn" class="btn btn-sm btn-outline-secondary">Mostrar acciones</button>
+  .pagination-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  .pagination-controls .control-item {
+    min-width: auto;
+  }
+
+  .pagination-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+  }
+
+  .summary-pill {
+    padding: 0.3rem 0.6rem;
+    border: 1px solid #dbe4f0;
+    background: #f8fbff;
+    border-radius: 8px;
+    color: #334155;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+
+  .per-page-inline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    color: #475569;
+    white-space: nowrap;
+  }
+
+  .per-page-inline select {
+    width: 86px;
+  }
+
+  .pagination-footer {
+    margin-top: 0.75rem;
+    padding-bottom: 1.25rem;
+  }
+
+  .pagination-footer .pagination .page-link {
+    border-radius: 8px;
+    margin-right: 0.2rem;
+    border-color: #dbe4f0;
+    color: #1f3f72;
+  }
+
+  .pagination-footer .pagination .page-item.active .page-link {
+    background: #1f6feb;
+    border-color: #1f6feb;
+    color: #fff;
+  }
+
+  .table-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.85rem 0.95rem;
+    border-bottom: 1px solid var(--panel-border);
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .table-title {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #334155;
+    font-weight: 700;
+  }
+
+  .table-subtitle {
+    color: #64748b;
+    font-size: 0.8rem;
+    margin: 0;
+  }
+
+  @media (max-width: 768px) {
+    .mov-page {
+      padding: 0.7rem;
+    }
+
+    .filters-card {
+      padding: 0.8rem;
+    }
+  }
+</style>
+<div class="mov-page">
+<div class="mov-header">
+  <div>
+    <h1 class="mov-title">Movimientos</h1>
+    <p class="mov-subtitle">Consulta, filtra y administra tus transacciones rápidamente</p>
+  </div>
+  <div class="toolbar-actions">
+    <a href="{{ url_for('main.add_movimiento') }}" class="btn btn-sm btn-success">+ Agregar movimiento</a>
+    <button id="toggle-actions-btn" class="btn btn-sm btn-outline-secondary">Mostrar acciones</button>
+  </div>
 </div>
 
-<form method="get">
+<div class="stats-grid">
+  <div class="stat-card total">
+    <span class="label">Total movimientos</span>
+    <span class="value">{{ total_movs }}</span>
+  </div>
+  <div class="stat-card debito">
+    <span class="label">Débito</span>
+    <span class="value">Q{{ sum_debito }}</span>
+  </div>
+  <div class="stat-card credito">
+    <span class="label">Crédito</span>
+    <span class="value">Q{{ sum_credito }}</span>
+  </div>
+</div>
+
+<form method="get" class="filters-card">
   <!-- Fila 1: Fechas y descripción -->
   <div class="row g-3 mb-3">
     <div class="col-md-3">
@@ -93,6 +329,13 @@
     </div>
     <div class="col-md-2 align-self-end">
       <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+    </div>
+    <div class="col-md-2 align-self-end">
+      <select id="per_page" name="per_page" class="form-select" title="Resultados por página">
+        <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+        <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+        <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+      </select>
     </div>
   </div>
 
@@ -174,13 +417,49 @@
   </div>
 </form>
 
-<p>
-  Total movimientos: {{ total_movs }} |
-  Débito: Q{{ sum_debito }} |
-  Crédito: Q{{ sum_credito }}
-</p>
+{% if pagination and pagination.pages > 1 %}
+<div class="pagination-bar mb-3">
+  <nav aria-label="Paginación superior de movimientos" class="mb-0">
+    <ul class="pagination pagination-sm flex-wrap mb-0">
+      <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+        <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, owner_id=selected_owner, per_page=per_page, page=pagination.prev_num) }}">Anterior</a>
+      </li>
+      {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+        {% if p %}
+        <li class="page-item {% if p == pagination.page %}active{% endif %}">
+          <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, owner_id=selected_owner, per_page=per_page, page=p) }}">{{ p }}</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+        {% endif %}
+      {% endfor %}
+      <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+        <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, owner_id=selected_owner, per_page=per_page, page=pagination.next_num) }}">Siguiente</a>
+      </li>
+    </ul>
+  </nav>
+  <div class="pagination-controls">
+    <div class="control-item">
+      <div class="summary-pill">Mostrando {{ range_start }}-{{ range_end }} de {{ total_movs }}</div>
+    </div>
+    <div class="control-item per-page-inline">
+      <label for="top-per-page-select" class="visually-hidden">Tamaño página</label>
+      <span>Por página</span>
+      <select id="top-per-page-select" class="form-select form-select-sm js-per-page-select">
+        <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+        <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+        <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+      </select>
+    </div>
+  </div>
+</div>
+{% endif %}
 
-<div class="table-container">
+<div class="table-container table-card">
+  <div class="table-head">
+    <p class="table-title">Listado de movimientos</p>
+    <p class="table-subtitle">Ordena columnas y usa filtros para refinar resultados</p>
+  </div>
   <div class="table-wrapper movimientos-table-wrapper">
     <table class="table table-hover mb-0" id="movimientos-table">
   <thead>
@@ -244,6 +523,44 @@
   </tbody>
 </table>
   </div>
+</div>
+{% if pagination and pagination.pages > 1 %}
+<nav aria-label="Paginación de movimientos" class="pagination-footer">
+  <div class="pagination-bar">
+    <ul class="pagination pagination-sm flex-wrap mb-0">
+      <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+        <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, owner_id=selected_owner, per_page=per_page, page=pagination.prev_num) }}">Anterior</a>
+      </li>
+      {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+        {% if p %}
+        <li class="page-item {% if p == pagination.page %}active{% endif %}">
+          <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, owner_id=selected_owner, per_page=per_page, page=p) }}">{{ p }}</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+        {% endif %}
+      {% endfor %}
+      <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+        <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, owner_id=selected_owner, per_page=per_page, page=pagination.next_num) }}">Siguiente</a>
+      </li>
+    </ul>
+    <div class="pagination-controls">
+      <div class="control-item">
+        <div class="summary-pill">Mostrando {{ range_start }}-{{ range_end }} de {{ total_movs }}</div>
+      </div>
+      <div class="control-item per-page-inline">
+        <label for="bottom-per-page-select" class="visually-hidden">Tamaño página</label>
+        <span>Por página</span>
+        <select id="bottom-per-page-select" class="form-select form-select-sm js-per-page-select">
+          <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+          <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+          <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</nav>
+{% endif %}
 </div>
 {% endblock %}
 
@@ -309,6 +626,29 @@
         show = !show;
         localStorage.setItem(storageKey, show);
         setVisibility(show);
+      });
+    })();
+  </script>
+  <script>
+    (function(){
+      const perPageSelectors = document.querySelectorAll('.js-per-page-select');
+
+      function navigateWithParams(mutator) {
+        const url = new URL(window.location.href);
+        const params = new URLSearchParams(url.search);
+        mutator(params);
+        url.search = params.toString();
+        window.location.href = url.toString();
+      }
+
+      perPageSelectors.forEach(select => {
+        select.addEventListener('change', function(){
+          const nextPerPage = this.value;
+          navigateWithParams(params => {
+            params.set('per_page', nextPerPage);
+            params.set('page', '1');
+          });
+        });
       });
     })();
   </script>

@@ -2,8 +2,53 @@
 {% block title %}Comercios{% endblock %}
 {% block content %}
 <style>
+  .list-page {
+    --panel-bg: #ffffff;
+    --panel-border: #e5eaf3;
+    --heading: #1f2a37;
+    --muted: #6b7280;
+    --primary-soft: #eef4ff;
+    background: radial-gradient(circle at 10% -10%, #eaf1ff 0%, #f8fbff 45%, #ffffff 100%);
+    border-radius: 16px;
+    padding: 1rem;
+  }
+
+  .list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .list-title {
+    margin: 0;
+    color: var(--heading);
+    font-weight: 700;
+  }
+
+  .list-subtitle {
+    margin: 0.2rem 0 0;
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+
+  .filters-card,
+  .table-card {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  }
+
+  .filters-card {
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
   /* Formulario de filtros */
-  .form-control,
+  .filters-card .form-control,
   .form-select {
     border-radius: 6px;
     border: 1px solid #dee2e6;
@@ -43,26 +88,113 @@
     text-decoration: underline;
   }
 
-  /* Encabezado y título */
-  h1 {
-    color: #212529;
+  .pagination-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  .pagination-controls .control-item {
+    min-width: auto;
+  }
+
+  .pagination-footer {
+    margin-top: 0.75rem;
+    padding-bottom: 1.25rem;
+  }
+
+  .pagination-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+  }
+
+  .summary-pill {
+    padding: 0.3rem 0.6rem;
+    border: 1px solid #dbe4f0;
+    background: #f8fbff;
+    border-radius: 8px;
+    color: #334155;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+
+  .per-page-inline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    color: #475569;
+    white-space: nowrap;
+  }
+
+  .per-page-inline select {
+    width: 86px;
+  }
+
+  .pagination-footer .pagination .page-link,
+  .pagination-bar .pagination .page-link {
+    border-radius: 8px;
+    margin-right: 0.2rem;
+    border-color: #dbe4f0;
+    color: #1f3f72;
+  }
+
+  .pagination-footer .pagination .page-item.active .page-link,
+  .pagination-bar .pagination .page-item.active .page-link {
+    background: #1f6feb;
+    border-color: #1f6feb;
+    color: #fff;
+  }
+
+  .table-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.85rem 0.95rem;
+    border-bottom: 1px solid var(--panel-border);
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .table-title {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #334155;
     font-weight: 700;
-    margin-bottom: 1.5rem;
-    font-size: 2rem;
+  }
+
+  .table-subtitle {
+    color: #64748b;
+    font-size: 0.8rem;
+    margin: 0;
   }
 
   @media (max-width: 768px) {
-    h1 {
-      font-size: 1.5rem;
+    .list-page {
+      padding: 0.7rem;
+    }
+
+    .filters-card {
+      padding: 0.8rem;
     }
   }
 </style>
-<h1>Comercios</h1>
-<div class="mb-2">
-  <a href="{{ url_for('main.add_comercio') }}" class="btn btn-primary">+ Agregar Comercio</a>
+<div class="list-page">
+<div class="list-header">
+  <div>
+    <h1 class="list-title">Comercios</h1>
+    <p class="list-subtitle">Gestiona reglas de clasificación y revisa movimientos por comercio</p>
+  </div>
+  <div>
+    <a href="{{ url_for('main.add_comercio') }}" class="btn btn-primary">+ Agregar comercio</a>
+  </div>
 </div>
 <div class="mb-4">
-  <form method="get" action="{{ url_for('main.list_comercios') }}" class="p-3 bg-light rounded-3">
+  <form method="get" action="{{ url_for('main.list_comercios') }}" class="filters-card">
     <div class="row g-2 align-items-center">
       <div class="col-12 col-md-3">
           <input type="text" name="q_name" class="form-control" placeholder="Nombre o descripción" value="{{ filters.q_name }}">
@@ -140,7 +272,48 @@
     })();
   </script>
 </div>
-<div class="comercios-container">
+{% if pagination and pagination.pages > 1 %}
+<div class="pagination-bar mb-3">
+  <nav aria-label="Paginación superior de comercios" class="mb-0">
+    <ul class="pagination pagination-sm flex-wrap mb-0">
+      <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+        <a class="page-link" href="{{ url_for('main.list_comercios', q_name=filters.q_name, categoria_id=filters.categoria_id, subcategoria_id=filters.subcategoria_id, tipo=filters.tipo, regla=filters.regla, owner_id=filters.owner_id, per_page=filters.per_page, page=pagination.prev_num) }}">Anterior</a>
+      </li>
+      {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+        {% if p %}
+        <li class="page-item {% if p == pagination.page %}active{% endif %}">
+          <a class="page-link" href="{{ url_for('main.list_comercios', q_name=filters.q_name, categoria_id=filters.categoria_id, subcategoria_id=filters.subcategoria_id, tipo=filters.tipo, regla=filters.regla, owner_id=filters.owner_id, per_page=filters.per_page, page=p) }}">{{ p }}</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+        {% endif %}
+      {% endfor %}
+      <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+        <a class="page-link" href="{{ url_for('main.list_comercios', q_name=filters.q_name, categoria_id=filters.categoria_id, subcategoria_id=filters.subcategoria_id, tipo=filters.tipo, regla=filters.regla, owner_id=filters.owner_id, per_page=filters.per_page, page=pagination.next_num) }}">Siguiente</a>
+      </li>
+    </ul>
+  </nav>
+  <div class="pagination-controls">
+    <div class="control-item">
+      <div class="summary-pill">Mostrando {{ range_start }}-{{ range_end }} de {{ total_comercios }}</div>
+    </div>
+    <div class="control-item per-page-inline">
+      <label for="top-per-page-select-comercios" class="visually-hidden">Tamaño página</label>
+      <span>Por página</span>
+      <select id="top-per-page-select-comercios" class="form-select form-select-sm js-per-page-select">
+        <option value="25" {% if filters.per_page == 25 %}selected{% endif %}>25</option>
+        <option value="50" {% if filters.per_page == 50 %}selected{% endif %}>50</option>
+        <option value="100" {% if filters.per_page == 100 %}selected{% endif %}>100</option>
+      </select>
+    </div>
+  </div>
+</div>
+{% endif %}
+<div class="comercios-container table-card">
+  <div class="table-head">
+    <p class="table-title">Listado de comercios</p>
+    <p class="table-subtitle">Administra categorías, subcategorías y reglas de clasificación</p>
+  </div>
   <div class="table-wrapper">
     <table class="table table-hover mb-0">
   <thead>
@@ -216,6 +389,43 @@
 </table>
   </div>
 </div>
+{% if pagination and pagination.pages > 1 %}
+<nav aria-label="Paginación de comercios" class="pagination-footer">
+  <div class="pagination-bar">
+    <ul class="pagination pagination-sm flex-wrap mb-0">
+      <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+        <a class="page-link" href="{{ url_for('main.list_comercios', q_name=filters.q_name, categoria_id=filters.categoria_id, subcategoria_id=filters.subcategoria_id, tipo=filters.tipo, regla=filters.regla, owner_id=filters.owner_id, per_page=filters.per_page, page=pagination.prev_num) }}">Anterior</a>
+      </li>
+      {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+        {% if p %}
+        <li class="page-item {% if p == pagination.page %}active{% endif %}">
+          <a class="page-link" href="{{ url_for('main.list_comercios', q_name=filters.q_name, categoria_id=filters.categoria_id, subcategoria_id=filters.subcategoria_id, tipo=filters.tipo, regla=filters.regla, owner_id=filters.owner_id, per_page=filters.per_page, page=p) }}">{{ p }}</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+        {% endif %}
+      {% endfor %}
+      <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+        <a class="page-link" href="{{ url_for('main.list_comercios', q_name=filters.q_name, categoria_id=filters.categoria_id, subcategoria_id=filters.subcategoria_id, tipo=filters.tipo, regla=filters.regla, owner_id=filters.owner_id, per_page=filters.per_page, page=pagination.next_num) }}">Siguiente</a>
+      </li>
+    </ul>
+    <div class="pagination-controls">
+      <div class="control-item">
+        <div class="summary-pill">Mostrando {{ range_start }}-{{ range_end }} de {{ total_comercios }}</div>
+      </div>
+      <div class="control-item per-page-inline">
+        <label for="bottom-per-page-select-comercios" class="visually-hidden">Tamaño página</label>
+        <span>Por página</span>
+        <select id="bottom-per-page-select-comercios" class="form-select form-select-sm js-per-page-select">
+          <option value="25" {% if filters.per_page == 25 %}selected{% endif %}>25</option>
+          <option value="50" {% if filters.per_page == 50 %}selected{% endif %}>50</option>
+          <option value="100" {% if filters.per_page == 100 %}selected{% endif %}>100</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</nav>
+{% endif %}
 <script>
   // Toggle para mostrar/ocultar reglas por comercio
   document.addEventListener('DOMContentLoaded', function () {
@@ -235,4 +445,28 @@
     });
   });
 </script>
+<script>
+  (function(){
+    const perPageSelectors = document.querySelectorAll('.js-per-page-select');
+
+    function navigateWithParams(mutator) {
+      const url = new URL(window.location.href);
+      const params = new URLSearchParams(url.search);
+      mutator(params);
+      url.search = params.toString();
+      window.location.href = url.toString();
+    }
+
+    perPageSelectors.forEach(select => {
+      select.addEventListener('change', function(){
+        const nextPerPage = this.value;
+        navigateWithParams(params => {
+          params.set('per_page', nextPerPage);
+          params.set('page', '1');
+        });
+      });
+    });
+  })();
+</script>
+</div>
 {% endblock %}
