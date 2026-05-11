@@ -1,12 +1,32 @@
 {% extends 'base.html' %}
 {% block title %}Cargar Archivo{% endblock %}
 {% block content %}
-<h1>Cargar Archivo</h1>
+<style>
+  .upload-card { max-width: 900px; margin: 0 auto; }
+  .bank-logo-inline { height:56px; width:56px; object-fit:contain; margin-right:12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .parser-optgroup-label { font-weight: 600; }
+  .help-muted { color: #6c757d; }
+  .card-header-modern { background-color: #ffffff; border-bottom: 1px solid #e9ecef; }
+  .page-title { font-size: 1.375rem; font-weight: 600; margin-bottom: 0; }
+  .page-subtitle { color: #6c757d; margin-top: 0.25rem; display:block; }
+</style>
+
 <form method="post" enctype="multipart/form-data">
+  <div class="card upload-card shadow-sm mb-4">
+    <div class="card-header card-header-modern">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="page-title">Importar documentos</div>
+          <div class="page-subtitle">Estados de cuenta — selecciona banco y tipo</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
   <div class="mb-3">
     <label for="banco" class="form-label">Banco</label>
-    <div class="input-group">
-      <select class="form-select" name="banco" id="banco">
+    <div class="d-flex align-items-center">
+      <img id="banco-logo" class="bank-logo-inline rounded border" src="" alt="Logo banco" onerror="this.style.display='none'" style="display:none;">
+      <select class="form-select flex-grow-1" name="banco" id="banco">
         <option value="">-- Selecciona un banco --</option>
         <option value="GYT">GYT</option>
         <option value="BI">BI</option>
@@ -15,8 +35,8 @@
         <option value="Promerica">Promerica</option>
         <option value="Interbanco">Interbanco</option>
         <option value="generic">Genérico</option>
+        <option value="FEL">FEL</option>
       </select>
-      <img id="banco-logo" src="" alt="" style="max-height: 40px; max-width: 40px; object-fit: contain; padding: 8px; display: none;">
     </div>
   </div>
 
@@ -40,7 +60,12 @@
       <a class="link-primary" href="{{ url_for('static', filename='templates/generic_movimientos_template.csv') }}">Descargar plantilla genérica (CSV)</a>
     </div>
   </div>
-  <button type="submit" class="btn btn-primary" id="upload-btn" disabled>Cargar</button>
+  <div class="d-flex justify-content-between align-items-center">
+    <small class="help-muted">Selecciona el parser antes de cargar.</small>
+    <button type="submit" class="btn btn-primary" id="upload-btn" disabled>Cargar</button>
+  </div>
+    </div>
+  </div>
   <div id="file-info" class="mt-2 text-muted" style="display: none;"></div>
 </form>
 {% endblock %}
@@ -119,6 +144,15 @@
       types: {
         'Genérico': [
           { value: 'generic-movimientos', label: 'Movimientos Genérico (xlsx/csv)', exts: ['.xls', '.xlsx', '.csv'] },
+          { value: 'factura-fel-xml', label: 'Factura FEL (XML)', exts: ['.xml'] }
+        ]
+      }
+    }
+    ,
+    'FEL': {
+      image: 'img/banks/FEL.jpg',
+      types: {
+        'FEL': [
           { value: 'factura-fel-xml', label: 'Factura FEL (XML)', exts: ['.xml'] }
         ]
       }
@@ -236,35 +270,43 @@
     archivoDrop.innerHTML = '<option value="">-- Selecciona un parser --</option>';
 
     if (selectedBanco && banksData[selectedBanco]) {
-      let parsers = [];
-      // Si hay un tipo seleccionado y existe, usar solo esos parsers
+      // Si hay tipo seleccionado, mostrar solo sus parsers (sin optgroup)
       if (selectedTipo && banksData[selectedBanco].types[selectedTipo]) {
-        parsers = banksData[selectedBanco].types[selectedTipo];
-      } else {
-        // Agregar todos los parsers de todos los tipos del banco
-        Object.keys(banksData[selectedBanco].types).forEach(t => {
-          const list = banksData[selectedBanco].types[t] || [];
-          parsers = parsers.concat(list);
+        const parsers = banksData[selectedBanco].types[selectedTipo];
+        const allExts = new Set();
+        parsers.forEach(parser => {
+          const opt = document.createElement('option');
+          opt.value = parser.value;
+          opt.textContent = parser.label;
+          archivoDrop.appendChild(opt);
+          (parser.exts || []).forEach(e => allExts.add(e));
         });
-      }
-
-      let allExts = new Set();
-      parsers.forEach(parser => {
-        const opt = document.createElement('option');
-        opt.value = parser.value;
-        opt.textContent = parser.label;
-        archivoDrop.appendChild(opt);
-        (parser.exts || []).forEach(ext => allExts.add(ext));
-      });
-
-      // Actualizar aceptancia de archivo con todas las extensiones
-      const extsArray = Array.from(allExts);
-      if (extsArray.length > 0) {
-        files.setAttribute('accept', extsArray.join(','));
-        help.textContent = 'Extensiones permitidas: ' + extsArray.join(', ') + '. Puedes seleccionar múltiples archivos.';
+        const extsArray = Array.from(allExts);
+        if (extsArray.length) {
+          files.setAttribute('accept', extsArray.join(','));
+          help.textContent = 'Extensiones permitidas: ' + extsArray.join(', ') + '. Puedes seleccionar múltiples archivos.';
+        }
       } else {
-        files.setAttribute('accept', '');
-        help.textContent = 'Extensiones permitidas: Selecciona un banco y tipo de cuenta.';
+        // Mostrar parsers agrupados por tipo con optgroup
+        const types = banksData[selectedBanco].types;
+        const allExts = new Set();
+        Object.keys(types).forEach(t => {
+          const group = document.createElement('optgroup');
+          group.label = t;
+          (types[t] || []).forEach(parser => {
+            const opt = document.createElement('option');
+            opt.value = parser.value;
+            opt.textContent = parser.label;
+            group.appendChild(opt);
+            (parser.exts || []).forEach(e => allExts.add(e));
+          });
+          archivoDrop.appendChild(group);
+        });
+        const extsArray = Array.from(allExts);
+        if (extsArray.length) {
+          files.setAttribute('accept', extsArray.join(','));
+          help.textContent = 'Extensiones permitidas: ' + extsArray.join(', ') + '. Puedes seleccionar múltiples archivos.';
+        }
       }
       // Actualizar estado del botón de carga
       updateUploadButton();
