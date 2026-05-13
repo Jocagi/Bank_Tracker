@@ -569,6 +569,8 @@
         // Actualizar gráficos también
         updateCommerceChart(limit);
         updateCategoryChart(limit);
+        updateSubcategoryChart(limit);
+        updatePrevMonthCharts(limit);
       });
       
       // Event listeners para botones de toggle
@@ -589,6 +591,8 @@
       // Crear gráficos iniciales
       updateCommerceChart(initialLimit);
       updateCategoryChart(initialLimit);
+      updateSubcategoryChart(initialLimit);
+      updatePrevMonthCharts(initialLimit);
     });
 
     // Datos para los gráficos
@@ -634,7 +638,7 @@
   const comerciosRecurrentesValues = {{ comercios_recurrentes_values | tojson }};
 
     // Variables para almacenar las instancias de los gráficos
-    let chartCommerce, chartCategory;
+    let chartCommerce, chartCategory, chartSubcategory;
 
     // Función para procesar datos del gráfico según el límite
     function processChartData(labels, values, limit) {
@@ -726,6 +730,27 @@
       });
     }
 
+    function updateSubcategoryChart(limit) {
+      buildPrevMonthBarChart('chartSubcategory', subcategoryLabels, subcategoryValues, 'Gastos Q', limit, {
+        indexAxis: 'y',
+        backgroundColor: 'rgba(153, 102, 255, 0.7)',
+        borderColor: 'rgba(153, 102, 255, 1)',
+        scales: {
+          x: {
+            beginAtZero: true,
+            ticks: { font: { size: 10 } }
+          },
+          y: {
+            ticks: { font: { size: 10 } }
+          }
+        },
+        tooltipLabel: ctx => {
+          const v = Math.abs(ctx.parsed.x).toLocaleString(undefined, { minimumFractionDigits: 2 });
+          return `Gastos: Q${v}`;
+        }
+      });
+    }
+
     // Línea: Evolución Mensual de Gastos e Ingresos
     new Chart(document.getElementById('chartMonthly'), {
       type: 'line',
@@ -781,9 +806,16 @@
       }
     });
 
-    function buildPrevMonthBarChart(canvasId, labels, values, datasetLabel) {
+    function buildPrevMonthBarChart(canvasId, labels, values, datasetLabel, limit = 0, chartOptions = {}) {
+      const { labels: chartLabels, values: chartValues } = processChartData(labels, values, limit);
       const ctx = document.getElementById(canvasId);
       if (!ctx) return;
+
+      const existingChart = Chart.getChart(ctx);
+      if (existingChart) {
+        existingChart.destroy();
+      }
+
       const palette = [
         'rgba(255, 99, 132, 0.7)',
         'rgba(54, 162, 235, 0.7)',
@@ -794,34 +826,35 @@
         'rgba(201, 203, 207, 0.7)',
         'rgba(40, 167, 69, 0.7)'
       ];
-      const colors = labels.map((_, idx) => palette[idx % palette.length]);
+      const colors = chartLabels.map((_, idx) => palette[idx % palette.length]);
       new Chart(ctx, {
         type: 'bar',
         data: {
-          labels: labels,
+          labels: chartLabels,
           datasets: [{
             label: datasetLabel,
-            data: values,
-            backgroundColor: colors,
-            borderColor: colors.map(c => c.replace('0.7', '1')),
+            data: chartValues,
+            backgroundColor: chartOptions.backgroundColor || colors,
+            borderColor: chartOptions.borderColor || colors.map(c => c.replace('0.7', '1')),
             borderWidth: 1
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          indexAxis: chartOptions.indexAxis || 'x',
           plugins: {
             tooltip: {
               callbacks: {
-                label: ctx => {
+                label: chartOptions.tooltipLabel || (ctx => {
                   const v = Math.abs(ctx.parsed.y).toLocaleString(undefined, { minimumFractionDigits: 2 });
                   return `Q${v}`;
-                }
+                })
               }
             },
-            legend: { display: false }
+            legend: chartOptions.legend || { display: false }
           },
-          scales: {
+          scales: chartOptions.scales || {
             y: {
               beginAtZero: true,
               ticks: { font: { size: 10 } }
@@ -834,11 +867,36 @@
       });
     }
 
-    // Gráficas del mes anterior
-    buildPrevMonthBarChart('chartPrevMonthCategory', prevMonthCategoryLabels, prevMonthCategoryValues, `Gastos ${prevMonthLabel}`);
-    buildPrevMonthBarChart('chartPrevMonthCommerce', prevMonthCommerceLabels, prevMonthCommerceValues, `Gastos ${prevMonthLabel}`);
-    buildPrevMonthBarChart('chartPrevMonthAccount', prevMonthAccountLabels, prevMonthAccountValues, `Gastos ${prevMonthLabel}`);
-    buildPrevMonthBarChart('chartPrevMonthSubcategory', prevMonthSubcategoryLabels, prevMonthSubcategoryValues, `Gastos ${prevMonthLabel}`);
+    function updatePrevMonthCharts(limit) {
+      buildPrevMonthBarChart('chartPrevMonthCategory', prevMonthCategoryLabels, prevMonthCategoryValues, `Gastos ${prevMonthLabel}`, limit, {
+        legend: { display: false },
+        tooltipLabel: ctx => {
+          const v = Math.abs(ctx.parsed.y).toLocaleString(undefined, { minimumFractionDigits: 2 });
+          return `Q${v}`;
+        }
+      });
+      buildPrevMonthBarChart('chartPrevMonthCommerce', prevMonthCommerceLabels, prevMonthCommerceValues, `Gastos ${prevMonthLabel}`, limit, {
+        legend: { display: false },
+        tooltipLabel: ctx => {
+          const v = Math.abs(ctx.parsed.y).toLocaleString(undefined, { minimumFractionDigits: 2 });
+          return `Q${v}`;
+        }
+      });
+      buildPrevMonthBarChart('chartPrevMonthAccount', prevMonthAccountLabels, prevMonthAccountValues, `Gastos ${prevMonthLabel}`, limit, {
+        legend: { display: false },
+        tooltipLabel: ctx => {
+          const v = Math.abs(ctx.parsed.y).toLocaleString(undefined, { minimumFractionDigits: 2 });
+          return `Q${v}`;
+        }
+      });
+      buildPrevMonthBarChart('chartPrevMonthSubcategory', prevMonthSubcategoryLabels, prevMonthSubcategoryValues, `Gastos ${prevMonthLabel}`, limit, {
+        legend: { display: false },
+        tooltipLabel: ctx => {
+          const v = Math.abs(ctx.parsed.y).toLocaleString(undefined, { minimumFractionDigits: 2 });
+          return `Q${v}`;
+        }
+      });
+    }
 
     // ————————————————————————————————————————
     // Gráfica de Top 10 Gastos
@@ -1101,48 +1159,6 @@
           legend: { 
             position: 'bottom',
             labels: { font: { size: 9 } }
-          }
-        }
-      }
-    });
-
-    // ————————————————————————————————————————
-    // Gráfica de Gastos por Subcategoría
-    const ctxSubcategory = document.getElementById('chartSubcategory').getContext('2d');
-    new Chart(ctxSubcategory, {
-      type: 'bar',
-      data: {
-        labels: subcategoryLabels,
-        datasets: [{
-          label: 'Gastos Q',
-          data: subcategoryValues,
-          backgroundColor: 'rgba(153, 102, 255, 0.7)',
-          borderColor: 'rgba(153, 102, 255, 1)',
-          borderWidth: 1
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          tooltip: {
-            callbacks: {
-              label: ctx => {
-                const v = Math.abs(ctx.parsed.x).toLocaleString(undefined, { minimumFractionDigits: 2 });
-                return `Gastos: Q${v}`;
-              }
-            }
-          },
-          legend: { display: false }
-        },
-        scales: {
-          x: {
-            beginAtZero: true,
-            ticks: { font: { size: 10 } }
-          },
-          y: {
-            ticks: { font: { size: 10 } }
           }
         }
       }
