@@ -78,7 +78,11 @@
    FLASK_APP=main.py
    FLASK_ENV=development
    SECRET_KEY=tu_secreto_aqui
+   DATABASE_BACKUP_PATH=instance/backups/movimientos_backup.db
+   DATABASE_BACKUP_INTERVAL_HOURS=24
    ```
+
+   `DATABASE_BACKUP_PATH` puede apuntar a un archivo o a una carpeta. Si apuntas a una carpeta, el sistema crea un archivo con fecha y hora dentro de ese directorio.
 
 5. **Inicializar base de datos**
 
@@ -110,6 +114,16 @@ python .\scripts\create_admin.py --username admin
 Si omites `--password`, el script te pedirá la contraseña por consola de forma segura.
 
 El script intenta crear las tablas si las migraciones no se han ejecutado todavía (usa `flask db upgrade` si prefieres gestionar migraciones explícitas).
+
+## Respaldos de base de datos
+
+Si defines `DATABASE_BACKUP_PATH` en `.env`, la app crea un respaldo automático cada `DATABASE_BACKUP_INTERVAL_HOURS` horas mientras el servidor está en ejecución.
+
+También puedes ejecutarlo manualmente desde la pantalla **Datos** como administrador o con:
+
+```powershell
+flask backup-database
+```
 
 
 ## �📝 Uso básico

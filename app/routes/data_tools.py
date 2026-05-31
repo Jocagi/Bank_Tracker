@@ -1,10 +1,12 @@
-from flask import render_template, request, flash, redirect, url_for, Response, abort
+from flask import render_template, request, flash, redirect, url_for, Response, abort, current_app
 from sqlalchemy import func
 from .. import db
 from ..models import Comercio, Categoria, Subcategoria, TipoCambio, Regla
 from . import bp
 from flask_login import login_required, current_user
 import json
+
+from ..utils.database_backup import backup_database
 
 
 @bp.route('/export_config')
@@ -237,6 +239,23 @@ def import_config():
 
 
 
+@bp.route('/backup_database', methods=['POST'])
+@login_required
+def backup_database_now():
+    if not (hasattr(current_user, 'is_admin') and current_user.is_admin()):
+        abort(403)
+
+    try:
+        backup_path = backup_database(current_app._get_current_object())
+    except Exception as exc:
+        flash(f'No se pudo crear el respaldo: {exc}', 'danger')
+    else:
+        flash(f'Respaldo creado en {backup_path}', 'success')
+
+    return redirect(url_for('main.data_tools'))
+
+
+
 @bp.route('/datos')
 @login_required
 def data_tools():
@@ -244,4 +263,7 @@ def data_tools():
     if not (hasattr(current_user, 'is_admin') and current_user.is_admin()):
         abort(403)
 
-    return render_template('data_tools.html')
+    return render_template(
+        'data_tools.html',
+        backup_path=current_app.config.get('DATABASE_BACKUP_PATH', '')
+    )

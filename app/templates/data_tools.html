@@ -9,6 +9,23 @@
 
 <div class="card mb-3">
   <div class="card-body">
+    <h5 class="card-title">Respaldar base de datos</h5>
+    <p class="card-text">
+      Crea una copia completa de la base SQLite en la ruta definida por <strong>DATABASE_BACKUP_PATH</strong>.
+      {% if backup_path %}
+      Ruta actual configurada: <code>{{ backup_path }}</code>.
+      {% else %}
+      Configura la ruta en el archivo <code>.env</code> para habilitar el respaldo automático.
+      {% endif %}
+    </p>
+    <form action="{{ url_for('main.backup_database_now') }}" method="post">
+      <button type="submit" class="btn btn-warning">Crear respaldo ahora</button>
+    </form>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
     <h5 class="card-title">Exportar configuración</h5>
     <p class="card-text">Descarga un archivo JSON con los tipos de cambio, categorías, subcategorías, comercios y reglas.</p>
     <a class="btn btn-primary" href="{{ url_for('main.export_config') }}">Exportar configuración (JSON)</a>

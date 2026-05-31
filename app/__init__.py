@@ -4,11 +4,14 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager
 from werkzeug.exceptions import RequestEntityTooLarge
+from dotenv import load_dotenv
 
 db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
 login_manager.login_view = 'main.login'
+
+load_dotenv()
 
 def create_app():
     app = Flask(__name__)
@@ -50,5 +53,23 @@ def create_app():
             return redirect(url_for('main.upload'))
         except Exception:
             return redirect(request.referrer or url_for('main.index'))
+
+    @app.before_request
+    def start_database_backup_scheduler():
+        if app.extensions.get('database_backup_scheduler_started'):
+            return None
+
+        app.extensions['database_backup_scheduler_started'] = True
+
+        from .utils.database_backup import start_backup_scheduler
+
+        start_backup_scheduler(app)
+
+    @app.cli.command('backup-database')
+    def backup_database_command():
+        from .utils.database_backup import backup_database
+
+        backup_path = backup_database(app)
+        print(f'Respaldo creado en {backup_path}')
 
     return app
