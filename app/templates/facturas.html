@@ -243,7 +243,7 @@
       <tbody>
         {% for f in facturas %}
         <tr
-          data-fecha="{{ f.fecha_emision.strftime('%Y-%m-%d %H:%M:%S') if f.fecha_emision else '' }}"
+          data-fecha="{{ f.fecha_emision.strftime('%Y-%m-%dT%H:%M:%SZ') if f.fecha_emision else '' }}"
           data-tipo="{{ (f.tipo_documento or '').lower() }}"
           data-uuid="{{ (f.uuid or '').lower() }}"
           data-emisor="{{ (f.emisor_nombre_comercial or f.emisor_nombre or '').lower() }}"
@@ -251,7 +251,7 @@
           data-moneda="{{ (f.moneda or '').lower() }}"
           data-total="{{ f.gran_total or 0 }}"
         >
-          <td>{{ f.fecha_emision.strftime('%Y-%m-%d %H:%M:%S') if f.fecha_emision else '—' }}</td>
+          <td>{% if f.fecha_emision %}<span class="local-datetime" data-datetime="{{ f.fecha_emision.strftime('%Y-%m-%dT%H:%M:%SZ') }}">{{ f.fecha_emision.strftime('%Y-%m-%d %H:%M:%S') }}</span>{% else %}—{% endif %}</td>
           <td>{{ f.tipo_documento or '—' }}</td>
           <td>{{ f.uuid }}</td>
           <td>{{ f.emisor_nombre_comercial or f.emisor_nombre or '—' }}</td>

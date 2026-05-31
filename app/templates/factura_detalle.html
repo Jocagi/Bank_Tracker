@@ -18,8 +18,8 @@
       <div class="col-md-2"><strong>Tipo:</strong> {{ factura.tipo_documento or '—' }}</div>
       <div class="col-md-2"><strong>Moneda:</strong> {{ factura.moneda or '—' }}</div>
 
-      <div class="col-md-3"><strong>Fecha Emisión:</strong><br>{{ factura.fecha_emision.strftime('%Y-%m-%d %H:%M:%S') if factura.fecha_emision else '—' }}</div>
-      <div class="col-md-3"><strong>Fecha Certificación:</strong><br>{{ factura.fecha_certificacion.strftime('%Y-%m-%d %H:%M:%S') if factura.fecha_certificacion else '—' }}</div>
+      <div class="col-md-3"><strong>Fecha Emisión:</strong><br>{% if factura.fecha_emision %}<span class="local-datetime" data-datetime="{{ factura.fecha_emision.strftime('%Y-%m-%dT%H:%M:%SZ') }}">{{ factura.fecha_emision.strftime('%Y-%m-%d %H:%M:%S') }}</span>{% else %}—{% endif %}</div>
+      <div class="col-md-3"><strong>Fecha Certificación:</strong><br>{% if factura.fecha_certificacion %}<span class="local-datetime" data-datetime="{{ factura.fecha_certificacion.strftime('%Y-%m-%dT%H:%M:%SZ') }}">{{ factura.fecha_certificacion.strftime('%Y-%m-%d %H:%M:%S') }}</span>{% else %}—{% endif %}</div>
       <div class="col-md-3"><strong>Emisor NIT:</strong><br>{{ factura.emisor_nit or '—' }}</div>
       <div class="col-md-3"><strong>Receptor ID:</strong><br>{{ factura.receptor_id or '—' }}</div>
 

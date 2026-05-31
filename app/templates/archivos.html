@@ -78,12 +78,12 @@
   </thead>
   <tbody>
     {% for a in archivos %}
-    <tr data-id="{{ a.id }}" data-usuario="{{ (a.user.username if a.user else '').lower() }}" data-nombre="{{ a.filename.lower() }}" data-tipo="{{ a.tipo_archivo.lower() }}" data-fecha="{{ a.upload_date.strftime('%Y-%m-%d %H:%M:%S') }}" data-movimientos="{{ a.facturas|length if a.tipo_archivo == 'factura-fel-xml' else a.movimientos|length }}">
+    <tr data-id="{{ a.id }}" data-usuario="{{ (a.user.username if a.user else '').lower() }}" data-nombre="{{ a.filename.lower() }}" data-tipo="{{ a.tipo_archivo.lower() }}" data-fecha="{{ a.upload_date.strftime('%Y-%m-%dT%H:%M:%SZ') if a.upload_date else '' }}" data-movimientos="{{ a.facturas|length if a.tipo_archivo == 'factura-fel-xml' else a.movimientos|length }}">
       <td>{{ a.id }}</td>
       <td>{{ a.user.username if a.user else '-' }}</td>
       <td>{{ a.filename }}</td>
       <td>{{ a.tipo_archivo }}</td>
-      <td>{{ a.upload_date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+      <td>{% if a.upload_date %}<span class="local-datetime" data-datetime="{{ a.upload_date.strftime('%Y-%m-%dT%H:%M:%SZ') }}">{{ a.upload_date.strftime('%Y-%m-%d %H:%M:%S') }}</span>{% else %}-{% endif %}</td>
       <td>{{ a.facturas|length if a.tipo_archivo == 'factura-fel-xml' else a.movimientos|length }}</td>
       <td>
         <div class="btn-group" role="group" aria-label="Acciones archivo">

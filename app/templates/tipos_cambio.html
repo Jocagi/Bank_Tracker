@@ -11,10 +11,10 @@
   </thead>
   <tbody>
     {% for tc in tipos %}
-    <tr data-moneda="{{ tc.moneda.lower() }}" data-valor="{{ tc.valor }}" data-fecha="{{ tc.updated_at.strftime('%Y-%m-%d %H:%M') }}">
+    <tr data-moneda="{{ tc.moneda.lower() }}" data-valor="{{ tc.valor }}" data-fecha="{{ tc.updated_at.strftime('%Y-%m-%dT%H:%M:%SZ') if tc.updated_at else '' }}">
       <td>{{ tc.moneda }}</td>
       <td>Q{{ tc.valor }}</td>
-      <td>{{ tc.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+      <td>{% if tc.updated_at %}<span class="local-datetime" data-datetime="{{ tc.updated_at.strftime('%Y-%m-%dT%H:%M:%SZ') }}">{{ tc.updated_at.strftime('%Y-%m-%d %H:%M') }}</span>{% else %}-{% endif %}</td>
       <td>
         <a href="{{ url_for('main.edit_tipo_cambio', tc_id=tc.id) }}" class="btn btn-sm btn-secondary">Editar</a>
         <form method="post" action="{{ url_for('main.delete_tipo_cambio', tc_id=tc.id) }}" style="display:inline" onsubmit="return confirm('¿Eliminar este tipo de cambio?');">

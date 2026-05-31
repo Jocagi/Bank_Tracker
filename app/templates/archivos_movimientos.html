@@ -3,7 +3,7 @@
 
 {% block content %}
 <h1>Movimientos del Archivo: {{ archivo.filename }}</h1>
-<p>Tipo: {{ archivo.tipo_archivo }} | Fecha carga: {{ archivo.upload_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+<p>Tipo: {{ archivo.tipo_archivo }} | Fecha carga: {% if archivo.upload_date %}<span class="local-datetime" data-datetime="{{ archivo.upload_date.strftime('%Y-%m-%dT%H:%M:%SZ') }}">{{ archivo.upload_date.strftime('%Y-%m-%d %H:%M:%S') }}</span>{% else %}-{% endif %}</p>
 
 <a href="{{ url_for('main.list_archivos') }}" class="btn btn-secondary mb-3"><< Volver a Archivos</a>
 

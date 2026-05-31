@@ -156,6 +156,26 @@
     });
   </script>
 
+  <!-- Convertir ISO datetimes a hora local del navegador -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      document.querySelectorAll('.local-datetime').forEach(function(el){
+        var iso = el.getAttribute('data-datetime');
+        if(!iso) return;
+        var d = new Date(iso);
+        if(isNaN(d)) d = new Date(iso.replace(' ', 'T'));
+        if(isNaN(d)) return;
+        var opts = {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'};
+        try{
+          el.textContent = d.toLocaleString(navigator.language || 'es-ES', opts);
+        }catch(e){
+          el.textContent = d.toLocaleString();
+        }
+      });
+      // Also convert any data-* attributes like data-fecha on rows into visible text elements if desired by pages.
+    });
+  </script>
+
   {% block scripts %}{% endblock %}
 </body>
 </html>
