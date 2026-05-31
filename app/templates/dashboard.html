@@ -59,6 +59,10 @@
       <option value="0" {% if table_limit and table_limit|string == "0" %}selected{% endif %}>Todos</option>
     </select>
   </div>
+  <div class="col-md-3">
+    <label for="percent_threshold" class="form-label">Umbral % gasto/ingreso</label>
+    <input type="number" id="percent_threshold" name="percent_threshold" class="form-control" value="{{ percent_threshold | default(60) }}" min="0" max="100" step="1">
+  </div>
   <div class="col-12 text-end">
     <button type="submit" class="btn btn-primary">Aplicar filtros</button>
     <a href="{{ url_for('main.dashboard', clear_filters='true') }}" class="btn btn-outline-secondary ms-2">Limpiar filtros</a>
@@ -109,6 +113,20 @@
       </div>
       <div class="card-body p-2" style="height: 350px;">
         <canvas id="chartMonthly"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Gráfica independiente: % Gasto/Ingreso Mensual -->
+<div class="row mb-3">
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-header p-2">
+        <h6 class="mb-0">% Gasto/Ingreso Mensual</h6>
+      </div>
+      <div class="card-body p-2" style="height: 160px;">
+        <canvas id="chartPercent"></canvas>
       </div>
     </div>
   </div>
@@ -603,6 +621,12 @@
   const monthLabels     = {{ month_labels     | tojson }};
   const monthValues     = {{ month_values     | tojson }};
   const monthIncomeValues = {{ month_income_values | tojson }};
+  // Porcentaje gasto/ingreso por mes (gastos / ingresos * 100), null cuando no hay ingreso
+  const percentValues = monthLabels.map((_, i) => {
+    const g = monthValues[i] || 0;
+    const inc = monthIncomeValues[i] || 0;
+    return inc ? (g / inc) * 100 : null;
+  });
   const prevMonthLabel = {{ prev_month_label | tojson }};
   const prevMonthCategoryLabels = {{ prev_month_category_labels | tojson }};
   const prevMonthCategoryValues = {{ prev_month_category_values | tojson }};
@@ -760,18 +784,20 @@
           {
             label: 'Gastos Q',
             data: monthValues,
-            borderColor: 'rgba(220,53,69,0.9)', // bootstrap danger
+            borderColor: 'rgba(220,53,69,0.9)',
             backgroundColor: 'rgba(220,53,69,0.1)',
             fill: false,
-            tension: 0.1
+            tension: 0.1,
+            yAxisID: 'y'
           },
           {
             label: 'Ingresos Q',
             data: monthIncomeValues,
-            borderColor: 'rgba(25,135,84,0.9)', // bootstrap success
+            borderColor: 'rgba(25,135,84,0.9)',
             backgroundColor: 'rgba(25,135,84,0.1)',
             fill: false,
-            tension: 0.1
+            tension: 0.1,
+            yAxisID: 'y'
           }
         ]
       },
@@ -782,7 +808,6 @@
           tooltip: {
             callbacks: {
               label: ctx => {
-                // ctx.datasetIndex tells which series; ctx.parsed.y is the value
                 const v = Math.abs(ctx.parsed.y).toLocaleString(undefined, { minimumFractionDigits: 2 });
                 return `${ctx.dataset.label}: Q${v}`;
               }
@@ -795,7 +820,7 @@
           }
         },
         scales: {
-          y: { 
+          y: {
             beginAtZero: true,
             ticks: { font: { size: 11 } }
           },
@@ -805,6 +830,80 @@
         }
       }
     });
+
+    // Gráfica independiente: % Gasto/Ingreso Mensual (puntos verdes/rojos según umbral)
+    const ctxPercent = document.getElementById('chartPercent');
+    const percentInput = document.getElementById('percent_threshold');
+    const defaultPercentThreshold = {{ percent_threshold | default(60) | tojson }};
+    let percentThreshold = defaultPercentThreshold;
+    if (percentInput) {
+      const v = parseFloat(percentInput.value);
+      if (!isNaN(v)) percentThreshold = v;
+    }
+
+    function computePointColors() {
+      return percentValues.map(v => {
+        if (v === null || v === undefined) return 'rgba(128,128,128,0.6)';
+        return (v <= percentThreshold) ? 'rgba(40,167,69,0.9)' : 'rgba(220,53,69,0.9)';
+      });
+    }
+
+    let chartPercent = null;
+    if (ctxPercent) {
+      chartPercent = new Chart(ctxPercent, {
+        type: 'line',
+        data: {
+          labels: monthLabels,
+          datasets: [{
+            label: '% Gasto/Ingreso',
+            data: percentValues,
+            borderColor: 'rgba(13,110,253,0.9)',
+            backgroundColor: 'rgba(13,110,253,0.1)',
+            pointBackgroundColor: computePointColors(),
+            pointBorderColor: computePointColors(),
+            pointRadius: 5,
+            fill: false,
+            tension: 0.1,
+            borderDash: [6,3]
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const v = ctx.parsed.y;
+                  return v === null || v === undefined ? '% Gasto/Ingreso: N/A' : `% Gasto/Ingreso: ${v.toLocaleString(undefined, { minimumFractionDigits: 2 })}%`;
+                }
+              }
+            },
+            legend: { display: true, position: 'top', labels: { font: { size: 12 } } }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { callback: value => `${value}%`, font: { size: 11 } },
+              suggestedMax: 100
+            },
+            x: { ticks: { font: { size: 11 } } }
+          }
+        }
+      });
+
+      // Actualizar colores cuando el usuario cambie el umbral en el formulario
+      if (percentInput) {
+        percentInput.addEventListener('change', function() {
+          const nv = parseFloat(this.value);
+          percentThreshold = isNaN(nv) ? defaultPercentThreshold : nv;
+          const colors = computePointColors();
+          chartPercent.data.datasets[0].pointBackgroundColor = colors;
+          chartPercent.data.datasets[0].pointBorderColor = colors;
+          chartPercent.update();
+        });
+      }
+    }
 
     function buildPrevMonthBarChart(canvasId, labels, values, datasetLabel, limit = 0, chartOptions = {}) {
       const { labels: chartLabels, values: chartValues } = processChartData(labels, values, limit);

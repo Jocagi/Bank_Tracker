@@ -22,6 +22,17 @@ def dashboard():
     subcat_id = request.args.get('subcategoria_id', '')
     owner_id = request.args.get('owner_id', '')
     table_limit = request.args.get('table_limit', '10')  # Valor por defecto: 10
+    # Umbral porcentual para la gráfica % gasto/ingreso (se pasa al template)
+    percent_threshold_raw = request.args.get('percent_threshold', None)
+    try:
+        percent_threshold = int(percent_threshold_raw) if percent_threshold_raw is not None and percent_threshold_raw != '' else None
+        if percent_threshold is not None:
+            if percent_threshold < 0:
+                percent_threshold = 0
+            elif percent_threshold > 100:
+                percent_threshold = 100
+    except (ValueError, TypeError):
+        percent_threshold = None
     try:
         subcat_id_int = int(subcat_id) if subcat_id else None
     except ValueError:
@@ -1246,4 +1257,5 @@ def dashboard():
         subcategorias=subcategorias,
         all_subcategorias=all_subcategorias,
         table_limit=table_limit
+        ,percent_threshold=percent_threshold
     )
