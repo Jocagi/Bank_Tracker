@@ -209,6 +209,16 @@
   <div class="col-md-4">
     <div class="card">
       <div class="card-header p-2">
+        <h6 class="mb-0">Gastos por Ubicación</h6>
+      </div>
+      <div class="card-body p-2" style="height: 275px;">
+        <canvas id="chartLocation"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header p-2">
         <h6 class="mb-0">Gastos por Comercio</h6>
       </div>
       <div class="card-body p-2" style="height: 275px;">
@@ -639,6 +649,16 @@
     const commerceValues  = {{ commerce_values  | tojson }};
     const categoryLabels  = {{ cat_labels       | tojson }};
     const categoryValues  = {{ cat_values       | tojson }};
+    const locationLabels = {{ location_labels | tojson }};
+    const locationValues = {{ location_values | tojson }};
+    new Chart(document.getElementById('chartLocation'), {
+      type: 'doughnut',
+      data: {
+        labels: locationLabels,
+        datasets: [{ label: 'Gastos por ubicación', data: locationValues }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
   const monthLabels     = {{ month_labels     | tojson }};
   const monthValues     = {{ month_values     | tojson }};
   const monthIncomeValues = {{ month_income_values | tojson }};

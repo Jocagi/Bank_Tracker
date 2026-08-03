@@ -1,4 +1,4 @@
-window.initEntityLogoForm = function(nameInputId, suggestionsUrl) {
+window.initEntityLogoForm = function(nameInputId, suggestionsUrl, searchTerm = 'logo') {
   const nameInput = document.getElementById(nameInputId);
   const logoInput = document.getElementById('entity-logo-input');
   const logoUrl = document.getElementById('entity-logo-url');
@@ -24,7 +24,7 @@ window.initEntityLogoForm = function(nameInputId, suggestionsUrl) {
     if (!name) return;
     suggestions.innerHTML = '<div class="text-muted small">Buscando imágenes...</div>';
     try {
-      const response = await fetch(`${suggestionsUrl}?nombre=${encodeURIComponent(name)}`);
+      const response = await fetch(`${suggestionsUrl}?nombre=${encodeURIComponent(name)}&termino=${encodeURIComponent(searchTerm)}`);
       const data = await response.json();
       searchLink.href = data.search_url || '#';
       searchLink.hidden = !data.search_url;

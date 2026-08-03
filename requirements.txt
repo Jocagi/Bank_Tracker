@@ -10,3 +10,4 @@ xlrd
 lxml
 waitress
 Flask-Login
+pycountry

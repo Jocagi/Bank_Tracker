@@ -1,6 +1,6 @@
-{% macro entity_logo_form(label, name_input_id, logo_filename=None) %}
+{% macro entity_logo_form(label, name_input_id, logo_filename=None, asset_name='Logo', search_term='logo') %}
   <div class="mb-3">
-    <label class="form-label">Logo de {{ label }} <span class="text-muted">(opcional)</span></label>
+    <label class="form-label">{{ asset_name }} de {{ label }} <span class="text-muted">(opcional)</span></label>
     <div id="entity-logo-dropzone" class="border rounded p-3 text-center bg-light" tabindex="0">
       <div id="entity-logo-preview" class="mb-2">
         {% if logo_filename %}
@@ -14,7 +14,7 @@
     {% if logo_filename %}
     <div class="form-check mt-2">
       <input class="form-check-input" type="checkbox" name="remove_logo" value="1" id="remove-entity-logo">
-      <label class="form-check-label" for="remove-entity-logo">Eliminar logo actual</label>
+      <label class="form-check-label" for="remove-entity-logo">Eliminar {{ asset_name|lower }} actual</label>
     </div>
     {% endif %}
     <div class="d-flex align-items-center gap-2 mt-2">
@@ -25,6 +25,6 @@
   </div>
   <script src="{{ url_for('static', filename='js/entity_logo.js') }}"></script>
   <script>
-    window.initEntityLogoForm({{ name_input_id|tojson }}, {{ url_for('main.logo_suggestions')|tojson }});
+    window.initEntityLogoForm({{ name_input_id|tojson }}, {{ url_for('main.logo_suggestions')|tojson }}, {{ search_term|tojson }});
   </script>
 {% endmacro %}

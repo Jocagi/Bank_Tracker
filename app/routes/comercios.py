@@ -1,10 +1,9 @@
 import os
 import re
 import uuid
-from urllib.parse import urlencode
+from json import JSONDecodeError
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
-import json
 
 from flask import current_app, flash, jsonify, redirect, render_template, request, send_from_directory, url_for
 from . import bp
@@ -12,6 +11,7 @@ from .. import db
 from ..models import Comercio, Regla, Categoria, Subcategoria, Movimiento
 from flask_login import current_user
 from ..utils.classifier import reclasificar_movimientos
+from ..utils.image_search import build_image_search_url, search_image_suggestions
 from sqlalchemy.orm import joinedload
 from flask_login import login_required
 
@@ -22,14 +22,6 @@ ALLOWED_LOGO_TYPES = {
     'image/gif': 'gif',
     'image/webp': 'webp',
 }
-
-BRAVE_IMAGE_COUNTRIES = {
-    'AR', 'AU', 'AT', 'BE', 'BR', 'CA', 'CL', 'DK', 'FI', 'FR', 'DE',
-    'GR', 'HK', 'IN', 'ID', 'IT', 'JP', 'KR', 'MY', 'MX', 'NL', 'NZ',
-    'NO', 'CN', 'PL', 'PT', 'PH', 'RU', 'SA', 'ZA', 'ES', 'SE', 'CH',
-    'TW', 'TR', 'GB', 'US', 'ALL',
-}
-
 
 def format_sentence_case(text):
     """Convierte un texto a formato de oración (primera letra mayúscula, resto minúscula)"""
@@ -50,6 +42,9 @@ def _logo_folder(entity_type='comercios'):
 def _save_logo(file_storage=None, image_url=None, entity_type='comercios'):
     content_type = None
     content = None
+    if not (file_storage and file_storage.filename) and not image_url:
+        return None
+
     if file_storage and file_storage.filename:
         content_type = (file_storage.mimetype or '').lower().split(';')[0]
         content = file_storage.read(current_app.config.get('MAX_LOGO_BYTES', 5 * 1024 * 1024) + 1)
@@ -86,46 +81,9 @@ def _delete_logo(filename):
 @bp.route('/comercios/logo/<path:filename>')
 @login_required
 def comercio_logo(filename):
-    if not filename.startswith(('comercios/', 'categorias/', 'subcategorias/')):
+    if not filename.startswith(('comercios/', 'categorias/', 'subcategorias/', 'paises/')):
         return ('', 404)
     return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
-
-
-def _search_brave_images(query):
-    api_key = current_app.config.get('BRAVE_SEARCH_API_KEY', '')
-    if not api_key:
-        raise RuntimeError('BRAVE_SEARCH_API_KEY no está configurada.')
-
-    country = current_app.config.get('BRAVE_SEARCH_COUNTRY', 'ALL')
-    if country not in BRAVE_IMAGE_COUNTRIES:
-        country = 'ALL'
-
-    api_url = 'https://api.search.brave.com/res/v1/images/search?' + urlencode({
-        'q': query,
-        'count': 3,
-        'safesearch': 'strict',
-        'country': country,
-        'search_lang': current_app.config.get('BRAVE_SEARCH_LANG', 'es')
-    })
-    req = Request(api_url, headers={
-        'Accept': 'application/json',
-        'X-Subscription-Token': api_key,
-        'User-Agent': 'BankTracker/1.0 (logo suggestions)'
-    })
-    payload = json.loads(urlopen(req, timeout=10).read().decode('utf-8'))
-    if payload.get('error'):
-        raise RuntimeError(payload['error'])
-
-    return [
-        {
-            'url': item.get('properties', {}).get('url') or item.get('url'),
-            'thumbnail_url': item.get('thumbnail', {}).get('src'),
-            'title': item.get('title') or 'Logo sugerido'
-        }
-        for item in payload.get('results', [])
-        if (item.get('properties', {}).get('url') or item.get('url', '')).startswith(('http://', 'https://'))
-        and item.get('thumbnail', {}).get('src', '').startswith(('http://', 'https://'))
-    ][:3]
 
 
 @bp.route('/comercios/logo-suggestions')
@@ -135,17 +93,11 @@ def logo_suggestions():
     if not nombre:
         return jsonify({'suggestions': []})
 
-    query = f'{nombre} logo'
-    search_url = 'https://www.google.com/search?' + urlencode({
-        'tbm': 'isch',
-        'q': query,
-        'gl': current_app.config.get('BRAVE_SEARCH_COUNTRY', 'GT').lower(),
-        'hl': current_app.config.get('BRAVE_SEARCH_LANG', 'es')
-    })
-
+    termino = request.args.get('termino', 'logo')
+    search_url = build_image_search_url(nombre, termino)
     try:
-        suggestions = _search_brave_images(query)
-        return jsonify({'suggestions': suggestions, 'search_url': search_url})
+        result = search_image_suggestions(nombre, termino)
+        return jsonify(result)
     except RuntimeError as error:
         return jsonify({
             'suggestions': [],
@@ -163,7 +115,7 @@ def logo_suggestions():
             'search_url': search_url,
             'message': message
         })
-    except (TimeoutError, OSError, json.JSONDecodeError):
+    except (TimeoutError, OSError, JSONDecodeError):
         return jsonify({
             'suggestions': [],
             'search_url': search_url,

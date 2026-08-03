@@ -44,6 +44,24 @@ class Regla(db.Model):
     tipo = db.Column(db.String(50), nullable=False)  # 'incluir' o 'excluir'
     criterio = db.Column(db.String(200), nullable=False)  # Regex o texto a buscar
 
+class Pais(db.Model):
+    __tablename__ = 'paises'
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(150), nullable=False, unique=True)
+    codigo_iso = db.Column(db.String(2), nullable=False, unique=True, index=True)
+    logo_filename = db.Column(db.String(255), nullable=True)
+    movimientos = db.relationship('Movimiento', backref='pais', lazy=True)
+
+class CodigoPais(db.Model):
+    __tablename__ = 'codigos_pais'
+    id = db.Column(db.Integer, primary_key=True)
+    codigo = db.Column(db.String(3), nullable=False, unique=True, index=True)
+    digitos = db.Column(db.Integer, nullable=False)
+    pais_id = db.Column(db.Integer, db.ForeignKey('paises.id'), nullable=False, index=True)
+    activo = db.Column(db.Boolean, nullable=False, default=True)
+
+    pais = db.relationship('Pais', backref=db.backref('codigos_clasificacion', lazy=True))
+
 class Movimiento(db.Model):
     __tablename__ = 'movimientos'
     id = db.Column(db.Integer, primary_key=True)
@@ -61,6 +79,7 @@ class Movimiento(db.Model):
     archivo_id = db.Column(db.Integer, db.ForeignKey('archivos.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     comercio_id = db.Column(db.Integer, db.ForeignKey('comercios.id'), nullable=True)
+    pais_id = db.Column(db.Integer, db.ForeignKey('paises.id'), nullable=True, index=True)
     # Relaciones
     comercio = db.relationship(
         'Comercio',

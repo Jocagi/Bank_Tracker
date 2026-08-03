@@ -5,7 +5,7 @@ from flask import render_template, request, flash
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func, or_
 from .. import db
-from ..models import Movimiento, Cuenta, Comercio, Categoria, Subcategoria, TipoCambio, User, Archivo, Factura
+from ..models import Movimiento, Cuenta, Comercio, Categoria, Subcategoria, TipoCambio, User, Archivo, Factura, Pais
 from ..models import Movimiento as MovimientoModel
 from . import bp
 from flask import redirect, url_for
@@ -24,6 +24,7 @@ def index():
     selected_categoria  = request.args.get('categoria_id', '')
     selected_subcategoria = request.args.get('subcategoria_id', '')
     selected_tipo_cont  = request.args.get('tipo_contabilizacion', '')
+    selected_pais       = request.args.get('pais_id', '')
     selected_owner = request.args.get('owner_id', '')
     page = request.args.get('page', default=1, type=int)
     per_page = request.args.get('per_page', default=50, type=int)
@@ -93,7 +94,17 @@ def index():
             Movimiento.comercio.has(tipo_contabilizacion=selected_tipo_cont)
         )
     if selected_cuenta:
-        query = query.filter(Movimiento.cuenta_id == int(selected_cuenta))
+        try:
+            query = query.filter(Movimiento.cuenta_id == int(selected_cuenta))
+        except ValueError:
+            pass
+    if selected_pais == 'sin_pais':
+        query = query.filter(Movimiento.pais_id.is_(None))
+    elif selected_pais:
+        try:
+            query = query.filter(Movimiento.pais_id == int(selected_pais))
+        except ValueError:
+            pass
 
     # Totales sobre el conjunto filtrado completo (antes de paginar)
     sum_debito = query.filter(Movimiento.tipo == 'debito').with_entities(func.coalesce(func.sum(Movimiento.monto), 0)).scalar() or 0
@@ -109,8 +120,9 @@ def index():
     range_end = min(pagination.page * pagination.per_page, total_movs)
 
     # Opciones para los selects
-    cuentas     = Cuenta.query.order_by(Cuenta.numero_cuenta).all()
+    cuentas     = Cuenta.query.filter_by(user_id=current_user.id).order_by(Cuenta.numero_cuenta).all()
     comercios   = Comercio.query.order_by(Comercio.nombre).all()
+    paises      = Pais.query.order_by(Pais.nombre).all()
     categorias  = Categoria.query.order_by(Categoria.nombre).all()
     all_subcategorias = Subcategoria.query.options(joinedload(Subcategoria.categoria)).order_by(Subcategoria.nombre).all()
     subcategorias_query = Subcategoria.query.options(joinedload(Subcategoria.categoria)).order_by(Subcategoria.nombre)
@@ -140,6 +152,7 @@ def index():
         selected_categoria=selected_categoria,
         selected_subcategoria=selected_subcategoria,
         selected_tipo_cont=selected_tipo_cont,
+        selected_pais=selected_pais,
         per_page=per_page,
         # listas para los selects
         cuentas=cuentas,
@@ -149,7 +162,7 @@ def index():
         all_subcategorias=all_subcategorias,
         tipos_contabilizacion=tipos,
         pagination=pagination
-        , users=users, selected_owner=selected_owner
+        , users=users, selected_owner=selected_owner, paises=paises
     )
 
 
@@ -158,6 +171,7 @@ def edit_movimiento(mov_id):
     mov = Movimiento.query.get_or_404(mov_id)
     cuentas   = Cuenta.query.order_by(Cuenta.numero_cuenta).all()
     comercios = Comercio.query.order_by(Comercio.nombre).all()
+    paises = Pais.query.order_by(Pais.nombre).all()
     
     # Detectar si viene desde sin_clasificar
     from_sin_clasificar = request.args.get('from') == 'sin_clasificar'
@@ -198,6 +212,8 @@ def edit_movimiento(mov_id):
             return redirect(url_for('main.edit_movimiento', mov_id=mov.id))
 
         mov.comercio_id = int(comercio_id) if comercio_id else None
+        pais_id = request.form.get('pais_id')
+        mov.pais_id = int(pais_id) if pais_id else None
 
         # Guardar cambios
         db.session.commit()
@@ -224,7 +240,7 @@ def edit_movimiento(mov_id):
         else:
             return redirect(url_for('main.index'))
 
-    return render_template('movimiento_edit.html', mov=mov, cuentas=cuentas, comercios=comercios)
+    return render_template('movimiento_edit.html', mov=mov, cuentas=cuentas, comercios=comercios, paises=paises)
 
 
 def _get_or_create_archivo_manual(user_id):
@@ -249,6 +265,7 @@ def add_movimiento():
     from datetime import date as _date
     cuentas   = Cuenta.query.order_by(Cuenta.numero_cuenta).all()
     comercios = Comercio.query.order_by(Comercio.nombre).all()
+    paises = Pais.query.order_by(Pais.nombre).all()
     today = _date.today().isoformat()
 
     if request.method == 'POST':
@@ -280,6 +297,7 @@ def add_movimiento():
             return redirect(url_for('main.add_movimiento'))
 
         comercio_id = request.form.get('comercio_id') or None
+        pais_id = request.form.get('pais_id') or None
         excluir     = request.form.get('excluir_clasificacion')
         excluir_clasificacion = excluir in ('on', '1', 'true', 'True')
         excluir_db  = request.form.get('excluir_dashboard')
@@ -298,6 +316,7 @@ def add_movimiento():
             tipo=tipo,
             cuenta_id=int(cuenta_id),
             comercio_id=int(comercio_id) if comercio_id else None,
+            pais_id=int(pais_id) if pais_id else None,
             excluir_clasificacion=excluir_clasificacion,
             excluir_dashboard=excluir_dashboard,
             archivo_id=archivo.id,
@@ -308,7 +327,7 @@ def add_movimiento():
         flash('Movimiento creado correctamente.', 'success')
         return redirect(url_for('main.index'))
 
-    return render_template('movimiento_add.html', cuentas=cuentas, comercios=comercios, today=today)
+    return render_template('movimiento_add.html', cuentas=cuentas, comercios=comercios, paises=paises, today=today)
 
 
 @bp.route('/movimiento/<int:mov_id>/delete', methods=['POST'])

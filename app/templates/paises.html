@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}Países{% endblock %}
+{% block content %}
+<h1>Países</h1>
+<div class="mb-3">
+  <a href="{{ url_for('main.add_pais') }}" class="btn btn-primary">Agregar país</a>
+  <a href="{{ url_for('main.list_codigos_pais') }}" class="btn btn-outline-secondary">Códigos de clasificación</a>
+</div>
+<div class="mb-3">
+  <form method="get" action="{{ url_for('main.list_paises') }}" class="row g-2 align-items-end">
+    <div class="col-12 col-md-4">
+      <label for="q_name" class="form-label">País</label>
+      <input type="search" id="q_name" name="q_name" class="form-control" placeholder="Nombre" value="{{ filters.q_name }}">
+    </div>
+    <div class="col-12 col-md-3">
+      <label for="q_code" class="form-label">Código ISO</label>
+      <input type="search" id="q_code" name="q_code" class="form-control" placeholder="Ej. GT" value="{{ filters.q_code }}" maxlength="2">
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-outline-primary">Filtrar</button>
+      <a href="{{ url_for('main.list_paises') }}" class="btn btn-link">Limpiar</a>
+    </div>
+  </form>
+</div>
+<div class="table-container">
+  <div class="table-wrapper">
+    <table class="table table-hover mb-0" id="paises-table">
+      <thead>
+        <tr>
+          <th data-column="nombre">País <span class="sort-indicator" data-column="nombre"></span></th>
+          <th data-column="codigo">Código ISO <span class="sort-indicator" data-column="codigo"></span></th>
+          <th data-column="movimientos">Movimientos <span class="sort-indicator" data-column="movimientos"></span></th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pais in paises %}
+        <tr data-nombre="{{ pais.nombre.lower() }}" data-codigo="{{ pais.codigo_iso.lower() }}" data-movimientos="{{ pais.movimientos|length }}">
+          <td>
+            {% if pais.logo_filename %}<img src="{{ url_for('main.comercio_logo', filename=pais.logo_filename) }}" alt="Bandera de {{ pais.nombre }}" width="36" height="24" class="me-2 align-middle" loading="lazy" style="object-fit:cover">{% endif %}
+            {{ pais.nombre }}
+          </td>
+          <td><code>{{ pais.codigo_iso }}</code></td>
+          <td><a href="{{ url_for('main.index', pais_id=pais.id) }}">{{ pais.movimientos|length }}</a></td>
+          <td>
+            <a href="{{ url_for('main.edit_pais', pais_id=pais.id) }}" class="btn btn-sm btn-secondary">Editar</a>
+            <form method="post" action="{{ url_for('main.delete_pais', pais_id=pais.id) }}" style="display:inline" onsubmit="return confirm('¿Eliminar {{ pais.nombre }}?');">
+              <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="text-center text-muted">No hay países registrados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

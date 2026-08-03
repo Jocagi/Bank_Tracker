@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% from '_entity_logo_form.html' import entity_logo_form %}
+{% block title %}Editar país{% endblock %}
+{% block content %}
+<h1>Editar país</h1>
+<form method="post" class="row g-3">
+  <div class="col-md-7"><label class="form-label" for="nombre">Nombre</label><input class="form-control" id="nombre" name="nombre" required value="{{ request.form.get('nombre', pais.nombre) }}"></div>
+  <div class="col-md-5"><label class="form-label" for="codigo_iso">Código ISO</label><input class="form-control" id="codigo_iso" name="codigo_iso" minlength="2" maxlength="2" required value="{{ request.form.get('codigo_iso', pais.codigo_iso) }}"></div>
+  <div class="col-12">{{ entity_logo_form('el país', 'nombre', pais.logo_filename, 'Bandera', 'bandera') }}</div>
+  <div class="col-12"><button class="btn btn-primary" type="submit">Guardar</button> <a class="btn btn-secondary" href="{{ url_for('main.list_paises') }}">Cancelar</a></div>
+</form>
+{% endblock %}

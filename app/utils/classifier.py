@@ -1,6 +1,47 @@
 import re
 from .. import db
-from ..models import Regla, Movimiento
+from ..models import Regla, Movimiento, Pais, Comercio, CodigoPais
+
+
+def _pais_por_descripcion(descripcion, codigos):
+    """Resolve a final code only when it is preceded by a space."""
+    match = re.search(r"\s([A-Za-z]{2,3})$", descripcion or '')
+    if not match:
+        return None
+
+    codigo = match.group(1).upper()
+    codigo_pais = next(
+        (item for item in codigos if item.activo and item.codigo == codigo),
+        None,
+    )
+    return codigo_pais.pais if codigo_pais else None
+
+
+def _pais_por_moneda(moneda, paises):
+    codigo_por_moneda = {
+        'GTQ': 'GT',
+        'USD': 'US',
+    }
+    codigo_iso = codigo_por_moneda.get((moneda or '').strip().upper())
+    if not codigo_iso:
+        return None
+    return next((pais for pais in paises if pais.codigo_iso == codigo_iso), None)
+
+
+def _actualizar_pais(mov, paises, codigos=None):
+    """Assign a country only after the movement is classified as an expense."""
+    comercio = mov.comercio
+    if comercio is None and mov.comercio_id is not None:
+        comercio = db.session.get(Comercio, mov.comercio_id)
+    if codigos is None:
+        codigos = CodigoPais.query.all()
+    if comercio and (comercio.tipo_contabilizacion or '').lower() == 'gastos':
+        pais = _pais_por_descripcion(mov.descripcion, codigos)
+        if pais is None:
+            pais = _pais_por_moneda(mov.moneda, paises)
+        mov.pais_id = pais.id if pais else None
+    else:
+        mov.pais_id = None
 
 def cargar_reglas():
     """
@@ -54,6 +95,8 @@ def clasificar_movimientos():
         asigna mov.comercio_id y continúa con el siguiente movimiento.
     """
     reglas_excluir, reglas_incluir = cargar_reglas()
+    paises = Pais.query.all()
+    codigos = CodigoPais.query.all()
 
     # Agrupar exclusiones por comercio_id
     excl_por_comercio = {}
@@ -61,9 +104,12 @@ def clasificar_movimientos():
         excl_por_comercio.setdefault(regla.comercio_id, []).append(patron)
 
     # Excluir movimientos que el usuario marcó para no clasificar
-    sin_asignar = Movimiento.query.filter(Movimiento.comercio_id.is_(None), Movimiento.excluir_clasificacion.is_(False)).all()
-    for mov in sin_asignar:
+    movimientos = Movimiento.query.filter(Movimiento.excluir_clasificacion.is_(False)).all()
+    for mov in movimientos:
         desc = (mov.descripcion or '').strip()
+        if mov.comercio_id is not None:
+            _actualizar_pais(mov, paises, codigos)
+            continue
         for regla_inc, patron_inc in reglas_incluir:
             # 1) Solo seguir si la inclusión matchea
             if not patron_inc.search(desc):
@@ -76,6 +122,7 @@ def clasificar_movimientos():
             # 3) Coincidió inclusión y no hay exclusión → asignar y salir
             mov.comercio_id = regla_inc.comercio_id
             break
+        _actualizar_pais(mov, paises, codigos)
 
     db.session.commit()
 
@@ -86,6 +133,8 @@ def reclasificar_movimientos():
     reasignando comercios según las reglas.
     """
     reglas_excluir, reglas_incluir = cargar_reglas()
+    paises = Pais.query.all()
+    codigos = CodigoPais.query.all()
 
     excl_por_comercio = {}
     for regla, patron in reglas_excluir:
@@ -104,6 +153,7 @@ def reclasificar_movimientos():
                 continue
             mov.comercio_id = regla_inc.comercio_id
             break
+        _actualizar_pais(mov, paises, codigos)
 
     db.session.commit()
 
@@ -114,6 +164,8 @@ def previsualizar_clasificacion(movimientos):
     devuelve una lista de tuplas (movimiento, comercio_id_asignado o None).
     """
     reglas_excluir, reglas_incluir = cargar_reglas()
+    paises = Pais.query.all()
+    codigos = CodigoPais.query.all()
     excl_por_comercio = {}
     for regla, patron in reglas_excluir:
         excl_por_comercio.setdefault(regla.comercio_id, []).append(patron)
@@ -125,6 +177,7 @@ def previsualizar_clasificacion(movimientos):
             resultados.append((mov, None))
             continue
         desc = (mov.descripcion or '').strip()
+        pais = _pais_por_descripcion(desc, codigos)
         comercio_asignado = None
         for regla_inc, patron_inc in reglas_incluir:
             if not patron_inc.search(desc):

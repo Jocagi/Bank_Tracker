@@ -4,7 +4,7 @@ from flask import render_template, request, flash, url_for
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from .. import db
-from ..models import Comercio, Categoria, Subcategoria, Movimiento, TipoCambio, User, Cuenta, Regla
+from ..models import Comercio, Categoria, Subcategoria, Movimiento, TipoCambio, User, Cuenta, Regla, Pais
 from . import bp
 from flask_login import login_required, current_user
 
@@ -93,6 +93,42 @@ def dashboard():
     # 3) Gastos por Comercio (GTQ) - Incluye movimientos sin clasificar
     def apply_dashboard_exclusion(query):
         return query.filter(Movimiento.excluir_dashboard.is_(False))
+
+    location_query = (
+        db.session.query(
+            func.coalesce(Pais.nombre, db.literal('Sin país')).label('pais_nombre'),
+            func.sum(-(Movimiento.monto * TipoCambio.valor)).label('total_gtq')
+        )
+        .outerjoin(Pais, Movimiento.pais_id == Pais.id)
+        .join(TipoCambio, TipoCambio.moneda == Movimiento.moneda)
+        .filter(Movimiento.monto < 0)
+    )
+    location_query = apply_dashboard_exclusion(location_query)
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        if owner_id:
+            try:
+                location_query = location_query.filter(Movimiento.user_id == int(owner_id))
+            except ValueError:
+                pass
+    else:
+        location_query = location_query.filter(Movimiento.user_id == current_user.id)
+    if d_start:
+        location_query = location_query.filter(Movimiento.fecha >= d_start)
+    if d_end:
+        location_query = location_query.filter(Movimiento.fecha <= d_end)
+    if cat_id:
+        try:
+            location_query = location_query.join(Comercio, Movimiento.comercio_id == Comercio.id).filter(Comercio.categoria_id == int(cat_id))
+        except ValueError:
+            pass
+    if subcat_id_int is not None:
+        if not cat_id:
+            location_query = location_query.join(Comercio, Movimiento.comercio_id == Comercio.id)
+        location_query = location_query.filter(Comercio.subcategoria_id == subcat_id_int)
+    location_data = location_query.group_by(Pais.id, Pais.nombre).order_by(func.sum(-(Movimiento.monto * TipoCambio.valor)).desc()).all()
+    location_pairs = [(name, float(total or 0)) for name, total in location_data if total and total > 0]
+    location_labels = [name for name, _ in location_pairs]
+    location_values = [value for _, value in location_pairs]
 
     # ————————————————————————————————————————
     # 3.b) Resumen del mes anterior (gastos)
@@ -1221,6 +1257,8 @@ def dashboard():
         commerce_values=list(commerce_values),
         cat_labels=list(cat_labels),
         cat_values=list(cat_values),
+        location_labels=location_labels,
+        location_values=location_values,
         month_labels=list(month_labels),
         month_values=list(month_values),
         month_income_values=list(month_income_values),

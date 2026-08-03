@@ -339,15 +339,9 @@
       <label for="cuenta_id" class="form-label">Cuenta</label>
       <select id="cuenta_id" name="cuenta_id" class="form-select">
         <option value="">-- Todas --</option>
-        {% if current_user.is_authenticated and current_user.is_admin() %}
-          {% for cta in cuentas %}
-            <option value="{{ cta.id }}" {% if cta.id|string == selected_cuenta %}selected{% endif %}>{{ cta.alias or cta.numero_cuenta }}</option>
-          {% endfor %}
-        {% else %}
-          {% for cta in cuentas if cta.user_id == current_user.id %}
-            <option value="{{ cta.id }}" {% if cta.id|string == selected_cuenta %}selected{% endif %}>{{ cta.alias or cta.numero_cuenta }}</option>
-          {% endfor %}
-        {% endif %}
+        {% for cta in cuentas if cta.user_id == current_user.id %}
+          <option value="{{ cta.id }}" {% if cta.id|string == selected_cuenta %}selected{% endif %}>{{ cta.alias or cta.numero_cuenta }}</option>
+        {% endfor %}
       </select>
     </div>
     <div class="col-md-3">
@@ -396,6 +390,16 @@
         {% endfor %}
       </select>
     </div>
+    <div class="col-md-3">
+      <label for="pais_id" class="form-label">País</label>
+      <select id="pais_id" name="pais_id" class="form-select">
+        <option value="">-- Todos --</option>
+        <option value="sin_pais" {% if selected_pais == 'sin_pais' %}selected{% endif %}>Sin país</option>
+        {% for pais in paises %}
+          <option value="{{ pais.id }}" {% if pais.id|string == selected_pais %}selected{% endif %}>{{ pais.nombre }} ({{ pais.codigo_iso }})</option>
+        {% endfor %}
+      </select>
+    </div>
     {# Owner filter only visible to admins #}
     {% if current_user.is_authenticated and current_user.is_admin() %}
     <div class="col-md-3">
@@ -416,19 +420,19 @@
   <nav aria-label="Paginación superior de movimientos" class="mb-0">
     <ul class="pagination pagination-sm flex-wrap mb-0">
       <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-        <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, owner_id=selected_owner, per_page=per_page, page=pagination.prev_num) }}">Anterior</a>
+        <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, pais_id=selected_pais, owner_id=selected_owner, per_page=per_page, page=pagination.prev_num) }}">Anterior</a>
       </li>
       {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
         {% if p %}
         <li class="page-item {% if p == pagination.page %}active{% endif %}">
-          <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, owner_id=selected_owner, per_page=per_page, page=p) }}">{{ p }}</a>
+          <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, pais_id=selected_pais, owner_id=selected_owner, per_page=per_page, page=p) }}">{{ p }}</a>
         </li>
         {% else %}
         <li class="page-item disabled"><span class="page-link">…</span></li>
         {% endif %}
       {% endfor %}
       <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-        <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, owner_id=selected_owner, per_page=per_page, page=pagination.next_num) }}">Siguiente</a>
+        <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, pais_id=selected_pais, owner_id=selected_owner, per_page=per_page, page=pagination.next_num) }}">Siguiente</a>
       </li>
     </ul>
   </nav>
@@ -469,6 +473,7 @@
       <th data-column="moneda">Moneda <span class="sort-indicator" data-column="moneda"></span></th>
       <th data-column="cuenta">Cuenta <span class="sort-indicator" data-column="cuenta"></span></th>
       <th data-column="comercio">Comercio <span class="sort-indicator" data-column="comercio"></span></th>
+        <th data-column="pais">País <span class="sort-indicator" data-column="pais"></span></th>
           <th data-column="subcategoria">Subcategoría <span class="sort-indicator" data-column="subcategoria"></span></th>
       <th data-column="categoria">Categoría <span class="sort-indicator" data-column="categoria"></span></th>
       <th class="actions-col">Acciones</th>
@@ -476,7 +481,7 @@
   </thead>
   <tbody>
     {% for m in movimientos %}
-    <tr{% if m.excluir_dashboard %} class="table-warning"{% endif %} data-fecha="{{ m.fecha }}" data-descripcion="{{ m.descripcion.lower() }}" data-lugar="{{ (m.lugar or '').lower() }}" data-documento="{{ (m.numero_documento or '').lower() }}" data-monto="{{ m.monto }}" data-moneda="{{ m.moneda }}" data-cuenta="{{ m.cuenta.numero_cuenta }}" data-comercio="{{ (m.comercio.nombre if m.comercio else '').lower() }}" data-subcategoria="{{ (m.comercio.subcategoria.nombre.lower() if m.comercio and m.comercio.subcategoria else '') }}" data-categoria="{{ (m.comercio.categoria.nombre.lower() if m.comercio and m.comercio.categoria else '') }}"{% if current_user.is_authenticated and current_user.is_admin() %} data-usuario="{{ (m.user.username if m.user else '').lower() }}"{% endif %}>
+    <tr{% if m.excluir_dashboard %} class="table-warning"{% endif %} data-fecha="{{ m.fecha }}" data-descripcion="{{ m.descripcion.lower() }}" data-lugar="{{ (m.lugar or '').lower() }}" data-documento="{{ (m.numero_documento or '').lower() }}" data-monto="{{ m.monto }}" data-moneda="{{ m.moneda }}" data-cuenta="{{ m.cuenta.numero_cuenta }}" data-comercio="{{ (m.comercio.nombre if m.comercio else '').lower() }}" data-pais="{{ (m.pais.nombre if m.pais else '').lower() }}" data-subcategoria="{{ (m.comercio.subcategoria.nombre.lower() if m.comercio and m.comercio.subcategoria else '') }}" data-categoria="{{ (m.comercio.categoria.nombre.lower() if m.comercio and m.comercio.categoria else '') }}"{% if current_user.is_authenticated and current_user.is_admin() %} data-usuario="{{ (m.user.username if m.user else '').lower() }}"{% endif %}>
   <td>{{ m.fecha }}</td>
   {% if current_user.is_authenticated and current_user.is_admin() %}
   <td>{{ m.user.username if m.user else '-' }}</td>
@@ -486,8 +491,19 @@
       <td>{{ m.numero_documento or '—' }}</td>
       <td>{{ m.monto }}</td>
       <td>{{ m.moneda }}</td>
-      <td>{{ m.cuenta.numero_cuenta }}</td>
+      <td title="{{ m.cuenta.numero_cuenta }}">{{ m.cuenta.alias or m.cuenta.numero_cuenta }}</td>
       <td>{% if m.comercio %}{{ comercio_logo(m.comercio, 28, 'me-2 align-middle') }}{{ m.comercio.nombre }}{% else %}—{% endif %}</td>
+      <td>
+        {% if m.pais %}
+          {% if m.pais.logo_filename %}
+            <img src="{{ url_for('main.comercio_logo', filename=m.pais.logo_filename) }}" alt="Bandera de {{ m.pais.nombre }}" title="{{ m.pais.nombre }} ({{ m.pais.codigo_iso }})" width="36" height="24" loading="lazy" style="object-fit:cover">
+          {% else %}
+            <span title="{{ m.pais.nombre }}">{{ m.pais.codigo_iso }}</span>
+          {% endif %}
+        {% else %}
+          —
+        {% endif %}
+      </td>
       <td>
         {% if m.comercio and m.comercio.subcategoria %}
           {{ m.comercio.subcategoria.nombre }}
@@ -523,19 +539,19 @@
   <div class="pagination-bar">
     <ul class="pagination pagination-sm flex-wrap mb-0">
       <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-        <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, owner_id=selected_owner, per_page=per_page, page=pagination.prev_num) }}">Anterior</a>
+        <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, pais_id=selected_pais, owner_id=selected_owner, per_page=per_page, page=pagination.prev_num) }}">Anterior</a>
       </li>
       {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
         {% if p %}
         <li class="page-item {% if p == pagination.page %}active{% endif %}">
-          <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, owner_id=selected_owner, per_page=per_page, page=p) }}">{{ p }}</a>
+          <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, pais_id=selected_pais, owner_id=selected_owner, per_page=per_page, page=p) }}">{{ p }}</a>
         </li>
         {% else %}
         <li class="page-item disabled"><span class="page-link">…</span></li>
         {% endif %}
       {% endfor %}
       <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-        <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, owner_id=selected_owner, per_page=per_page, page=pagination.next_num) }}">Siguiente</a>
+        <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, pais_id=selected_pais, owner_id=selected_owner, per_page=per_page, page=pagination.next_num) }}">Siguiente</a>
       </li>
     </ul>
     <div class="pagination-controls">
