@@ -61,7 +61,7 @@
   </div>
   <div class="col-md-3">
     <label for="percent_threshold" class="form-label">Umbral % gasto/ingreso</label>
-    <input type="number" id="percent_threshold" name="percent_threshold" class="form-control" value="{{ percent_threshold | default(60) }}" min="0" max="100" step="1">
+    <input type="number" id="percent_threshold" name="percent_threshold" class="form-control" value="{{ percent_threshold | default(75) }}" min="0" max="100" step="1">
   </div>
   <div class="col-12 text-end">
     <button type="submit" class="btn btn-primary">Aplicar filtros</button>
@@ -642,12 +642,20 @@
   const monthLabels     = {{ month_labels     | tojson }};
   const monthValues     = {{ month_values     | tojson }};
   const monthIncomeValues = {{ month_income_values | tojson }};
-  // Porcentaje gasto/ingreso por mes (gastos / ingresos * 100), null cuando no hay ingreso
-  const percentValues = monthLabels.map((_, i) => {
-    const g = monthValues[i] || 0;
-    const inc = monthIncomeValues[i] || 0;
-    return inc ? (g / inc) * 100 : null;
-  });
+  // Para evitar porcentajes distorsionados, usar solo meses con ingresos.
+  // El mes actual se incluye únicamente si ya registra ingresos.
+  const currentDate = new Date();
+  const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+  const percentChartData = monthLabels.reduce((result, month, i) => {
+    const income = monthIncomeValues[i] || 0;
+    if (income > 0 && month <= currentMonth) {
+      result.labels.push(month);
+      result.values.push(((monthValues[i] || 0) / income) * 100);
+    }
+    return result;
+  }, { labels: [], values: [] });
+  const percentLabels = percentChartData.labels;
+  const percentValues = percentChartData.values;
   const prevMonthLabel = {{ prev_month_label | tojson }};
   const prevMonthCategoryLabels = {{ prev_month_category_labels | tojson }};
   const prevMonthCategoryValues = {{ prev_month_category_values | tojson }};
@@ -855,7 +863,7 @@
     // Gráfica independiente: % Gasto/Ingreso Mensual (puntos verdes/rojos según umbral)
     const ctxPercent = document.getElementById('chartPercent');
     const percentInput = document.getElementById('percent_threshold');
-    const defaultPercentThreshold = {{ percent_threshold | default(60) | tojson }};
+    const defaultPercentThreshold = {{ percent_threshold | default(75) | tojson }};
     let percentThreshold = defaultPercentThreshold;
     if (percentInput) {
       const v = parseFloat(percentInput.value);
@@ -874,7 +882,7 @@
       chartPercent = new Chart(ctxPercent, {
         type: 'line',
         data: {
-          labels: monthLabels,
+          labels: percentLabels,
           datasets: [{
             label: '% Gasto/Ingreso',
             data: percentValues,

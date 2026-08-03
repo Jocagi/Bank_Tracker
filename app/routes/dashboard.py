@@ -25,14 +25,14 @@ def dashboard():
     # Umbral porcentual para la gráfica % gasto/ingreso (se pasa al template)
     percent_threshold_raw = request.args.get('percent_threshold', None)
     try:
-        percent_threshold = int(percent_threshold_raw) if percent_threshold_raw is not None and percent_threshold_raw != '' else None
+        percent_threshold = int(percent_threshold_raw) if percent_threshold_raw is not None and percent_threshold_raw != '' else 75
         if percent_threshold is not None:
             if percent_threshold < 0:
                 percent_threshold = 0
             elif percent_threshold > 100:
                 percent_threshold = 100
     except (ValueError, TypeError):
-        percent_threshold = None
+        percent_threshold = 75
     try:
         subcat_id_int = int(subcat_id) if subcat_id else None
     except ValueError:
