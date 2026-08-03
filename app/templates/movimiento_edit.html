@@ -56,10 +56,10 @@
 
     <div class="col-md-6">
       <label for="comercio_id" class="form-label">Comercio</label>
-      <select id="comercio_id" name="comercio_id" class="form-select">
+      <select id="comercio_id" name="comercio_id" class="form-select select-comercio">
         <option value="">-- Ninguno --</option>
         {% for c in comercios %}
-          <option value="{{ c.id }}" {% if mov.comercio and c.id==mov.comercio.id %}selected{% endif %}>{{ c.nombre }}</option>
+          <option value="{{ c.id }}"{% if c.logo_filename %} data-logo="{{ url_for('main.comercio_logo', filename=c.logo_filename) }}"{% endif %} {% if mov.comercio and c.id==mov.comercio.id %}selected{% endif %}>{{ c.nombre }}</option>
         {% endfor %}
       </select>
     </div>

@@ -151,7 +151,15 @@
       $('.select-comercio').select2({
         placeholder: 'Buscar comercio...',
         allowClear: true,
-        minimumResultsForSearch: 0
+        minimumResultsForSearch: 0,
+        templateResult: function(data) {
+          if (!data.id || !data.element.dataset.logo) return data.text;
+          return $('<span><img src="' + data.element.dataset.logo + '" width="24" height="24" class="rounded me-2" style="object-fit:contain">' + data.text + '</span>');
+        },
+        templateSelection: function(data) {
+          if (!data.id || !data.element.dataset.logo) return data.text;
+          return $('<span><img src="' + data.element.dataset.logo + '" width="22" height="22" class="rounded me-2" style="object-fit:contain">' + data.text + '</span>');
+        }
       });
     });
   </script>

@@ -1,6 +1,6 @@
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
-from flask import render_template, request, flash
+from flask import render_template, request, flash, url_for
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from .. import db
@@ -791,6 +791,19 @@ def dashboard():
         (lbl, abs(total) if total is not None else 0) for lbl, total in income_data
     ]
 
+    comercio_logo_urls = {
+        comercio.nombre: url_for('main.comercio_logo', filename=comercio.logo_filename)
+        for comercio in Comercio.query.filter(Comercio.logo_filename.isnot(None)).all()
+    }
+    categoria_logo_urls = {
+        categoria.nombre: url_for('main.comercio_logo', filename=categoria.logo_filename)
+        for categoria in Categoria.query.filter(Categoria.logo_filename.isnot(None)).all()
+    }
+    subcategoria_logo_urls = {
+        subcategoria.nombre: url_for('main.comercio_logo', filename=subcategoria.logo_filename)
+        for subcategoria in Subcategoria.query.filter(Subcategoria.logo_filename.isnot(None)).all()
+    }
+
     # ————————————————————————————————————————
     # 7) Top 10 Gastos Individuales - Solo movimientos clasificados como gastos
     top_gastos_q = (
@@ -1243,9 +1256,12 @@ def dashboard():
         subcategory_table=subcategory_table,
         # Tablas de gastos
         commerce_table=commerce_table,
+        comercio_logo_urls=comercio_logo_urls,
         category_table=category_table,
+        categoria_logo_urls=categoria_logo_urls,
         # **Tabla de ingresos**
         income_table=income_table,
+        subcategoria_logo_urls=subcategoria_logo_urls,
         # Filtros
         categorias=categorias,
         users=users,

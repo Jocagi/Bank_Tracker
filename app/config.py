@@ -7,6 +7,9 @@ class Config:
     UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'uploads')
     DATABASE_BACKUP_PATH = os.environ.get("DATABASE_BACKUP_PATH", "").strip()
     DATABASE_BACKUP_INTERVAL_HOURS = float(os.environ.get("DATABASE_BACKUP_INTERVAL_HOURS", "24"))
+    BRAVE_SEARCH_API_KEY = os.environ.get("BRAVE_SEARCH_API_KEY", "").strip()
+    BRAVE_SEARCH_COUNTRY = os.environ.get("BRAVE_SEARCH_COUNTRY", "GT").strip().upper()
+    BRAVE_SEARCH_LANG = os.environ.get("BRAVE_SEARCH_LANG", "es").strip().lower()
     # Limite maximo del request (archivos + form data). Default: 256 MB.
     MAX_CONTENT_LENGTH = int(os.environ.get("MAX_CONTENT_LENGTH", str(256 * 1024 * 1024)))
     # Limite de memoria para campos multipart no-archivo (Werkzeug). Default: 20 MB.

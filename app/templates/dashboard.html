@@ -352,7 +352,12 @@
       <tbody>
         {% for label, total in commerce_table %}
         <tr class="table-row" data-index="{{ loop.index0 }}">
-          <td>{{ label }}</td>
+          <td>
+            {% if comercio_logo_urls.get(label) %}
+            <img src="{{ comercio_logo_urls[label] }}" alt="Logo de {{ label }}" width="28" height="28" class="comercio-logo me-2 align-middle" loading="lazy">
+            {% endif %}
+            <span>{{ label }}</span>
+          </td>
           <td class="text-end">{{ '%.2f'|format(total) }}</td>
         </tr>
         {% endfor %}
@@ -381,7 +386,12 @@
       <tbody>
         {% for label, total in category_table %}
         <tr class="table-row" data-index="{{ loop.index0 }}">
-          <td>{{ label }}</td>
+          <td>
+            {% if categoria_logo_urls.get(label) %}
+            <img src="{{ categoria_logo_urls[label] }}" alt="Logo de {{ label }}" width="28" height="28" class="comercio-logo me-2 align-middle" loading="lazy">
+            {% endif %}
+            <span>{{ label }}</span>
+          </td>
           <td class="text-end">{{ '%.2f'|format(total) }}</td>
         </tr>
         {% endfor %}
@@ -409,7 +419,13 @@
       <tbody>
         {% for label, total in subcategory_table %}
         <tr class="table-row" data-index="{{ loop.index0 }}">
-          <td>{{ label }}</td>
+          <td>
+            {% set subcategoria_nombre = label.split(' - ', 1)[-1] %}
+            {% if subcategoria_logo_urls.get(subcategoria_nombre) %}
+            <img src="{{ subcategoria_logo_urls[subcategoria_nombre] }}" alt="Logo de {{ subcategoria_nombre }}" width="28" height="28" class="comercio-logo me-2 align-middle" loading="lazy">
+            {% endif %}
+            <span>{{ label }}</span>
+          </td>
           <td class="text-end">{{ '%.2f'|format(total) }}</td>
         </tr>
         {% endfor %}
@@ -440,7 +456,12 @@
       <tbody>
         {% for label, total in income_table %}
         <tr class="table-row" data-index="{{ loop.index0 }}">
-          <td>{{ label }}</td>
+          <td>
+            {% if comercio_logo_urls.get(label) %}
+            <img src="{{ comercio_logo_urls[label] }}" alt="Logo de {{ label }}" width="28" height="28" class="comercio-logo me-2 align-middle" loading="lazy">
+            {% endif %}
+            <span>{{ label }}</span>
+          </td>
           <td class="text-end">{{ '%.2f'|format(total) }}</td>
         </tr>
         {% endfor %}

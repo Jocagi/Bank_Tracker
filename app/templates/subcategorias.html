@@ -36,8 +36,14 @@
           {% for entry in subcategorias %}
             {% set subcategoria = entry.subcategoria %}
             <tr data-nombre="{{ subcategoria.nombre.lower() }}" data-categoria="{{ subcategoria.categoria.nombre.lower() }}" data-comercios="{{ entry.comercios_count }}" data-movimientos="{{ entry.movimientos_count }}">
-              <td>{{ subcategoria.nombre }}</td>
-              <td>{{ subcategoria.categoria.nombre }}</td>
+              <td>
+                {% if subcategoria.logo_filename %}<img src="{{ url_for('main.comercio_logo', filename=subcategoria.logo_filename) }}" alt="Logo de {{ subcategoria.nombre }}" width="28" height="28" class="comercio-logo me-2 align-middle" loading="lazy">{% endif %}
+                {{ subcategoria.nombre }}
+              </td>
+              <td>
+                {% if subcategoria.categoria.logo_filename %}<img src="{{ url_for('main.comercio_logo', filename=subcategoria.categoria.logo_filename) }}" alt="Logo de {{ subcategoria.categoria.nombre }}" width="24" height="24" class="comercio-logo me-2 align-middle" loading="lazy">{% endif %}
+                {{ subcategoria.categoria.nombre }}
+              </td>
               <td>{{ entry.comercios_count }}</td>
               <td>{{ entry.movimientos_count }}</td>
               <td>

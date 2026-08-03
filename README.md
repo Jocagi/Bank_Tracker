@@ -82,6 +82,18 @@
    DATABASE_BACKUP_INTERVAL_HOURS=24
    ```
 
+   Las tres sugerencias de logos usan Brave Image Search API. Crea una cuenta en https://brave.com/search/api/ y agrega la clave al archivo `.env`:
+
+   ```
+   BRAVE_SEARCH_API_KEY=tu_clave_de_brave
+   BRAVE_SEARCH_COUNTRY=GT
+   BRAVE_SEARCH_LANG=es
+   ```
+
+   `BRAVE_SEARCH_COUNTRY` usa un código ISO de país de dos letras y `BRAVE_SEARCH_LANG` define el idioma de los resultados. La configuración incluida orienta las búsquedas a Guatemala y español. Brave no ofrece Guatemala como región para Image Search; en ese caso la API usa `ALL` para evitar un error 422, mientras que el enlace de Google Images sí conserva `gl=gt`.
+
+   El enlace para ver más resultados siempre abre Google Images directamente, independientemente del proveedor usado para las tres sugerencias.
+
    `DATABASE_BACKUP_PATH` puede apuntar a un archivo o a una carpeta. Si apuntas a una carpeta, el sistema crea un archivo con fecha y hora dentro de ese directorio.
 
 5. **Inicializar base de datos**

@@ -8,6 +8,7 @@ class Categoria(db.Model):
     __tablename__ = 'categorias'
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False, unique=True)
+    logo_filename = db.Column(db.String(255), nullable=True)
     subcategorias = db.relationship('Subcategoria', backref='categoria', lazy=True, cascade='all, delete-orphan')
     comercios = db.relationship('Comercio', backref='categoria', lazy=True)
 
@@ -16,6 +17,7 @@ class Subcategoria(db.Model):
     __tablename__ = 'subcategorias'
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
+    logo_filename = db.Column(db.String(255), nullable=True)
     categoria_id = db.Column(db.Integer, db.ForeignKey('categorias.id'), nullable=False, index=True)
 
     __table_args__ = (
@@ -27,6 +29,7 @@ class Comercio(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False, unique=True)
     descripcion = db.Column(db.Text, nullable=True)
+    logo_filename = db.Column(db.String(255), nullable=True)
     categoria_id = db.Column(db.Integer, db.ForeignKey('categorias.id'), nullable=False)
     subcategoria_id = db.Column(db.Integer, db.ForeignKey('subcategorias.id', ondelete='SET NULL'), nullable=True)
     tipo_contabilizacion = db.Column(db.String(20), nullable=False, default='gastos') # Indica si es ingreso, gasto o transferencia

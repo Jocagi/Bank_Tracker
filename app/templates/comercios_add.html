@@ -1,11 +1,26 @@
 {% extends 'base.html' %}
+{% from '_comercio_logo.html' import comercio_logo %}
 {% block title %}Agregar Comercio{% endblock %}
 {% block content %}
 <h1>Agregar Comercio</h1>
-<form method="post">
+<form method="post" enctype="multipart/form-data">
   <div class="mb-3">
     <label class="form-label">Nombre</label>
-    <input class="form-control" name="nombre" value="{{ pre_nombre }}" required>
+    <input class="form-control" name="nombre" id="nombre-comercio" value="{{ pre_nombre }}" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Logo del comercio <span class="text-muted">(opcional)</span></label>
+    <div id="logo-dropzone" class="border rounded p-3 text-center bg-light" tabindex="0">
+      <div id="logo-preview" class="mb-2"></div>
+      <div>Arrastra una imagen aquí o selecciónala</div>
+      <input type="file" name="logo" id="logo-input" class="form-control mt-2" accept="image/jpeg,image/png,image/gif,image/webp">
+    </div>
+    <input type="hidden" name="logo_url" id="logo-url">
+    <div class="d-flex align-items-center gap-2 mt-2">
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="buscar-logos">Buscar sugerencias</button>
+      <a id="image-search-link" class="small" target="_blank" rel="noopener" hidden>Ver más resultados</a>
+    </div>
+    <div id="logo-suggestions" class="row g-2 mt-2" aria-live="polite"></div>
   </div>
   <div class="mb-3">
     <label class="form-label">Descripción</label>
@@ -54,6 +69,63 @@
 </form>
 
 <script>
+  const nombreComercio = document.getElementById('nombre-comercio');
+  const logoInput = document.getElementById('logo-input');
+  const logoUrl = document.getElementById('logo-url');
+  const logoDropzone = document.getElementById('logo-dropzone');
+  const logoPreview = document.getElementById('logo-preview');
+  const logoSuggestions = document.getElementById('logo-suggestions');
+  const imageSearchLink = document.getElementById('image-search-link');
+
+  function previewLogo(source, alt) {
+    logoPreview.innerHTML = `<img src="${source}" alt="${alt}" class="img-thumbnail" style="width:96px;height:96px;object-fit:contain">`;
+  }
+
+  function showLocalLogo() {
+    const file = logoInput.files[0];
+    if (!file) return;
+    previewLogo(URL.createObjectURL(file), 'Vista previa del logo');
+  }
+
+  async function buscarLogos() {
+    const nombre = nombreComercio.value.trim();
+    if (!nombre) return;
+    logoSuggestions.innerHTML = '<div class="text-muted small">Buscando imágenes...</div>';
+    const response = await fetch(`{{ url_for('main.logo_suggestions') }}?nombre=${encodeURIComponent(nombre)}`);
+    const data = await response.json();
+    imageSearchLink.href = data.search_url || '#';
+    imageSearchLink.hidden = !data.search_url;
+    logoSuggestions.innerHTML = '';
+    data.suggestions.forEach((suggestion, index) => {
+      const column = document.createElement('div');
+      column.className = 'col-4';
+      column.innerHTML = `<button type="button" class="btn btn-light border w-100 p-1" title="Usar esta imagen"><img src="${suggestion.thumbnail_url || suggestion.url}" alt="${suggestion.title || `Sugerencia ${index + 1}`}" style="width:100%;height:90px;object-fit:contain"></button>`;
+      column.querySelector('button').addEventListener('click', () => {
+        logoUrl.value = suggestion.url;
+        logoInput.value = '';
+        previewLogo(suggestion.url, 'Logo seleccionado');
+      });
+      logoSuggestions.appendChild(column);
+    });
+    if (!data.suggestions.length) logoSuggestions.innerHTML = `<div class="text-muted small">${data.message || 'No se encontraron imágenes.'} Usa una imagen local o el enlace de resultados.</div>`;
+  }
+
+  logoInput.addEventListener('change', showLocalLogo);
+  ['dragenter', 'dragover'].forEach(eventName => logoDropzone.addEventListener(eventName, event => {
+    event.preventDefault();
+    logoDropzone.classList.add('border-primary');
+  }));
+  ['dragleave', 'drop'].forEach(eventName => logoDropzone.addEventListener(eventName, event => {
+    event.preventDefault();
+    logoDropzone.classList.remove('border-primary');
+  }));
+  logoDropzone.addEventListener('drop', event => {
+    if (!event.dataTransfer.files.length) return;
+    logoInput.files = event.dataTransfer.files;
+    showLocalLogo();
+  });
+  document.getElementById('buscar-logos').addEventListener('click', buscarLogos);
+  nombreComercio.addEventListener('change', buscarLogos);
   const categoriaSelect = document.querySelector('select[name="categoria_id"]');
   const subcategoriaSelect = document.getElementById('subcategoria_id');
 

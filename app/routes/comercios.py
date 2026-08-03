@@ -1,11 +1,34 @@
-from flask import render_template, request, redirect, url_for, flash
+import os
+import re
+import uuid
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError
+import json
+
+from flask import current_app, flash, jsonify, redirect, render_template, request, send_from_directory, url_for
 from . import bp
 from .. import db
 from ..models import Comercio, Regla, Categoria, Subcategoria, Movimiento
 from flask_login import current_user
 from ..utils.classifier import reclasificar_movimientos
 from sqlalchemy.orm import joinedload
-import re
+from flask_login import login_required
+
+
+ALLOWED_LOGO_TYPES = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/gif': 'gif',
+    'image/webp': 'webp',
+}
+
+BRAVE_IMAGE_COUNTRIES = {
+    'AR', 'AU', 'AT', 'BE', 'BR', 'CA', 'CL', 'DK', 'FI', 'FR', 'DE',
+    'GR', 'HK', 'IN', 'ID', 'IT', 'JP', 'KR', 'MY', 'MX', 'NL', 'NZ',
+    'NO', 'CN', 'PL', 'PT', 'PH', 'RU', 'SA', 'ZA', 'ES', 'SE', 'CH',
+    'TW', 'TR', 'GB', 'US', 'ALL',
+}
 
 
 def format_sentence_case(text):
@@ -18,7 +41,138 @@ def format_sentence_case(text):
     return text.capitalize()
 
 
+def _logo_folder(entity_type='comercios'):
+    folder = os.path.join(current_app.config['UPLOAD_FOLDER'], entity_type)
+    os.makedirs(folder, exist_ok=True)
+    return folder
+
+
+def _save_logo(file_storage=None, image_url=None, entity_type='comercios'):
+    content_type = None
+    content = None
+    if file_storage and file_storage.filename:
+        content_type = (file_storage.mimetype or '').lower().split(';')[0]
+        content = file_storage.read(current_app.config.get('MAX_LOGO_BYTES', 5 * 1024 * 1024) + 1)
+    elif image_url:
+        if not image_url.startswith(('http://', 'https://')):
+            raise ValueError('La URL de la imagen no es válida.')
+        image_url = image_url.replace(' ', '%20')
+        req = Request(image_url, headers={'User-Agent': 'BankTracker/1.0'})
+        with urlopen(req, timeout=10) as response:
+            content_type = response.headers.get_content_type().lower()
+            content = response.read(current_app.config.get('MAX_LOGO_BYTES', 5 * 1024 * 1024) + 1)
+
+    if not content or len(content) > current_app.config.get('MAX_LOGO_BYTES', 5 * 1024 * 1024):
+        raise ValueError('El logo debe tener un tamaño máximo de 5 MB.')
+    extension = ALLOWED_LOGO_TYPES.get(content_type)
+    if not extension:
+        raise ValueError('El logo debe ser una imagen JPG, PNG, GIF o WEBP.')
+
+    filename = f'{uuid.uuid4().hex}.{extension}'
+    relative_filename = os.path.join(entity_type, filename).replace(os.sep, '/')
+    with open(os.path.join(_logo_folder(entity_type), filename), 'wb') as logo_file:
+        logo_file.write(content)
+    return relative_filename
+
+
+def _delete_logo(filename):
+    if not filename:
+        return
+    path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+    if os.path.isfile(path):
+        os.remove(path)
+
+
+@bp.route('/comercios/logo/<path:filename>')
+@login_required
+def comercio_logo(filename):
+    if not filename.startswith(('comercios/', 'categorias/', 'subcategorias/')):
+        return ('', 404)
+    return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
+
+
+def _search_brave_images(query):
+    api_key = current_app.config.get('BRAVE_SEARCH_API_KEY', '')
+    if not api_key:
+        raise RuntimeError('BRAVE_SEARCH_API_KEY no está configurada.')
+
+    country = current_app.config.get('BRAVE_SEARCH_COUNTRY', 'ALL')
+    if country not in BRAVE_IMAGE_COUNTRIES:
+        country = 'ALL'
+
+    api_url = 'https://api.search.brave.com/res/v1/images/search?' + urlencode({
+        'q': query,
+        'count': 3,
+        'safesearch': 'strict',
+        'country': country,
+        'search_lang': current_app.config.get('BRAVE_SEARCH_LANG', 'es')
+    })
+    req = Request(api_url, headers={
+        'Accept': 'application/json',
+        'X-Subscription-Token': api_key,
+        'User-Agent': 'BankTracker/1.0 (logo suggestions)'
+    })
+    payload = json.loads(urlopen(req, timeout=10).read().decode('utf-8'))
+    if payload.get('error'):
+        raise RuntimeError(payload['error'])
+
+    return [
+        {
+            'url': item.get('properties', {}).get('url') or item.get('url'),
+            'thumbnail_url': item.get('thumbnail', {}).get('src'),
+            'title': item.get('title') or 'Logo sugerido'
+        }
+        for item in payload.get('results', [])
+        if (item.get('properties', {}).get('url') or item.get('url', '')).startswith(('http://', 'https://'))
+        and item.get('thumbnail', {}).get('src', '').startswith(('http://', 'https://'))
+    ][:3]
+
+
+@bp.route('/comercios/logo-suggestions')
+@login_required
+def logo_suggestions():
+    nombre = request.args.get('nombre', '').strip()
+    if not nombre:
+        return jsonify({'suggestions': []})
+
+    query = f'{nombre} logo'
+    search_url = 'https://www.google.com/search?' + urlencode({
+        'tbm': 'isch',
+        'q': query,
+        'gl': current_app.config.get('BRAVE_SEARCH_COUNTRY', 'GT').lower(),
+        'hl': current_app.config.get('BRAVE_SEARCH_LANG', 'es')
+    })
+
+    try:
+        suggestions = _search_brave_images(query)
+        return jsonify({'suggestions': suggestions, 'search_url': search_url})
+    except RuntimeError as error:
+        return jsonify({
+            'suggestions': [],
+            'search_url': search_url,
+            'message': str(error)
+        })
+    except HTTPError as error:
+        if error.code == 429:
+            message = 'El servicio de imágenes alcanzó temporalmente su límite de consultas. Inténtalo de nuevo en unos segundos.'
+        else:
+            message = f'No fue posible completar la búsqueda de logos (HTTP {error.code}).'
+
+        return jsonify({
+            'suggestions': [],
+            'search_url': search_url,
+            'message': message
+        })
+    except (TimeoutError, OSError, json.JSONDecodeError):
+        return jsonify({
+            'suggestions': [],
+            'search_url': search_url,
+            'message': 'No fue posible conectar con los servicios de imágenes. Verifica tu conexión e inténtalo de nuevo.'
+        })
+
+
 @bp.route('/comercios')
+@login_required
 def list_comercios():
     # Obtener todos los comercios y sus reglas
     # Filtros desde query string
@@ -119,6 +273,7 @@ def list_comercios():
 
 
 @bp.route('/comercios/add', methods=['GET', 'POST'])
+@login_required
 def add_comercio():
     categorias = Categoria.query.order_by(Categoria.nombre).all()
     subcategorias = Subcategoria.query.options(joinedload(Subcategoria.categoria)).order_by(Subcategoria.nombre).all()
@@ -134,10 +289,23 @@ def add_comercio():
         subcategoria_id_raw = request.form.get('subcategoria_id') or ''
         subcategoria_id = int(subcategoria_id_raw) if subcategoria_id_raw else None
         tipo_contabilizacion  = request.form['tipo_contabilizacion']
+        logo_filename = None
+        try:
+            logo_filename = _save_logo(
+                request.files.get('logo'),
+                request.form.get('logo_url') or None
+            )
+        except ValueError as error:
+            flash(str(error), 'danger')
+            return render_template('comercios_add.html', categorias=categorias, subcategorias=subcategorias, pre_nombre=pre_nombre, pre_regla=pre_regla)
+        except Exception:
+            flash('No fue posible descargar el logo seleccionado.', 'danger')
+            return render_template('comercios_add.html', categorias=categorias, subcategorias=subcategorias, pre_nombre=pre_nombre, pre_regla=pre_regla)
 
         if subcategoria_id is not None:
             subcategoria = Subcategoria.query.get_or_404(subcategoria_id)
             if subcategoria.categoria_id != categoria_id:
+                _delete_logo(logo_filename)
                 flash('La subcategoría debe pertenecer a la categoría seleccionada.', 'danger')
                 return render_template('comercios_add.html', categorias=categorias, subcategorias=subcategorias, pre_nombre=pre_nombre, pre_regla=pre_regla)
 
@@ -147,7 +315,8 @@ def add_comercio():
             descripcion=descripcion,
             categoria_id=categoria_id,
             subcategoria_id=subcategoria_id,
-            tipo_contabilizacion=tipo_contabilizacion
+            tipo_contabilizacion=tipo_contabilizacion,
+            logo_filename=logo_filename
         )
         db.session.add(nuevo_comercio)
         db.session.flush()  # Para obtener nuevo_comercio.id
@@ -178,11 +347,26 @@ def add_comercio():
 
 
 @bp.route('/comercios/<int:comercio_id>/edit', methods=['GET', 'POST'])
+@login_required
 def edit_comercio(comercio_id):
     comercio = Comercio.query.get_or_404(comercio_id)
     categorias = Categoria.query.order_by(Categoria.nombre).all()
     subcategorias = Subcategoria.query.options(joinedload(Subcategoria.categoria)).order_by(Subcategoria.nombre).all()
     if request.method == 'POST':
+        previous_logo = comercio.logo_filename
+        new_logo = None
+        try:
+            new_logo = _save_logo(
+                request.files.get('logo'),
+                request.form.get('logo_url') or None
+            )
+        except ValueError as error:
+            flash(str(error), 'danger')
+            return render_template('comercios_edit.html', comercio=comercio, categorias=categorias, subcategorias=subcategorias)
+        except Exception:
+            flash('No fue posible descargar el logo seleccionado.', 'danger')
+            return render_template('comercios_edit.html', comercio=comercio, categorias=categorias, subcategorias=subcategorias)
+
         comercio.nombre = request.form['nombre']
         comercio.descripcion = request.form.get('descripcion') or None
         comercio.categoria_id = int(request.form['categoria_id'])
@@ -191,10 +375,15 @@ def edit_comercio(comercio_id):
         if subcategoria_id is not None:
             subcategoria = Subcategoria.query.get_or_404(subcategoria_id)
             if subcategoria.categoria_id != comercio.categoria_id:
+                _delete_logo(new_logo)
                 flash('La subcategoría debe pertenecer a la categoría seleccionada.', 'danger')
                 return render_template('comercios_edit.html', comercio=comercio, categorias=categorias, subcategorias=subcategorias)
         comercio.subcategoria_id = subcategoria_id
         comercio.tipo_contabilizacion = request.form['tipo_contabilizacion']
+        if new_logo:
+            comercio.logo_filename = new_logo
+        elif request.form.get('remove_logo') == '1':
+            comercio.logo_filename = None
         
         # Eliminar reglas antiguas
         Regla.query.filter_by(comercio_id=comercio.id).delete()
@@ -213,6 +402,8 @@ def edit_comercio(comercio_id):
                     criterio=crit.strip()
                 ))
         db.session.commit()
+        if previous_logo and comercio.logo_filename != previous_logo:
+            _delete_logo(previous_logo)
         
         # Re-clasificar todos los movimientos tras modificar reglas
         reclasificar_movimientos()
@@ -223,10 +414,13 @@ def edit_comercio(comercio_id):
 
 
 @bp.route('/comercios/<int:comercio_id>/delete', methods=['POST'])
+@login_required
 def delete_comercio(comercio_id):
     comercio = Comercio.query.get_or_404(comercio_id)
+    logo_filename = comercio.logo_filename
     db.session.delete(comercio)
     db.session.commit()
+    _delete_logo(logo_filename)
     reclasificar_movimientos()
     flash('Comercio eliminado', 'warning')
     return redirect(url_for('main.list_comercios'))

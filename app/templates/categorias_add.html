@@ -1,12 +1,14 @@
 {% extends 'base.html' %}
+{% from '_entity_logo_form.html' import entity_logo_form %}
 {% block title %}Agregar Categoría{% endblock %}
 {% block content %}
 <h1>Agregar Categoría</h1>
-<form method="post">
+<form method="post" enctype="multipart/form-data">
   <div class="mb-3">
     <label class="form-label">Nombre</label>
-    <input class="form-control" name="nombre" required>
+    <input class="form-control" name="nombre" id="nombre-categoria" required>
   </div>
+  {{ entity_logo_form('la categoría', 'nombre-categoria') }}
   <button class="btn btn-primary">Guardar</button>
   <a href="{{ url_for('main.list_categorias') }}" class="btn btn-secondary ms-2">Cancelar</a>
   {% with messages = get_flashed_messages(with_categories=true) %}

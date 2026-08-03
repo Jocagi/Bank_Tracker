@@ -4,6 +4,7 @@ from .. import db
 from ..models import Categoria, Comercio, Movimiento, Subcategoria
 from sqlalchemy import func
 from flask_login import current_user, login_required
+from .comercios import _delete_logo, _save_logo
 
 
 @bp.route('/categorias')
@@ -63,7 +64,19 @@ def list_categorias():
 def add_categoria():
     if request.method == 'POST':
         nombre = request.form['nombre']
-        nueva = Categoria(nombre=nombre)
+        try:
+            logo_filename = _save_logo(
+                request.files.get('logo'),
+                request.form.get('logo_url') or None,
+                'categorias'
+            )
+        except ValueError as error:
+            flash(str(error), 'danger')
+            return render_template('categorias_add.html')
+        except Exception:
+            flash('No fue posible descargar el logo seleccionado.', 'danger')
+            return render_template('categorias_add.html')
+        nueva = Categoria(nombre=nombre, logo_filename=logo_filename)
         db.session.add(nueva)
         db.session.commit()
         flash('Categoría agregada correctamente.', 'success')
@@ -75,6 +88,7 @@ def add_categoria():
 @login_required
 def edit_categoria(categoria_id):
     categoria = Categoria.query.get_or_404(categoria_id)
+    previous_logo = categoria.logo_filename
     # Obtener subcategorías de esta categoría
     subcategorias = Subcategoria.query.filter_by(categoria_id=categoria_id).all()
     
@@ -108,8 +122,26 @@ def edit_categoria(categoria_id):
         elif Categoria.query.filter(Categoria.nombre==nombre, Categoria.id!=categoria.id).first():
             flash('Ya existe otra categoría con ese nombre.', 'warning')
         else:
+            try:
+                new_logo = _save_logo(
+                    request.files.get('logo'),
+                    request.form.get('logo_url') or None,
+                    'categorias'
+                )
+            except ValueError as error:
+                flash(str(error), 'danger')
+                return render_template('categorias_edit.html', categoria=categoria, subcategorias=subcategorias, mov_counts=mov_counts)
+            except Exception:
+                flash('No fue posible descargar el logo seleccionado.', 'danger')
+                return render_template('categorias_edit.html', categoria=categoria, subcategorias=subcategorias, mov_counts=mov_counts)
             categoria.nombre = nombre
+            if new_logo:
+                categoria.logo_filename = new_logo
+            elif request.form.get('remove_logo') == '1':
+                categoria.logo_filename = None
             db.session.commit()
+            if previous_logo and categoria.logo_filename != previous_logo:
+                _delete_logo(previous_logo)
             flash('Categoría actualizada correctamente.', 'success')
             return redirect(url_for('main.list_categorias'))
 
@@ -120,7 +152,9 @@ def edit_categoria(categoria_id):
 @login_required
 def delete_categoria(categoria_id):
     categoria = Categoria.query.get_or_404(categoria_id)
+    logo_filename = categoria.logo_filename
     db.session.delete(categoria)
     db.session.commit()
+    _delete_logo(logo_filename)
     flash('Categoría eliminada.', 'warning')
     return redirect(url_for('main.list_categorias'))

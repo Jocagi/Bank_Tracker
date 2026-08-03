@@ -36,7 +36,10 @@
       {% for entry in categorias %}
         {% set cat = entry.categoria %}
     <tr data-nombre="{{ cat.nombre.lower() }}" data-comercios="{{ entry.comercios_count }}" data-subcategorias="{{ entry.subcategorias_count }}" data-movimientos="{{ entry.movimientos_count }}">
-      <td>{{ cat.nombre }}</td>
+      <td>
+        {% if cat.logo_filename %}<img src="{{ url_for('main.comercio_logo', filename=cat.logo_filename) }}" alt="Logo de {{ cat.nombre }}" width="28" height="28" class="comercio-logo me-2 align-middle" loading="lazy">{% endif %}
+        {{ cat.nombre }}
+      </td>
       <td>
         {% if filters.owner_id %}
           <a href="{{ url_for('main.list_comercios', categoria_id=cat.id, owner_id=filters.owner_id) }}">{{ entry.comercios_count }}</a>

@@ -1,12 +1,14 @@
 {% extends 'base.html' %}
+{% from '_entity_logo_form.html' import entity_logo_form %}
 {% block title %}Editar Subcategoría{% endblock %}
 {% block content %}
 <h1>Editar Subcategoría</h1>
-<form method="post">
+<form method="post" enctype="multipart/form-data">
   <div class="mb-3">
     <label class="form-label">Nombre</label>
-    <input class="form-control" name="nombre" value="{{ subcategoria.nombre }}" required>
+    <input class="form-control" name="nombre" id="nombre-subcategoria" value="{{ subcategoria.nombre }}" required>
   </div>
+  {{ entity_logo_form('la subcategoría', 'nombre-subcategoria', subcategoria.logo_filename) }}
   <div class="mb-3">
     <label class="form-label">Categoría</label>
     <select class="form-select" name="categoria_id" required>

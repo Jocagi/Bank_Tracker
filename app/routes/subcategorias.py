@@ -4,6 +4,7 @@ from .. import db
 from ..models import Categoria, Comercio, Movimiento, Subcategoria
 from sqlalchemy import func
 from flask_login import current_user, login_required
+from .comercios import _delete_logo, _save_logo
 
 
 @bp.route('/subcategorias')
@@ -60,7 +61,19 @@ def add_subcategoria():
         elif Subcategoria.query.filter_by(nombre=nombre, categoria_id=categoria_id).first():
             flash('Ya existe una subcategoría con ese nombre en esa categoría.', 'warning')
         else:
-            nueva = Subcategoria(nombre=nombre, categoria_id=categoria_id)
+            try:
+                logo_filename = _save_logo(
+                    request.files.get('logo'),
+                    request.form.get('logo_url') or None,
+                    'subcategorias'
+                )
+            except ValueError as error:
+                flash(str(error), 'danger')
+                return render_template('subcategorias_add.html', categorias=categorias)
+            except Exception:
+                flash('No fue posible descargar el logo seleccionado.', 'danger')
+                return render_template('subcategorias_add.html', categorias=categorias)
+            nueva = Subcategoria(nombre=nombre, categoria_id=categoria_id, logo_filename=logo_filename)
             db.session.add(nueva)
             db.session.commit()
             flash('Subcategoría agregada correctamente.', 'success')
@@ -76,6 +89,7 @@ def add_subcategoria():
 @login_required
 def edit_subcategoria(subcategoria_id):
     subcategoria = Subcategoria.query.get_or_404(subcategoria_id)
+    previous_logo = subcategoria.logo_filename
     categorias = Categoria.query.order_by(Categoria.nombre).all()
     if request.method == 'POST':
         nombre = request.form['nombre'].strip()
@@ -85,9 +99,27 @@ def edit_subcategoria(subcategoria_id):
         elif Subcategoria.query.filter(Subcategoria.nombre == nombre, Subcategoria.categoria_id == categoria_id, Subcategoria.id != subcategoria.id).first():
             flash('Ya existe otra subcategoría con ese nombre en esa categoría.', 'warning')
         else:
+            try:
+                new_logo = _save_logo(
+                    request.files.get('logo'),
+                    request.form.get('logo_url') or None,
+                    'subcategorias'
+                )
+            except ValueError as error:
+                flash(str(error), 'danger')
+                return render_template('subcategorias_edit.html', subcategoria=subcategoria, categorias=categorias)
+            except Exception:
+                flash('No fue posible descargar el logo seleccionado.', 'danger')
+                return render_template('subcategorias_edit.html', subcategoria=subcategoria, categorias=categorias)
             subcategoria.nombre = nombre
             subcategoria.categoria_id = categoria_id
+            if new_logo:
+                subcategoria.logo_filename = new_logo
+            elif request.form.get('remove_logo') == '1':
+                subcategoria.logo_filename = None
             db.session.commit()
+            if previous_logo and subcategoria.logo_filename != previous_logo:
+                _delete_logo(previous_logo)
             flash('Subcategoría actualizada correctamente.', 'success')
             # Redirigir de vuelta a la página de edición de categoría si viene de ahí
             referrer = request.referrer
@@ -102,9 +134,11 @@ def edit_subcategoria(subcategoria_id):
 def delete_subcategoria(subcategoria_id):
     subcategoria = Subcategoria.query.get_or_404(subcategoria_id)
     categoria_id = subcategoria.categoria_id
+    logo_filename = subcategoria.logo_filename
     Comercio.query.filter_by(subcategoria_id=subcategoria.id).update({Comercio.subcategoria_id: None})
     db.session.delete(subcategoria)
     db.session.commit()
+    _delete_logo(logo_filename)
     flash('Subcategoría eliminada.', 'warning')
     # Redirigir de vuelta a la página de edición de categoría si viene de ahí
     referrer = request.referrer

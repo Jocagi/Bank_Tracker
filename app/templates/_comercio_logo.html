@@ -1,0 +1,9 @@
+{% macro comercio_logo(comercio, size=32, class_name='') %}
+  {% if comercio and comercio.logo_filename %}
+    <img src="{{ url_for('main.comercio_logo', filename=comercio.logo_filename) }}"
+         alt="Logo de {{ comercio.nombre }}"
+         width="{{ size }}" height="{{ size }}"
+         class="comercio-logo {{ class_name }}"
+         loading="lazy">
+  {% endif %}
+{% endmacro %}

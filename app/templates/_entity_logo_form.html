@@ -1,0 +1,30 @@
+{% macro entity_logo_form(label, name_input_id, logo_filename=None) %}
+  <div class="mb-3">
+    <label class="form-label">Logo de {{ label }} <span class="text-muted">(opcional)</span></label>
+    <div id="entity-logo-dropzone" class="border rounded p-3 text-center bg-light" tabindex="0">
+      <div id="entity-logo-preview" class="mb-2">
+        {% if logo_filename %}
+        <img src="{{ url_for('main.comercio_logo', filename=logo_filename) }}" alt="Logo actual" class="img-thumbnail" style="width:96px;height:96px;object-fit:contain">
+        {% endif %}
+      </div>
+      <div>Arrastra una imagen aquí o selecciónala</div>
+      <input type="file" name="logo" id="entity-logo-input" class="form-control mt-2" accept="image/jpeg,image/png,image/gif,image/webp">
+    </div>
+    <input type="hidden" name="logo_url" id="entity-logo-url">
+    {% if logo_filename %}
+    <div class="form-check mt-2">
+      <input class="form-check-input" type="checkbox" name="remove_logo" value="1" id="remove-entity-logo">
+      <label class="form-check-label" for="remove-entity-logo">Eliminar logo actual</label>
+    </div>
+    {% endif %}
+    <div class="d-flex align-items-center gap-2 mt-2">
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="buscar-entity-logos">Buscar sugerencias</button>
+      <a id="entity-image-search-link" class="small" target="_blank" rel="noopener" hidden>Ver más resultados</a>
+    </div>
+    <div id="entity-logo-suggestions" class="row g-2 mt-2" aria-live="polite"></div>
+  </div>
+  <script src="{{ url_for('static', filename='js/entity_logo.js') }}"></script>
+  <script>
+    window.initEntityLogoForm({{ name_input_id|tojson }}, {{ url_for('main.logo_suggestions')|tojson }});
+  </script>
+{% endmacro %}

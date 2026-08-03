@@ -1,15 +1,18 @@
 {% extends 'base.html' %}
+{% from '_entity_logo_form.html' import entity_logo_form %}
 {% block title %}Editar Categoría{% endblock %}
 {% block content %}
 <h1>Editar Categoría</h1>
-<form method="post">
+<form method="post" enctype="multipart/form-data">
   <div class="mb-3">
     <label class="form-label">Nombre</label>
     <input class="form-control"
            name="nombre"
+          id="nombre-categoria"
            value="{{ categoria.nombre }}"
            required>
   </div>
+  {{ entity_logo_form('la categoría', 'nombre-categoria', categoria.logo_filename) }}
   <button class="btn btn-primary">Guardar cambios</button>
   <a href="{{ url_for('main.list_categorias') }}" class="btn btn-secondary ms-2">Cancelar</a>
   {% with messages = get_flashed_messages(with_categories=true) %}
@@ -59,7 +62,10 @@
               {% set comercios_count = subcategoria.comercios|length %}
               {% set movimientos_count = mov_counts.get(subcategoria.id, 0) %}
               <tr data-nombre="{{ subcategoria.nombre.lower() }}" data-comercios="{{ comercios_count }}" data-movimientos="{{ movimientos_count }}">
-                <td>{{ subcategoria.nombre }}</td>
+                <td>
+                  {% if subcategoria.logo_filename %}<img src="{{ url_for('main.comercio_logo', filename=subcategoria.logo_filename) }}" alt="Logo de {{ subcategoria.nombre }}" width="28" height="28" class="comercio-logo me-2 align-middle" loading="lazy">{% endif %}
+                  {{ subcategoria.nombre }}
+                </td>
                 <td>
                   <a href="{{ url_for('main.list_comercios', categoria_id=categoria.id, subcategoria_id=subcategoria.id) }}">{{ comercios_count }}</a>
                 </td>

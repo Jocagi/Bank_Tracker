@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_comercio_logo.html' import comercio_logo %}
 {% block title %}Comercios{% endblock %}
 {% block content %}
 <style>
@@ -346,7 +347,7 @@
     {% for c in comercios %}
     <tr data-nombre="{{ c.nombre.lower() }}" data-categoria="{{ c.categoria.nombre.lower() }}" data-subcategoria="{{ c.subcategoria.nombre.lower() if c.subcategoria else '' }}" data-tipo="{{ c.tipo_contabilizacion.lower() }}" data-movimientos="{{ c.movimientos_count }}">
       <td>
-        <span{% if c.descripcion %} title="{{ c.descripcion }}"{% endif %}>{{ c.nombre }}</span>
+        {{ comercio_logo(c, 32, 'me-2 align-middle') }}<span{% if c.descripcion %} title="{{ c.descripcion }}"{% endif %}>{{ c.nombre }}</span>
       </td>
       <td>{{ c.categoria.nombre }}</td>
       <td>{{ c.subcategoria.nombre if c.subcategoria else 'Sin subcategoría' }}</td>

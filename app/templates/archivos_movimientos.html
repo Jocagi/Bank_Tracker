@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_comercio_logo.html' import comercio_logo %}
 {% block title %}Movimientos del Archivo #{{ archivo.id }}{% endblock %}
 
 {% block content %}
@@ -34,7 +35,7 @@
       <td>{{ m.monto }}</td>
       <td>{{ m.moneda }}</td>
       <td>{{ m.cuenta.numero_cuenta }}</td>
-      <td>{{ m.comercio.nombre if m.comercio else '—' }}</td>
+      <td>{% if m.comercio %}{{ comercio_logo(m.comercio, 28, 'me-2 align-middle') }}{{ m.comercio.nombre }}{% else %}—{% endif %}</td>
       <td>
         {% if m.comercio and m.comercio.categoria %}
           {{ m.comercio.categoria.nombre }}

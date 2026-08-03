@@ -98,7 +98,7 @@
                     required>
               <option value=""></option>
               {% for c in comercios %}
-                <option value="{{ c.id }}">{{ c.nombre }}</option>
+                <option value="{{ c.id }}"{% if c.logo_filename %} data-logo="{{ url_for('main.comercio_logo', filename=c.logo_filename) }}"{% endif %}>{{ c.nombre }}</option>
               {% endfor %}
             </select>
 
