@@ -61,7 +61,8 @@ def add_pais():
                 logo_filename = _save_logo(
                     request.files.get('logo'),
                     request.form.get('logo_url') or None,
-                    'paises'
+                    'paises',
+                    fallback_image_url=request.form.get('logo_thumbnail_url') or None
                 )
             except ValueError as error:
                 flash(str(error), 'danger')
@@ -99,7 +100,8 @@ def edit_pais(pais_id):
                 new_logo = _save_logo(
                     request.files.get('logo'),
                     request.form.get('logo_url') or None,
-                    'paises'
+                    'paises',
+                    fallback_image_url=request.form.get('logo_thumbnail_url') or None
                 )
             except ValueError as error:
                 flash(str(error), 'danger')

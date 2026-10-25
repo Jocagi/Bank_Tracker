@@ -1,9 +1,31 @@
 from flask import render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from . import bp
-from ..models import Movimiento, Comercio, Regla, User, Factura
-from ..utils.classifier import reclasificar_movimientos
+from ..models import Movimiento, Comercio, Regla, ReglaCondicion, User, Factura, Categoria, Subcategoria
+from ..utils.classifier import reclasificar_movimientos, reclasificar_comercio, describir_regla
 from .. import db
+from sqlalchemy.orm import joinedload
+
+
+def _crear_regla_automatica_desde_movimiento(comercio_id, movimiento):
+    """
+    Crea una regla "incluir" con una única condición de igualdad exacta
+    (case-insensitive) sobre la descripción del movimiento, igual que el
+    comportamiento histórico de asignación rápida desde "Sin clasificar".
+    El nombre de la regla se deriva de la condición, no se pide al usuario.
+    """
+    regla = Regla(comercio_id=comercio_id, tipo='incluir')
+    regla.condiciones.append(ReglaCondicion(
+        orden=0,
+        conector='AND',
+        negar=False,
+        campo='descripcion',
+        operador='igual',
+        valor=movimiento.descripcion,
+    ))
+    regla.descripcion = describir_regla(regla)[:200]
+    db.session.add(regla)
+    return regla
 
 
 @bp.route('/sin_clasificar', methods=['GET'])
@@ -52,6 +74,8 @@ def sin_clasificar():
     
     movimientos = query.order_by(Movimiento.fecha.desc()).all()
     comercios = Comercio.query.order_by(Comercio.nombre).all()
+    categorias = Categoria.query.order_by(Categoria.nombre).all()
+    subcategorias = Subcategoria.query.options(joinedload(Subcategoria.categoria)).order_by(Subcategoria.nombre).all()
 
     # Recomendación de factura por movimiento:
     # misma persona dueña del movimiento, fecha dentro de +-N días,
@@ -138,6 +162,8 @@ def sin_clasificar():
     return render_template('sin_clasificar.html',
                            movimientos=movimientos,
                            comercios=comercios,
+                           categorias=categorias,
+                           subcategorias=subcategorias,
                            recomendaciones_factura=recomendaciones_factura,
                            fact_days=days_window_int,
                            fact_pct=(pct_tolerance_float * 100.0),
@@ -153,21 +179,66 @@ def assign_movimiento_rule():
     movimiento = Movimiento.query.get_or_404(mov_id)
     comercio   = Comercio.query.get_or_404(comercio_id)
 
-    # Crear regla "incluir" usando la descripción como criterio (escapada para regex)
-    nueva_regla = Regla(
-        comercio_id = comercio.id,
-        descripcion = f"Automática: {movimiento.descripcion}",
-        tipo        = 'incluir',
-        criterio    = movimiento.descripcion
-    )
-    db.session.add(nueva_regla)
+    # Crear regla "incluir" con una condición exacta sobre la descripción
+    _crear_regla_automatica_desde_movimiento(comercio.id, movimiento)
     db.session.commit()
 
-    # Re-clasificar todos los movimientos
-    reclasificar_movimientos()
+    # Solo se reevalúan los movimientos afectados por las reglas del comercio
+    cambios = reclasificar_comercio(comercio.id)
 
-    flash('Se ha añadido la regla y reclasificado los movimientos.', 'success')
+    flash(f'Se ha añadido la regla. Movimientos reclasificados: {cambios}.', 'success')
     return redirect(url_for('main.edit_comercio', comercio_id=comercio.id))
+
+
+@bp.route('/sin_clasificar/quick-create-comercio', methods=['POST'])
+@login_required
+def quick_create_comercio():
+    mov_id = request.form.get('movimiento_id')
+    movimiento = Movimiento.query.get_or_404(mov_id)
+
+    nombre = request.form.get('nombre', '').strip()
+    categoria_id = request.form.get('categoria_id', type=int)
+    subcategoria_id_raw = request.form.get('subcategoria_id') or ''
+    subcategoria_id = int(subcategoria_id_raw) if subcategoria_id_raw else None
+    tipo_contabilizacion = request.form.get('tipo_contabilizacion') or 'gastos'
+
+    if not nombre or not categoria_id:
+        flash('El nombre y la categoría son obligatorios para crear el comercio.', 'danger')
+        return redirect(url_for('main.sin_clasificar'))
+
+    if subcategoria_id is not None:
+        subcategoria = Subcategoria.query.get_or_404(subcategoria_id)
+        if subcategoria.categoria_id != categoria_id:
+            flash('La subcategoría debe pertenecer a la categoría seleccionada.', 'danger')
+            return redirect(url_for('main.sin_clasificar'))
+
+    comercio = Comercio(
+        nombre=nombre,
+        categoria_id=categoria_id,
+        subcategoria_id=subcategoria_id,
+        tipo_contabilizacion=tipo_contabilizacion,
+    )
+    db.session.add(comercio)
+    db.session.flush()
+
+    # Crear regla "incluir" con una condición exacta sobre la descripción,
+    # igual que al asignar un comercio existente.
+    _crear_regla_automatica_desde_movimiento(comercio.id, movimiento)
+    db.session.commit()
+
+    cambios = reclasificar_comercio(comercio.id)
+
+    flash(f'Comercio creado. Movimientos reclasificados: {cambios}.', 'success')
+    return redirect(url_for('main.edit_comercio', comercio_id=comercio.id))
+
+
+@bp.route('/sin_clasificar/reclasificar-todo', methods=['POST'])
+@login_required
+def reclasificar_todo():
+    """Reclasificación completa bajo demanda (operación costosa)."""
+    cambios = reclasificar_movimientos()
+    flash(f'Reclasificación completa finalizada. Movimientos que cambiaron de comercio: {cambios}.', 'success')
+    return redirect(url_for('main.sin_clasificar'))
 
 
 @bp.route('/movimiento/<int:mov_id>/asignar', methods=['POST'])

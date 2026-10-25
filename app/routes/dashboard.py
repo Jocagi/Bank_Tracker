@@ -817,12 +817,15 @@ def dashboard():
     # Ejecutar consultas y combinar resultados
     income_classified_data = income_classified_q.group_by(Comercio.id).all()
     income_data = list(income_classified_data)
-    
-    # Incluir ingresos sin clasificar
-    income_unclassified_data = income_unclassified_q.all()
+
+    # Incluir ingresos sin clasificar solo cuando la consulta sigue activa.
+    # Si se aplica un filtro de subcategoría o categoría, la consulta queda deshabilitada.
+    income_unclassified_data = []
+    if income_unclassified_q is not None:
+        income_unclassified_data = income_unclassified_q.all()
     if income_unclassified_data and income_unclassified_data[0][1] != 0:
         income_data.extend(income_unclassified_data)
-    
+
     income_table = [
         (lbl, abs(total) if total is not None else 0) for lbl, total in income_data
     ]

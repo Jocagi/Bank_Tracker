@@ -3,7 +3,14 @@
 {% block title %}Movimientos Sin Clasificar{% endblock %}
 
 {% block content %}
-<h1>Movimientos Sin Clasificar</h1>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+  <h1 class="mb-0">Movimientos Sin Clasificar</h1>
+  <form method="post" action="{{ url_for('main.reclasificar_todo') }}" class="d-flex flex-column align-items-end"
+        onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = 'Reclasificando...';">
+    <button type="submit" class="btn btn-outline-secondary btn-sm">Reclasificar todo</button>
+    <span class="form-text mt-1">Reaplica todas las reglas a todos los movimientos. Puede tardar.</span>
+  </form>
+</div>
 
 <form method="get" class="mb-3">
   <div class="row g-3">
@@ -53,7 +60,7 @@
       <th data-column="descripcion">Descripción <span class="sort-indicator" data-column="descripcion"></span></th>
       <th data-column="monto">Monto <span class="sort-indicator" data-column="monto"></span></th>
       <th>Factura sugerida</th>
-      <th style="width: 380px;">Comercio</th>
+      <th style="width: 160px;">Comercio</th>
       <th>Acciones</th>
     </tr>
   </thead>
@@ -85,34 +92,12 @@
         {% endif %}
       </td>
       <td>
-        <div class="mb-2">
-          <form method="post"
-                action="{{ url_for('main.assign_movimiento_rule') }}"
-                class="d-inline">
-            <input type="hidden" name="movimiento_id" value="{{ m.id }}">
-
-            <!-- Select2 habilitado para búsqueda -->
-            <select name="comercio_id"
-                    class="select-comercio"
-                    style="width:200px"
-                    required>
-              <option value=""></option>
-              {% for c in comercios %}
-                <option value="{{ c.id }}"{% if c.logo_filename %} data-logo="{{ url_for('main.comercio_logo', filename=c.logo_filename) }}"{% endif %}>{{ c.nombre }}</option>
-              {% endfor %}
-            </select>
-
-            <button type="submit" class="btn btn-xs btn-primary mt-1" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
-              + Regla
-            </button>
-          </form>
-          <a href="{{ url_for('main.add_comercio', nombre=m.descripcion, regla='*' + m.descripcion + '*') }}" 
-             class="btn btn-xs btn-success"
-             style="font-size: 0.75rem; padding: 0.25rem 0.5rem;"
-             title="Crear nuevo comercio con este nombre">
-            + Nuevo
-          </a>
-        </div>
+        <button type="button"
+                class="btn btn-sm btn-primary w-100 asignar-comercio-btn"
+                data-mov-id="{{ m.id }}"
+                data-descripcion="{{ m.descripcion }}">
+          Asignar comercio
+        </button>
       </td>
       <td>
         <div class="btn-group" role="group" aria-label="Acciones">
@@ -129,17 +114,168 @@
 </table>
   </div>
 </div>
+
+<!-- Modal compartido para asignar comercio (existente o nuevo) a un movimiento -->
+<div class="modal fade" id="asignarComercioModal" tabindex="-1" aria-labelledby="asignarComercioModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="asignarComercioModalLabel">Asignar comercio</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted mb-3">Movimiento: <strong id="asignar-modal-descripcion"></strong></p>
+
+        <div id="asignar-modo-buscar">
+          <form method="post" action="{{ url_for('main.assign_movimiento_rule') }}">
+            <input type="hidden" name="movimiento_id" id="asignar-mov-id-buscar">
+            <label class="form-label">Comercio existente</label>
+            <select name="comercio_id" id="modal-select-comercio" class="form-select" style="width:100%" required>
+              <option value=""></option>
+              {% for c in comercios %}
+                <option value="{{ c.id }}"{% if c.logo_filename %} data-logo="{{ url_for('main.comercio_logo', filename=c.logo_filename) }}"{% endif %}>{{ c.nombre }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary w-100 mt-3"
+                    title="Asigna este movimiento al comercio seleccionado y crea una regla automática para clasificar movimientos similares en el futuro">
+              Asignar y crear regla
+            </button>
+          </form>
+          <button type="button" class="btn btn-link btn-sm mt-2 px-0" id="asignar-ir-crear">¿No existe? Crear un comercio nuevo</button>
+        </div>
+
+        <div id="asignar-modo-crear" hidden>
+          <form method="post" action="{{ url_for('main.quick_create_comercio') }}">
+            <input type="hidden" name="movimiento_id" id="asignar-mov-id-crear">
+            <div class="mb-2">
+              <label class="form-label">Nombre</label>
+              <input type="text" name="nombre" id="asignar-crear-nombre" class="form-control" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Categoría</label>
+              <select name="categoria_id" id="asignar-crear-categoria" class="form-select" required>
+                <option value="">Selecciona una categoría</option>
+                {% for cat in categorias %}
+                <option value="{{ cat.id }}">{{ cat.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Subcategoría <span class="text-muted">(opcional)</span></label>
+              <select name="subcategoria_id" id="asignar-crear-subcategoria" class="form-select">
+                <option value="">Sin subcategoría</option>
+                {% for sub in subcategorias %}
+                <option value="{{ sub.id }}" data-categoria-id="{{ sub.categoria_id }}">{{ sub.categoria.nombre }} - {{ sub.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Tipo de contabilización</label>
+              <select name="tipo_contabilizacion" class="form-select">
+                <option value="ingresos">Ingresos</option>
+                <option value="gastos" selected>Gastos</option>
+                <option value="transferencias">Transferencias</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-success w-100"
+                    title="Crea el comercio con estos datos y lo asigna a este movimiento mediante una regla automática">
+              Crear comercio y asignar
+            </button>
+          </form>
+          <button type="button" class="btn btn-link btn-sm mt-2 px-0" id="asignar-ir-buscar">&larr; Volver a buscar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
   {{ super() }}
   <script>
     $(document).ready(function() {
-      $('.select-comercio').select2({
+      const $modalEl = $('#asignarComercioModal');
+      const modal = new bootstrap.Modal($modalEl[0]);
+
+      // Select2 propio del modal: necesita dropdownParent para funcionar
+      // dentro de un modal de Bootstrap (si no, el desplegable queda oculto
+      // detrás del backdrop o no recibe el foco del teclado).
+      $('#modal-select-comercio').select2({
         placeholder: 'Buscar comercio...',
         allowClear: true,
-        minimumResultsForSearch: 0  // siempre muestra la caja de búsqueda
+        width: '100%',
+        dropdownParent: $modalEl,
+        templateResult: function(data) {
+          if (!data.id || !data.element.dataset.logo) return data.text;
+          return $('<span><img src="' + data.element.dataset.logo + '" width="24" height="24" class="rounded me-2" style="object-fit:contain">' + data.text + '</span>');
+        },
+        templateSelection: function(data) {
+          if (!data.id || !data.element.dataset.logo) return data.text;
+          return $('<span><img src="' + data.element.dataset.logo + '" width="22" height="22" class="rounded me-2" style="object-fit:contain">' + data.text + '</span>');
+        }
       });
+
+      const modoBuscar = document.getElementById('asignar-modo-buscar');
+      const modoCrear = document.getElementById('asignar-modo-crear');
+
+      function mostrarModoBuscar() {
+        modoBuscar.hidden = false;
+        modoCrear.hidden = true;
+      }
+
+      function mostrarModoCrear() {
+        modoBuscar.hidden = true;
+        modoCrear.hidden = false;
+      }
+
+      document.getElementById('asignar-ir-crear').addEventListener('click', mostrarModoCrear);
+      document.getElementById('asignar-ir-buscar').addEventListener('click', mostrarModoBuscar);
+
+      document.querySelectorAll('.asignar-comercio-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          const movId = btn.dataset.movId;
+          const descripcion = btn.dataset.descripcion;
+          document.getElementById('asignar-modal-descripcion').textContent = descripcion;
+          document.getElementById('asignar-mov-id-buscar').value = movId;
+          document.getElementById('asignar-mov-id-crear').value = movId;
+          document.getElementById('asignar-crear-nombre').value = descripcion;
+          $('#modal-select-comercio').val(null).trigger('change');
+          mostrarModoBuscar();
+          modal.show();
+        });
+      });
+
+      // Filtra las subcategorías según la categoría elegida, igual que en
+      // el formulario de alta de comercios.
+      const categoriaSelect = document.getElementById('asignar-crear-categoria');
+      const subcategoriaSelect = document.getElementById('asignar-crear-subcategoria');
+
+      function filtrarSubcategorias() {
+        if (!categoriaSelect || !subcategoriaSelect) return;
+        const categoriaId = categoriaSelect.value;
+        let selectedStillValid = false;
+
+        Array.from(subcategoriaSelect.options).forEach(function(option) {
+          if (!option.value) {
+            option.hidden = false;
+            return;
+          }
+          const matches = option.dataset.categoriaId === categoriaId;
+          option.hidden = !matches;
+          if (matches && option.selected) {
+            selectedStillValid = true;
+          }
+        });
+
+        if (!selectedStillValid) {
+          subcategoriaSelect.value = '';
+        }
+      }
+
+      if (categoriaSelect && subcategoriaSelect) {
+        categoriaSelect.addEventListener('change', filtrarSubcategorias);
+        filtrarSubcategorias();
+      }
     });
   </script>
 {% endblock %}

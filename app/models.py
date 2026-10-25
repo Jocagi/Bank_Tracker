@@ -42,7 +42,36 @@ class Regla(db.Model):
     comercio_id = db.Column(db.Integer, db.ForeignKey('comercios.id'), nullable=False)
     descripcion = db.Column(db.String(200), nullable=False)
     tipo = db.Column(db.String(50), nullable=False)  # 'incluir' o 'excluir'
-    criterio = db.Column(db.String(200), nullable=False)  # Regex o texto a buscar
+    # Condiciones combinables (AND/OR/NOT) que evalúan distintos campos del
+    # movimiento (descripción, lugar, fecha, cuenta, banco, monto, etc.).
+    condiciones = db.relationship(
+        'ReglaCondicion',
+        backref='regla',
+        lazy=True,
+        order_by='ReglaCondicion.orden',
+        cascade='all, delete-orphan'
+    )
+
+
+class ReglaCondicion(db.Model):
+    __tablename__ = 'regla_condiciones'
+    id = db.Column(db.Integer, primary_key=True)
+    regla_id = db.Column(db.Integer, db.ForeignKey('reglas.id'), nullable=False, index=True)
+    orden = db.Column(db.Integer, nullable=False, default=0)
+    # Conector lógico respecto a la condición anterior dentro de la misma regla.
+    # Se ignora en la primera condición. Valores: 'AND' / 'OR'.
+    conector = db.Column(db.String(3), nullable=False, default='AND')
+    # Si es True, se niega (NOT) el resultado de esta condición.
+    negar = db.Column(db.Boolean, nullable=False, default=False)
+    # Campo del movimiento/cuenta a evaluar: descripcion, detalle, lugar,
+    # numero_documento, moneda, monto, fecha, tipo_movimiento, banco,
+    # tipo_cuenta o cuenta.
+    campo = db.Column(db.String(30), nullable=False)
+    # Operador de comparación, depende del tipo de campo (texto/número/fecha).
+    operador = db.Column(db.String(20), nullable=False)
+    valor = db.Column(db.String(200), nullable=True)
+    # Segundo valor, usado únicamente por operadores de rango (p.ej. 'entre').
+    valor2 = db.Column(db.String(200), nullable=True)
 
 class Pais(db.Model):
     __tablename__ = 'paises'

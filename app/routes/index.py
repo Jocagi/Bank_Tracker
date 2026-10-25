@@ -221,10 +221,9 @@ def edit_movimiento(mov_id):
         # Si viene desde sin_clasificar y se cumplen las condiciones, reclasificar
         if from_sin_clasificar and not mov.excluir_clasificacion and not mov.comercio_id:
             try:
-                from ..utils.classifier import reclasificar_movimientos
-                reclasificar_movimientos()
-                # Recargar el movimiento para ver si fue clasificado
-                db.session.refresh(mov)
+                # Solo cambió este movimiento: basta con clasificarlo a él.
+                from ..utils.classifier import clasificar_movimiento
+                clasificar_movimiento(mov)
                 if mov.comercio_id:
                     flash('Movimiento actualizado y clasificado automáticamente.', 'success')
                 else:

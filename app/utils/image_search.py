@@ -42,16 +42,25 @@ def search_brave_images(query):
     if payload.get('error'):
         raise RuntimeError(payload['error'])
 
-    return [
-        {
-            'url': item.get('properties', {}).get('url') or item.get('url'),
-            'thumbnail_url': item.get('thumbnail', {}).get('src'),
+    suggestions = []
+    for item in payload.get('results', []):
+        # `properties.url` is the direct image file; `url` is only the hosting
+        # page, so it must never be used as an image source (downloading it
+        # returns HTML, which later fails as an "unsupported format").
+        image_url = item.get('properties', {}).get('url', '')
+        thumbnail_url = item.get('thumbnail', {}).get('src', '')
+        if not image_url.startswith(('http://', 'https://')):
+            continue
+        if not thumbnail_url.startswith(('http://', 'https://')):
+            continue
+        suggestions.append({
+            'url': image_url,
+            'thumbnail_url': thumbnail_url,
             'title': item.get('title') or 'Logo sugerido',
-        }
-        for item in payload.get('results', [])
-        if (item.get('properties', {}).get('url') or item.get('url', '')).startswith(('http://', 'https://'))
-        and item.get('thumbnail', {}).get('src', '').startswith(('http://', 'https://'))
-    ][:3]
+        })
+        if len(suggestions) == 3:
+            break
+    return suggestions
 
 
 def build_image_search_url(name, term='logo'):

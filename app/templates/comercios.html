@@ -366,9 +366,8 @@
             <ul id="reglas-{{ c.id }}" class="mb-0 mt-2 d-none reglas-list">
               {% for r in c.reglas %}
                 <li>
-                  <strong>{{ r.tipo.capitalize() }}:</strong>
-                  {{ r.descripcion }} 
-                  <em>({{ r.criterio }})</em>
+                  <span class="badge {{ 'text-bg-success' if r.tipo == 'incluir' else 'text-bg-danger' }}">{{ 'Incluir' if r.tipo == 'incluir' else 'Excluir' }}</span>
+                  {{ r | describir_regla }}
                 </li>
               {% endfor %}
             </ul>

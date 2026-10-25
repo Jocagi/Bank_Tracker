@@ -11,6 +11,7 @@
       <input type="file" name="logo" id="entity-logo-input" class="form-control mt-2" accept="image/jpeg,image/png,image/gif,image/webp">
     </div>
     <input type="hidden" name="logo_url" id="entity-logo-url">
+    <input type="hidden" name="logo_thumbnail_url" id="entity-logo-thumbnail-url">
     {% if logo_filename %}
     <div class="form-check mt-2">
       <input class="form-check-input" type="checkbox" name="remove_logo" value="1" id="remove-entity-logo">
@@ -25,6 +26,6 @@
   </div>
   <script src="{{ url_for('static', filename='js/entity_logo.js') }}"></script>
   <script>
-    window.initEntityLogoForm({{ name_input_id|tojson }}, {{ url_for('main.logo_suggestions')|tojson }}, {{ search_term|tojson }});
+    window.initEntityLogoForm({{ name_input_id|tojson }}, {{ url_for('main.logo_suggestions')|tojson }}, {{ search_term|tojson }}, {{ url_for('main.logo_image_proxy')|tojson }});
   </script>
 {% endmacro %}

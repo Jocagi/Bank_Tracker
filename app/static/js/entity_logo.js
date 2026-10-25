@@ -1,7 +1,29 @@
-window.initEntityLogoForm = function(nameInputId, suggestionsUrl, searchTerm = 'logo') {
+// El CDN de miniaturas de Brave aplica límites de tasa agresivos; si la
+// primera carga falla se reintenta una vez tras una breve espera y, si
+// sigue fallando, se reemplaza el ícono roto por un aviso neutral.
+window.handleLogoThumbnailError = function(img) {
+  const retryCount = parseInt(img.dataset.retryCount || '0', 10);
+  const baseSrc = img.dataset.retrySrc || img.src;
+  if (retryCount < 1) {
+    img.dataset.retryCount = String(retryCount + 1);
+    setTimeout(() => {
+      const separator = baseSrc.includes('?') ? '&' : '?';
+      img.src = `${baseSrc}${separator}retry=${Date.now()}`;
+    }, 4000);
+    return;
+  }
+  const placeholder = document.createElement('div');
+  placeholder.className = 'text-muted small d-flex align-items-center justify-content-center bg-light border rounded';
+  placeholder.style.cssText = `${img.style.cssText};min-height:60px`;
+  placeholder.textContent = 'Vista previa no disponible';
+  img.replaceWith(placeholder);
+};
+
+window.initEntityLogoForm = function(nameInputId, suggestionsUrl, searchTerm = 'logo', imageProxyUrl = null) {
   const nameInput = document.getElementById(nameInputId);
   const logoInput = document.getElementById('entity-logo-input');
   const logoUrl = document.getElementById('entity-logo-url');
+  const logoThumbnailUrl = document.getElementById('entity-logo-thumbnail-url');
   const dropzone = document.getElementById('entity-logo-dropzone');
   const preview = document.getElementById('entity-logo-preview');
   const suggestions = document.getElementById('entity-logo-suggestions');
@@ -10,8 +32,15 @@ window.initEntityLogoForm = function(nameInputId, suggestionsUrl, searchTerm = '
 
   if (!nameInput || !logoInput || !dropzone || !preview || !suggestions) return;
 
+  // Las miniaturas de Brave se sirven desde nuestro propio servidor para
+  // evitar fallos intermitentes al cargarlas directamente desde el navegador.
+  function proxiedThumbnail(thumbnailUrl) {
+    if (!thumbnailUrl) return thumbnailUrl;
+    return imageProxyUrl ? `${imageProxyUrl}?url=${encodeURIComponent(thumbnailUrl)}` : thumbnailUrl;
+  }
+
   function previewLogo(source, alt) {
-    preview.innerHTML = `<img src="${source}" alt="${alt}" class="img-thumbnail" style="width:96px;height:96px;object-fit:contain">`;
+    preview.innerHTML = `<img src="${source}" data-retry-src="${source}" onerror="window.handleLogoThumbnailError(this)" alt="${alt}" class="img-thumbnail" style="width:96px;height:96px;object-fit:contain">`;
   }
 
   function showLocalLogo() {
@@ -32,11 +61,13 @@ window.initEntityLogoForm = function(nameInputId, suggestionsUrl, searchTerm = '
       data.suggestions.forEach((suggestion, index) => {
         const column = document.createElement('div');
         column.className = 'col-4';
-        column.innerHTML = `<button type="button" class="btn btn-light border w-100 p-1" title="Usar esta imagen"><img src="${suggestion.thumbnail_url || suggestion.url}" alt="${suggestion.title || `Sugerencia ${index + 1}`}" style="width:100%;height:90px;object-fit:contain"></button>`;
+        const thumbSrc = proxiedThumbnail(suggestion.thumbnail_url) || suggestion.url;
+        column.innerHTML = `<button type="button" class="btn btn-light border w-100 p-1" title="Usar esta imagen"><img src="${thumbSrc}" data-retry-src="${thumbSrc}" onerror="window.handleLogoThumbnailError(this)" alt="${suggestion.title || `Sugerencia ${index + 1}`}" style="width:100%;height:90px;object-fit:contain"></button>`;
         column.querySelector('button').addEventListener('click', () => {
           logoUrl.value = suggestion.url;
+          if (logoThumbnailUrl) logoThumbnailUrl.value = suggestion.thumbnail_url || '';
           logoInput.value = '';
-          previewLogo(suggestion.url, 'Logo seleccionado');
+          previewLogo(thumbSrc, 'Logo seleccionado');
         });
         suggestions.appendChild(column);
       });

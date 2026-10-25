@@ -16,6 +16,7 @@
       <input type="file" name="logo" id="logo-input" class="form-control mt-2" accept="image/jpeg,image/png,image/gif,image/webp">
     </div>
     <input type="hidden" name="logo_url" id="logo-url">
+    <input type="hidden" name="logo_thumbnail_url" id="logo-thumbnail-url">
     {% if comercio.logo_filename %}<div class="form-check mt-2"><input class="form-check-input" type="checkbox" name="remove_logo" value="1" id="remove-logo"><label class="form-check-label" for="remove-logo">Eliminar logo actual</label></div>{% endif %}
     <div class="d-flex align-items-center gap-2 mt-2">
       <button type="button" class="btn btn-outline-secondary btn-sm" id="buscar-logos">Buscar sugerencias</button>
@@ -66,54 +67,15 @@
   </select>
 </div>
 
-  <div id="reglas-container">
-    <label class="form-label">Reglas de Clasificación</label>
-    {% if comercio.reglas %}
-      {% for regla in comercio.reglas %}
-      <div class="regla-row mb-2">
-        <input name="reg_descripcion"
-               placeholder="Descripción"
-               class="form-control d-inline w-50"
-               required
-               value="{{ regla.descripcion }}">
-        <select name="reg_tipo" class="form-select d-inline w-auto">
-          <option value="incluir" {% if regla.tipo == 'incluir' %}selected{% endif %}>Incluir</option>
-          <option value="excluir" {% if regla.tipo == 'excluir' %}selected{% endif %}>Excluir</option>
-        </select>
-        <input name="reg_criterio"
-               placeholder="Criterio (Usa * como comodín)"
-               class="form-control d-inline w-25"
-               required
-               value="{{ regla.criterio }}">
-        <button type="button" class="btn btn-danger btn-sm remove-regla">✕</button>
-      </div>
-      {% endfor %}
-    {% else %}
-      <div class="regla-row mb-2">
-        <input name="reg_descripcion"
-               placeholder="Descripción"
-               class="form-control d-inline w-50"
-               required>
-        <select name="reg_tipo" class="form-select d-inline w-auto">
-          <option value="incluir">Incluir</option>
-          <option value="excluir">Excluir</option>
-        </select>
-        <input name="reg_criterio"
-               placeholder="Criterio (Usa * como comodín)"
-               class="form-control d-inline w-25"
-               required>
-        <button type="button" class="btn btn-danger btn-sm remove-regla">✕</button>
-      </div>
-    {% endif %}
+  <div id="reglas-container" class="mb-2">
+    <label class="form-label fw-bold">Reglas de Clasificación</label>
+    <div class="form-text mb-2">
+      Cada regla asigna (o excluye) este comercio cuando se cumplen sus condiciones. Combina criterios de
+      descripción, lugar, fecha, monto, banco, tipo de cuenta y más, usando conectores Y/O e invirtiendo condiciones con "Negar".
+    </div>
   </div>
-
-  <button type="button" class="btn btn-secondary mb-3" onclick="
-    const reglaRow = document.querySelector('.regla-row');
-    const row = reglaRow.cloneNode(true);
-    row.querySelectorAll('input').forEach(i => i.value = '');
-    row.querySelector('select').value = 'incluir';
-    document.getElementById('reglas-container').appendChild(row);
-  ">Agregar regla</button>
+  <button type="button" class="btn btn-secondary mb-3" id="add-regla-btn">+ Agregar regla</button>
+  <input type="hidden" name="reglas_json" id="reglas-json">
 
   <button class="btn btn-primary">Guardar</button>
   <a href="{{ url_for('main.list_comercios') }}" class="btn btn-secondary ms-2">Cancelar</a>
@@ -123,17 +85,35 @@
   {% endif %}
 </form>
 
+<script src="{{ url_for('static', filename='js/entity_logo.js') }}"></script>
+<script src="{{ url_for('static', filename='js/regla_builder.js') }}"></script>
+<script>
+  window.ReglaBuilder.init({
+    containerId: 'reglas-container',
+    addButtonId: 'add-regla-btn',
+    hiddenInputId: 'reglas-json',
+    reglasIniciales: {{ reglas_data | tojson }},
+    catalogos: {{ catalogos | tojson }}
+  });
+</script>
 <script>
   const nombreComercio = document.getElementById('nombre-comercio');
   const logoInput = document.getElementById('logo-input');
   const logoUrl = document.getElementById('logo-url');
+  const logoThumbnailUrl = document.getElementById('logo-thumbnail-url');
   const logoDropzone = document.getElementById('logo-dropzone');
   const logoPreview = document.getElementById('logo-preview');
   const logoSuggestions = document.getElementById('logo-suggestions');
   const imageSearchLink = document.getElementById('image-search-link');
+  const imageProxyUrl = {{ url_for('main.logo_image_proxy')|tojson }};
+
+  function proxiedThumbnail(thumbnailUrl) {
+    if (!thumbnailUrl) return thumbnailUrl;
+    return `${imageProxyUrl}?url=${encodeURIComponent(thumbnailUrl)}`;
+  }
 
   function previewLogo(source, alt) {
-    logoPreview.innerHTML = `<img src="${source}" alt="${alt}" class="img-thumbnail" style="width:96px;height:96px;object-fit:contain">`;
+    logoPreview.innerHTML = `<img src="${source}" data-retry-src="${source}" onerror="window.handleLogoThumbnailError(this)" alt="${alt}" class="img-thumbnail" style="width:96px;height:96px;object-fit:contain">`;
   }
 
   function showLocalLogo() {
@@ -154,11 +134,13 @@
     data.suggestions.forEach((suggestion, index) => {
       const column = document.createElement('div');
       column.className = 'col-4';
-      column.innerHTML = `<button type="button" class="btn btn-light border w-100 p-1" title="Usar esta imagen"><img src="${suggestion.thumbnail_url || suggestion.url}" alt="${suggestion.title || `Sugerencia ${index + 1}`}" style="width:100%;height:90px;object-fit:contain"></button>`;
+      const thumbSrc = proxiedThumbnail(suggestion.thumbnail_url) || suggestion.url;
+      column.innerHTML = `<button type="button" class="btn btn-light border w-100 p-1" title="Usar esta imagen"><img src="${thumbSrc}" data-retry-src="${thumbSrc}" onerror="window.handleLogoThumbnailError(this)" alt="${suggestion.title || `Sugerencia ${index + 1}`}" style="width:100%;height:90px;object-fit:contain"></button>`;
       column.querySelector('button').addEventListener('click', () => {
         logoUrl.value = suggestion.url;
+        logoThumbnailUrl.value = suggestion.thumbnail_url || '';
         logoInput.value = '';
-        previewLogo(suggestion.url, 'Logo seleccionado');
+        previewLogo(thumbSrc, 'Logo seleccionado');
       });
       logoSuggestions.appendChild(column);
     });
@@ -212,10 +194,5 @@
     filtrarSubcategorias();
   }
 
-  document.getElementById('reglas-container').addEventListener('click', function(e) {
-    if (e.target.classList.contains('remove-regla')) {
-      e.target.closest('.regla-row').remove();
-    }
-  });
 </script>
 {% endblock %}

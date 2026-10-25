@@ -1,12 +1,64 @@
 from flask import render_template, request, flash, redirect, url_for, Response, abort, current_app
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 from .. import db
-from ..models import Comercio, Categoria, Subcategoria, TipoCambio, Regla
+from ..models import Comercio, Categoria, Subcategoria, TipoCambio, Regla, ReglaCondicion
+from ..utils.classifier import describir_regla
 from . import bp
 from flask_login import login_required, current_user
 import json
 
 from ..utils.database_backup import backup_database
+
+
+def _condiciones_desde_regla_import(r):
+    """
+    Normaliza las condiciones de una regla importada. Soporta el formato
+    nuevo (``condiciones``: lista de condiciones) y, por compatibilidad,
+    el formato antiguo basado en un único ``criterio`` de texto sobre la
+    descripción (comodín '*' o '=' para coincidencia exacta).
+    """
+    condiciones_data = r.get('condiciones')
+    if condiciones_data:
+        resultado = []
+        for idx, c in enumerate(condiciones_data):
+            campo = (c.get('campo') or '').strip()
+            operador = (c.get('operador') or '').strip()
+            valor = c.get('valor')
+            if not campo or not operador or not valor:
+                continue
+            resultado.append({
+                'orden': c.get('orden', idx),
+                'conector': (c.get('conector') or 'AND').strip().upper() or 'AND',
+                'negar': bool(c.get('negar')),
+                'campo': campo,
+                'operador': operador,
+                'valor': valor,
+                'valor2': c.get('valor2'),
+            })
+        return resultado
+
+    # Formato antiguo: un único criterio de texto sobre la descripción
+    criterio = (r.get('criterio') or '').strip()
+    if not criterio:
+        return []
+    if criterio.startswith('='):
+        operador, valor = 'igual', criterio[1:].strip()
+    else:
+        operador, valor = 'comodin', criterio
+    if not valor:
+        return []
+    return [{
+        'orden': 0, 'conector': 'AND', 'negar': False,
+        'campo': 'descripcion', 'operador': operador, 'valor': valor, 'valor2': None,
+    }]
+
+
+def _firma_condiciones(condiciones):
+    return tuple(sorted(
+        (c['campo'], c['operador'], c['valor'], c.get('valor2'), c['conector'], c['negar'])
+        for c in condiciones
+    ))
 
 
 @bp.route('/export_config')
@@ -53,7 +105,18 @@ def export_config():
                 'id': r.id,
                 'descripcion': r.descripcion,
                 'tipo': r.tipo,
-                'criterio': r.criterio
+                'condiciones': [
+                    {
+                        'orden': c.orden,
+                        'conector': c.conector,
+                        'negar': c.negar,
+                        'campo': c.campo,
+                        'operador': c.operador,
+                        'valor': c.valor,
+                        'valor2': c.valor2,
+                    }
+                    for c in sorted(r.condiciones, key=lambda c: c.orden)
+                ]
             })
         comercios.append({
             'id': cm.id,
@@ -216,15 +279,38 @@ def import_config():
 
         # reglas
         for r in cm.get('reglas', []):
-            desc = r.get('descripcion') or ''
-            tipo = r.get('tipo') or ''
-            criterio = r.get('criterio') or ''
-            if not desc and not criterio:
+            tipo = (r.get('tipo') or '').strip().lower()
+            condiciones = _condiciones_desde_regla_import(r)
+            if tipo not in ('incluir', 'excluir') or not condiciones:
                 continue
-            exists_rule = Regla.query.filter_by(comercio_id=comercio.id, descripcion=desc, tipo=tipo, criterio=criterio).first()
-            if not exists_rule:
-                db.session.add(Regla(comercio_id=comercio.id, descripcion=desc, tipo=tipo, criterio=criterio))
-                added['reglas'] += 1
+
+            firma_nueva = _firma_condiciones(condiciones)
+            existentes = Regla.query.filter_by(
+                comercio_id=comercio.id, tipo=tipo
+            ).options(joinedload(Regla.condiciones)).all()
+            ya_existe = any(
+                _firma_condiciones([
+                    {'campo': c.campo, 'operador': c.operador, 'valor': c.valor,
+                     'valor2': c.valor2, 'conector': c.conector, 'negar': c.negar}
+                    for c in existente.condiciones
+                ]) == firma_nueva
+                for existente in existentes
+            )
+            if ya_existe:
+                continue
+
+            nueva_regla = Regla(comercio_id=comercio.id, tipo=tipo)
+            for c in condiciones:
+                nueva_regla.condiciones.append(ReglaCondicion(
+                    orden=c['orden'], conector=c['conector'], negar=c['negar'],
+                    campo=c['campo'], operador=c['operador'], valor=c['valor'], valor2=c.get('valor2'),
+                ))
+            # El nombre se deriva de las condiciones, ignorando cualquier
+            # "descripcion" del archivo importado (puede venir de un export
+            # antiguo con texto libre que ya no refleja la lógica real).
+            nueva_regla.descripcion = describir_regla(nueva_regla)[:200]
+            db.session.add(nueva_regla)
+            added['reglas'] += 1
 
     # Commit all changes
     try:

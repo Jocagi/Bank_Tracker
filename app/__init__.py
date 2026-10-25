@@ -13,9 +13,15 @@ login_manager.login_view = 'main.login'
 
 load_dotenv()
 
-def create_app():
+def create_app(config_overrides=None):
     app = Flask(__name__)
     app.config.from_object("app.config.Config")
+    if config_overrides:
+        # Debe aplicarse antes de db.init_app(): Flask-SQLAlchemy enlaza el
+        # motor (y por tanto SQLALCHEMY_DATABASE_URI) en el momento de
+        # init_app, así que sobreescribir la config después no tiene ningún
+        # efecto y las pruebas terminarían operando sobre la base real.
+        app.config.update(config_overrides)
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -27,6 +33,10 @@ def create_app():
     # Registra blueprints
     from .routes import bp as main_bp
     app.register_blueprint(main_bp)
+
+    # Filtro Jinja para mostrar las reglas de clasificación en texto legible
+    from .utils.classifier import describir_regla
+    app.jinja_env.filters['describir_regla'] = describir_regla
 
     # user loader (deferred import para evitar ciclos)
     from .models import User

@@ -1,18 +1,22 @@
 import os
 import re
+import time
+import threading
 import uuid
+import json
 from json import JSONDecodeError
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
+from urllib.parse import urlparse
 
-from flask import current_app, flash, jsonify, redirect, render_template, request, send_from_directory, url_for
+from flask import current_app, flash, jsonify, redirect, render_template, request, send_from_directory, url_for, Response
 from . import bp
 from .. import db
-from ..models import Comercio, Regla, Categoria, Subcategoria, Movimiento
+from ..models import Comercio, Regla, ReglaCondicion, Categoria, Subcategoria, Movimiento, Cuenta
 from flask_login import current_user
-from ..utils.classifier import reclasificar_movimientos
+from ..utils.classifier import reclasificar_comercio, snapshot_reglas_comercio, CAMPOS_VALIDOS, operadores_validos_para_campo, describir_regla
 from ..utils.image_search import build_image_search_url, search_image_suggestions
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from flask_login import login_required
 
 
@@ -22,6 +26,42 @@ ALLOWED_LOGO_TYPES = {
     'image/gif': 'gif',
     'image/webp': 'webp',
 }
+
+# Firmas binarias usadas para reconocer el formato real de una imagen cuando
+# el servidor de origen omite el Content-Type o lo informa incorrectamente.
+LOGO_MAGIC_SIGNATURES = (
+    (b'\xff\xd8\xff', 'image/jpeg'),
+    (b'\x89PNG\r\n\x1a\n', 'image/png'),
+    (b'GIF87a', 'image/gif'),
+    (b'GIF89a', 'image/gif'),
+)
+
+# Dominio desde el que Brave sirve siempre sus miniaturas de imágenes; es el
+# único host que el proxy de miniaturas tiene permitido reenviar.
+BRAVE_IMAGE_PROXY_HOSTS = {'imgs.search.brave.com'}
+
+# User-Agent "de navegador" usado para las descargas: reduce la probabilidad
+# de que sitios de origen bloqueen peticiones con un User-Agent genérico.
+BROWSER_USER_AGENT = (
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+    '(KHTML, like Gecko) Chrome/120.0 Safari/537.36'
+)
+
+# El CDN de miniaturas de Brave (imgs.search.brave.com) aplica un límite de
+# tasa agresivo y exige un Referer de su propio dominio para no rechazar la
+# petición con 429.
+BRAVE_PROXY_HEADERS = {
+    'User-Agent': BROWSER_USER_AGENT,
+    'Referer': 'https://search.brave.com/',
+}
+
+# Caché en memoria de miniaturas ya descargadas, para no volver a golpear el
+# CDN de Brave (fácilmente saturable) en cada carga de la misma sugerencia.
+_THUMBNAIL_CACHE = {}
+_THUMBNAIL_CACHE_LOCK = threading.Lock()
+THUMBNAIL_CACHE_TTL_SECONDS = 15 * 60
+THUMBNAIL_CACHE_MAX_ENTRIES = 200
+
 
 def format_sentence_case(text):
     """Convierte un texto a formato de oración (primera letra mayúscula, resto minúscula)"""
@@ -33,13 +73,238 @@ def format_sentence_case(text):
     return text.capitalize()
 
 
+CONECTORES_VALIDOS = {'AND', 'OR'}
+
+
+def _parse_reglas_payload(raw_json):
+    """
+    Parsea el JSON enviado por el formulario (campo oculto ``reglas_json``)
+    y construye una lista de instancias ``Regla`` (con sus ``condiciones``)
+    listas para asociarse a un comercio.
+
+    El nombre (``descripcion``) de cada regla se deriva automáticamente de
+    sus condiciones mediante ``describir_regla``: no se solicita ni se
+    confía en texto libre del cliente, ya que no aporta información que no
+    esté ya determinada por las condiciones mismas.
+
+    Formato esperado::
+
+        [
+          {
+            "tipo": "incluir",
+            "condiciones": [
+              {"conector": "AND", "negar": false, "campo": "descripcion",
+               "operador": "contiene", "valor": "LA TORRE", "valor2": null},
+              {"conector": "AND", "negar": true, "campo": "banco",
+               "operador": "igual", "valor": "BI", "valor2": null}
+            ]
+          }
+        ]
+
+    Lanza ``ValueError`` con un mensaje apto para mostrar al usuario si el
+    payload es inválido.
+    """
+    if not raw_json or not raw_json.strip():
+        return []
+
+    try:
+        data = json.loads(raw_json)
+    except JSONDecodeError:
+        raise ValueError('El formato de las reglas de clasificación es inválido.')
+
+    if not isinstance(data, list):
+        raise ValueError('El formato de las reglas de clasificación es inválido.')
+
+    reglas = []
+    for regla_data in data:
+        if not isinstance(regla_data, dict):
+            raise ValueError('El formato de las reglas de clasificación es inválido.')
+
+        tipo = (regla_data.get('tipo') or '').strip().lower()
+        condiciones_data = regla_data.get('condiciones') or []
+
+        if tipo not in ('incluir', 'excluir') or not condiciones_data:
+            # Reglas incompletas (sin tipo o condiciones) se ignoran
+            continue
+
+        regla = Regla(tipo=tipo)
+        for indice, cond_data in enumerate(condiciones_data):
+            if not isinstance(cond_data, dict):
+                continue
+            campo = (cond_data.get('campo') or '').strip()
+            operador = (cond_data.get('operador') or '').strip()
+            valor = cond_data.get('valor')
+            valor2 = cond_data.get('valor2')
+            conector = (cond_data.get('conector') or 'AND').strip().upper()
+            negar = bool(cond_data.get('negar'))
+
+            if campo not in CAMPOS_VALIDOS:
+                raise ValueError(f'Campo de condición inválido: "{campo}".')
+            if operador not in operadores_validos_para_campo(campo):
+                raise ValueError(f'Operador inválido ("{operador}") para el campo "{campo}".')
+            if conector not in CONECTORES_VALIDOS:
+                conector = 'AND'
+            valor = (valor or '').strip() if isinstance(valor, str) else valor
+            valor2 = (valor2 or '').strip() if isinstance(valor2, str) else valor2
+            if not valor:
+                # Una condición sin valor no puede evaluarse; se descarta.
+                continue
+
+            regla.condiciones.append(ReglaCondicion(
+                orden=indice,
+                conector=conector,
+                negar=negar,
+                campo=campo,
+                operador=operador,
+                valor=valor,
+                valor2=valor2 or None,
+            ))
+
+        if not regla.condiciones:
+            continue
+
+        # El nombre de la regla se calcula siempre a partir de sus
+        # condiciones, para que quede consistente aunque cambien después.
+        regla.descripcion = describir_regla(regla)[:200]
+        reglas.append(regla)
+
+    return reglas
+
+
+def _serializar_reglas(comercio):
+    """Convierte las reglas de un comercio a una estructura JSON-friendly
+    para inicializar el constructor de reglas en el formulario de edición."""
+    reglas = []
+    for regla in sorted(comercio.reglas, key=lambda r: r.id):
+        reglas.append({
+            'descripcion': regla.descripcion,
+            'tipo': regla.tipo,
+            'condiciones': [
+                {
+                    'conector': cond.conector,
+                    'negar': cond.negar,
+                    'campo': cond.campo,
+                    'operador': cond.operador,
+                    'valor': cond.valor,
+                    'valor2': cond.valor2,
+                }
+                for cond in sorted(regla.condiciones, key=lambda c: c.orden)
+            ]
+        })
+    return reglas
+
+
+def _obtener_catalogos_reglas():
+    """
+    Recupera los catálogos (bancos, tipos de cuenta, cuentas y monedas)
+    usados para construir listas desplegables en el constructor de reglas,
+    en lugar de obligar a escribir el valor a mano.
+
+    Igual que en el resto de pantallas, solo se ofrecen las cuentas (y los
+    valores derivados de ellas) que pertenecen al usuario autenticado.
+    """
+    cuentas_usuario = (
+        Cuenta.query
+        .filter(Cuenta.user_id == current_user.id)
+        .order_by(Cuenta.banco, Cuenta.tipo_cuenta)
+        .all()
+    )
+
+    bancos = sorted({(c.banco or '').strip() for c in cuentas_usuario if (c.banco or '').strip()})
+    tipos_cuenta = sorted({(c.tipo_cuenta or '').strip() for c in cuentas_usuario if (c.tipo_cuenta or '').strip()})
+    monedas_cuentas = {(c.moneda or '').strip().upper() for c in cuentas_usuario if (c.moneda or '').strip()}
+    monedas_movimientos = {
+        (valor or '').strip().upper()
+        for (valor,) in db.session.query(Movimiento.moneda)
+        .filter(Movimiento.user_id == current_user.id)
+        .distinct()
+        if (valor or '').strip()
+    }
+    monedas = sorted(monedas_cuentas | monedas_movimientos)
+
+    cuentas = []
+    for cuenta in cuentas_usuario:
+        valor = (cuenta.alias or cuenta.numero_cuenta or '').strip()
+        if not valor:
+            continue
+        detalle = ' - '.join(filter(None, [cuenta.banco, cuenta.tipo_cuenta, cuenta.numero_cuenta]))
+        cuentas.append({'value': valor, 'label': f'{valor} ({detalle})' if detalle else valor})
+
+    return {
+        'banco': bancos,
+        'tipo_cuenta': tipos_cuenta,
+        'moneda': monedas,
+        'cuenta': cuentas,
+    }
+
+
 def _logo_folder(entity_type='comercios'):
     folder = os.path.join(current_app.config['UPLOAD_FOLDER'], entity_type)
     os.makedirs(folder, exist_ok=True)
     return folder
 
 
-def _save_logo(file_storage=None, image_url=None, entity_type='comercios'):
+def _sniff_image_content_type(content):
+    """Detecta el tipo real de una imagen a partir de su firma binaria."""
+    for signature, content_type in LOGO_MAGIC_SIGNATURES:
+        if content.startswith(signature):
+            return content_type
+    if content[:4] == b'RIFF' and content[8:12] == b'WEBP':
+        return 'image/webp'
+    return None
+
+
+def _extension_for_content(content_type, content):
+    """Resuelve la extensión permitida, confiando primero en el Content-Type
+    informado y, si no es válido, en la firma binaria real de los bytes
+    (algunos sitios de origen omiten el header o lo informan mal)."""
+    extension = ALLOWED_LOGO_TYPES.get((content_type or '').lower())
+    if extension:
+        return extension
+    sniffed_type = _sniff_image_content_type(content)
+    return ALLOWED_LOGO_TYPES.get(sniffed_type)
+
+
+def _download_image(image_url, extra_headers=None, retry_on_rate_limit=False):
+    if not image_url.startswith(('http://', 'https://')):
+        raise ValueError('La URL de la imagen no es válida.')
+    max_bytes = current_app.config.get('MAX_LOGO_BYTES', 5 * 1024 * 1024)
+    headers = {'User-Agent': BROWSER_USER_AGENT}
+    if extra_headers:
+        headers.update(extra_headers)
+
+    attempts = 2 if retry_on_rate_limit else 1
+    for attempt in range(attempts):
+        try:
+            req = Request(image_url.replace(' ', '%20'), headers=headers)
+            with urlopen(req, timeout=10) as response:
+                content_type = response.headers.get_content_type().lower()
+                content = response.read(max_bytes + 1)
+            break
+        except HTTPError as error:
+            # El CDN de miniaturas de Brave aplica un límite de tasa que se
+            # libera en pocos segundos; un único reintento corto suele bastar.
+            if error.code == 429 and attempt < attempts - 1:
+                time.sleep(1.5)
+                continue
+            raise
+
+    if len(content) > max_bytes:
+        raise ValueError('El logo debe tener un tamaño máximo de 5 MB.')
+    if not _extension_for_content(content_type, content):
+        raise ValueError('El logo debe ser una imagen JPG, PNG, GIF o WEBP.')
+    return content_type, content
+
+
+def _download_image_auto(image_url):
+    """Descarga una imagen aplicando las cabeceras y reintentos adecuados
+    según el host (el CDN de miniaturas de Brave necesita trato especial)."""
+    if urlparse(image_url).hostname in BRAVE_IMAGE_PROXY_HOSTS:
+        return _download_image(image_url, extra_headers=BRAVE_PROXY_HEADERS, retry_on_rate_limit=True)
+    return _download_image(image_url)
+
+
+def _save_logo(file_storage=None, image_url=None, entity_type='comercios', fallback_image_url=None):
     content_type = None
     content = None
     if not (file_storage and file_storage.filename) and not image_url:
@@ -49,17 +314,24 @@ def _save_logo(file_storage=None, image_url=None, entity_type='comercios'):
         content_type = (file_storage.mimetype or '').lower().split(';')[0]
         content = file_storage.read(current_app.config.get('MAX_LOGO_BYTES', 5 * 1024 * 1024) + 1)
     elif image_url:
-        if not image_url.startswith(('http://', 'https://')):
-            raise ValueError('La URL de la imagen no es válida.')
-        image_url = image_url.replace(' ', '%20')
-        req = Request(image_url, headers={'User-Agent': 'BankTracker/1.0'})
-        with urlopen(req, timeout=10) as response:
-            content_type = response.headers.get_content_type().lower()
-            content = response.read(current_app.config.get('MAX_LOGO_BYTES', 5 * 1024 * 1024) + 1)
+        # Al elegir una sugerencia se intenta primero la imagen original y,
+        # si falla (host caído, formato no soportado, bloqueo, etc.), se
+        # reintenta con la miniatura de Brave, que siempre es una imagen
+        # válida servida de forma confiable.
+        candidate_urls = [image_url]
+        if fallback_image_url and fallback_image_url != image_url:
+            candidate_urls.append(fallback_image_url)
+        for index, candidate_url in enumerate(candidate_urls):
+            try:
+                content_type, content = _download_image_auto(candidate_url)
+                break
+            except Exception:
+                if index == len(candidate_urls) - 1:
+                    raise
 
     if not content or len(content) > current_app.config.get('MAX_LOGO_BYTES', 5 * 1024 * 1024):
         raise ValueError('El logo debe tener un tamaño máximo de 5 MB.')
-    extension = ALLOWED_LOGO_TYPES.get(content_type)
+    extension = _extension_for_content(content_type, content)
     if not extension:
         raise ValueError('El logo debe ser una imagen JPG, PNG, GIF o WEBP.')
 
@@ -84,6 +356,40 @@ def comercio_logo(filename):
     if not filename.startswith(('comercios/', 'categorias/', 'subcategorias/', 'paises/')):
         return ('', 404)
     return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
+
+
+@bp.route('/comercios/logo-image-proxy')
+@login_required
+def logo_image_proxy():
+    """Reenvía las miniaturas de Brave desde el servidor en lugar de que el
+    navegador las cargue directamente, evitando fallos intermitentes por
+    bloqueos de hotlinking/límites de tasa del CDN externo. Cachea en
+    memoria las miniaturas ya descargadas para no volver a solicitarlas."""
+    image_url = request.args.get('url', '')
+    if not image_url.startswith(('http://', 'https://')):
+        return ('', 400)
+    if urlparse(image_url).hostname not in BRAVE_IMAGE_PROXY_HOSTS:
+        return ('', 400)
+
+    now = time.monotonic()
+    with _THUMBNAIL_CACHE_LOCK:
+        cached = _THUMBNAIL_CACHE.get(image_url)
+        if cached and cached[0] > now:
+            _, content_type, content = cached
+            return Response(content, mimetype=content_type, headers={'Cache-Control': 'public, max-age=86400'})
+
+    try:
+        content_type, content = _download_image(image_url, extra_headers=BRAVE_PROXY_HEADERS, retry_on_rate_limit=True)
+    except Exception:
+        return ('', 502)
+
+    with _THUMBNAIL_CACHE_LOCK:
+        if len(_THUMBNAIL_CACHE) >= THUMBNAIL_CACHE_MAX_ENTRIES:
+            oldest_key = min(_THUMBNAIL_CACHE, key=lambda key: _THUMBNAIL_CACHE[key][0])
+            _THUMBNAIL_CACHE.pop(oldest_key, None)
+        _THUMBNAIL_CACHE[image_url] = (now + THUMBNAIL_CACHE_TTL_SECONDS, content_type, content)
+
+    return Response(content, mimetype=content_type, headers={'Cache-Control': 'public, max-age=86400'})
 
 
 @bp.route('/comercios/logo-suggestions')
@@ -162,16 +468,17 @@ def list_comercios():
                 (Comercio.descripcion.ilike(f"%{nombre_q}%"))
             )
     if regla_q:
-        # Buscar dentro de las reglas (descripcion, criterio o tipo)
-        query = query.join(Regla).filter(
+        # Buscar dentro de las reglas (descripción, tipo o cualquier valor de condición)
+        query = query.join(Regla).outerjoin(ReglaCondicion).filter(
             (Regla.descripcion.ilike(f"%{regla_q}%")) |
-            (Regla.criterio.ilike(f"%{regla_q}%")) |
-            (Regla.tipo.ilike(f"%{regla_q}%"))
+            (Regla.tipo.ilike(f"%{regla_q}%")) |
+            (ReglaCondicion.valor.ilike(f"%{regla_q}%")) |
+            (ReglaCondicion.valor2.ilike(f"%{regla_q}%"))
         ).distinct()
 
     # Eager-load reglas y categoria para evitar N+1 y paginar en DB
     pagination = query.order_by(Comercio.nombre.asc()).options(
-        joinedload(Comercio.reglas),
+        selectinload(Comercio.reglas).selectinload(Regla.condiciones),
         joinedload(Comercio.categoria),
         joinedload(Comercio.subcategoria)
     ).paginate(page=page, per_page=per_page, error_out=False)
@@ -233,6 +540,13 @@ def add_comercio():
     # Obtener datos pre-llenados de la URL
     pre_nombre = format_sentence_case(request.args.get('nombre', ''))
     pre_regla = request.args.get('regla', '')
+    regla_prellenada = None
+    if pre_regla:
+        regla_prellenada = {
+            'descripcion': pre_nombre or 'Regla automática',
+            'tipo': 'incluir',
+            'condiciones': [{'campo': 'descripcion', 'operador': 'comodin', 'valor': pre_regla}]
+        }
     
     if request.method == 'POST':
         nombre = request.form['nombre']
@@ -241,25 +555,34 @@ def add_comercio():
         subcategoria_id_raw = request.form.get('subcategoria_id') or ''
         subcategoria_id = int(subcategoria_id_raw) if subcategoria_id_raw else None
         tipo_contabilizacion  = request.form['tipo_contabilizacion']
+        reglas_json = request.form.get('reglas_json', '')
+
+        try:
+            nuevas_reglas = _parse_reglas_payload(reglas_json)
+        except ValueError as error:
+            flash(str(error), 'danger')
+            return render_template('comercios_add.html', categorias=categorias, subcategorias=subcategorias, pre_nombre=pre_nombre, pre_regla=pre_regla, regla_prellenada=regla_prellenada, catalogos=_obtener_catalogos_reglas())
+
         logo_filename = None
         try:
             logo_filename = _save_logo(
                 request.files.get('logo'),
-                request.form.get('logo_url') or None
+                request.form.get('logo_url') or None,
+                fallback_image_url=request.form.get('logo_thumbnail_url') or None
             )
         except ValueError as error:
             flash(str(error), 'danger')
-            return render_template('comercios_add.html', categorias=categorias, subcategorias=subcategorias, pre_nombre=pre_nombre, pre_regla=pre_regla)
+            return render_template('comercios_add.html', categorias=categorias, subcategorias=subcategorias, pre_nombre=pre_nombre, pre_regla=pre_regla, regla_prellenada=regla_prellenada, catalogos=_obtener_catalogos_reglas())
         except Exception:
             flash('No fue posible descargar el logo seleccionado.', 'danger')
-            return render_template('comercios_add.html', categorias=categorias, subcategorias=subcategorias, pre_nombre=pre_nombre, pre_regla=pre_regla)
+            return render_template('comercios_add.html', categorias=categorias, subcategorias=subcategorias, pre_nombre=pre_nombre, pre_regla=pre_regla, regla_prellenada=regla_prellenada, catalogos=_obtener_catalogos_reglas())
 
         if subcategoria_id is not None:
             subcategoria = Subcategoria.query.get_or_404(subcategoria_id)
             if subcategoria.categoria_id != categoria_id:
                 _delete_logo(logo_filename)
                 flash('La subcategoría debe pertenecer a la categoría seleccionada.', 'danger')
-                return render_template('comercios_add.html', categorias=categorias, subcategorias=subcategorias, pre_nombre=pre_nombre, pre_regla=pre_regla)
+                return render_template('comercios_add.html', categorias=categorias, subcategorias=subcategorias, pre_nombre=pre_nombre, pre_regla=pre_regla, regla_prellenada=regla_prellenada, catalogos=_obtener_catalogos_reglas())
 
         # Crear nuevo comercio
         nuevo_comercio = Comercio(
@@ -273,29 +596,19 @@ def add_comercio():
         db.session.add(nuevo_comercio)
         db.session.flush()  # Para obtener nuevo_comercio.id
 
-        # Procesar reglas de clasificación
-        descripciones = request.form.getlist('reg_descripcion')
-        tipos = request.form.getlist('reg_tipo')
-        criterios = request.form.getlist('reg_criterio')
-        for desc, tp, crit in zip(descripciones, tipos, criterios):
-            desc = desc.strip()
-            crit = crit.strip()
-            if desc and crit:
-                regla = Regla(
-                    comercio_id=nuevo_comercio.id,
-                    descripcion=desc,
-                    tipo=tp,
-                    criterio=crit
-                )
-                db.session.add(regla)
+        # Asociar las reglas de clasificación (con sus condiciones) al comercio
+        for regla in nuevas_reglas:
+            regla.comercio_id = nuevo_comercio.id
+            db.session.add(regla)
         db.session.commit()
 
-        # Clasificar movimientos automáticamente
-        reclasificar_movimientos()
+        # Solo se reevalúan los movimientos que coinciden con las reglas del
+        # nuevo comercio (los demás no pueden verse afectados).
+        cambios = reclasificar_comercio(nuevo_comercio.id)
 
-        flash('Comercio y reglas agregados correctamente.', 'success')
+        flash(f'Comercio y reglas agregados correctamente. Movimientos reclasificados: {cambios}.', 'success')
         return redirect(url_for('main.list_comercios'))
-    return render_template('comercios_add.html', categorias=categorias, subcategorias=subcategorias, pre_nombre=pre_nombre, pre_regla=pre_regla)
+    return render_template('comercios_add.html', categorias=categorias, subcategorias=subcategorias, pre_nombre=pre_nombre, pre_regla=pre_regla, regla_prellenada=regla_prellenada, catalogos=_obtener_catalogos_reglas())
 
 
 @bp.route('/comercios/<int:comercio_id>/edit', methods=['GET', 'POST'])
@@ -305,19 +618,27 @@ def edit_comercio(comercio_id):
     categorias = Categoria.query.order_by(Categoria.nombre).all()
     subcategorias = Subcategoria.query.options(joinedload(Subcategoria.categoria)).order_by(Subcategoria.nombre).all()
     if request.method == 'POST':
+        reglas_json = request.form.get('reglas_json', '')
+        try:
+            nuevas_reglas = _parse_reglas_payload(reglas_json)
+        except ValueError as error:
+            flash(str(error), 'danger')
+            return render_template('comercios_edit.html', comercio=comercio, categorias=categorias, subcategorias=subcategorias, reglas_data=_serializar_reglas(comercio), catalogos=_obtener_catalogos_reglas())
+
         previous_logo = comercio.logo_filename
         new_logo = None
         try:
             new_logo = _save_logo(
                 request.files.get('logo'),
-                request.form.get('logo_url') or None
+                request.form.get('logo_url') or None,
+                fallback_image_url=request.form.get('logo_thumbnail_url') or None
             )
         except ValueError as error:
             flash(str(error), 'danger')
-            return render_template('comercios_edit.html', comercio=comercio, categorias=categorias, subcategorias=subcategorias)
+            return render_template('comercios_edit.html', comercio=comercio, categorias=categorias, subcategorias=subcategorias, reglas_data=_serializar_reglas(comercio), catalogos=_obtener_catalogos_reglas())
         except Exception:
             flash('No fue posible descargar el logo seleccionado.', 'danger')
-            return render_template('comercios_edit.html', comercio=comercio, categorias=categorias, subcategorias=subcategorias)
+            return render_template('comercios_edit.html', comercio=comercio, categorias=categorias, subcategorias=subcategorias, reglas_data=_serializar_reglas(comercio), catalogos=_obtener_catalogos_reglas())
 
         comercio.nombre = request.form['nombre']
         comercio.descripcion = request.form.get('descripcion') or None
@@ -329,7 +650,7 @@ def edit_comercio(comercio_id):
             if subcategoria.categoria_id != comercio.categoria_id:
                 _delete_logo(new_logo)
                 flash('La subcategoría debe pertenecer a la categoría seleccionada.', 'danger')
-                return render_template('comercios_edit.html', comercio=comercio, categorias=categorias, subcategorias=subcategorias)
+                return render_template('comercios_edit.html', comercio=comercio, categorias=categorias, subcategorias=subcategorias, reglas_data=_serializar_reglas(comercio), catalogos=_obtener_catalogos_reglas())
         comercio.subcategoria_id = subcategoria_id
         comercio.tipo_contabilizacion = request.form['tipo_contabilizacion']
         if new_logo:
@@ -337,32 +658,32 @@ def edit_comercio(comercio_id):
         elif request.form.get('remove_logo') == '1':
             comercio.logo_filename = None
         
-        # Eliminar reglas antiguas
-        Regla.query.filter_by(comercio_id=comercio.id).delete()
-        
+        # Copia de las reglas actuales antes de reemplazarlas: los movimientos
+        # que coincidían con ellas también deben reevaluarse.
+        reglas_previas = snapshot_reglas_comercio(comercio.id)
+
+        # Eliminar reglas antiguas y sus condiciones (el delete masivo no
+        # dispara el cascade ORM, así que se eliminan explícitamente)
+        regla_ids_antiguas = [rid for (rid,) in db.session.query(Regla.id).filter_by(comercio_id=comercio.id).all()]
+        if regla_ids_antiguas:
+            ReglaCondicion.query.filter(ReglaCondicion.regla_id.in_(regla_ids_antiguas)).delete(synchronize_session=False)
+        Regla.query.filter_by(comercio_id=comercio.id).delete(synchronize_session=False)
+
         # Agregar reglas nuevas
-        for desc, tp, crit in zip(
-            request.form.getlist('reg_descripcion'),
-            request.form.getlist('reg_tipo'),
-            request.form.getlist('reg_criterio')
-        ):
-            if desc.strip() and crit.strip():
-                db.session.add(Regla(
-                    comercio_id=comercio.id,
-                    descripcion=desc.strip(),
-                    tipo=tp,
-                    criterio=crit.strip()
-                ))
+        for regla in nuevas_reglas:
+            regla.comercio_id = comercio.id
+            db.session.add(regla)
         db.session.commit()
         if previous_logo and comercio.logo_filename != previous_logo:
             _delete_logo(previous_logo)
         
-        # Re-clasificar todos los movimientos tras modificar reglas
-        reclasificar_movimientos()
+        # Reevaluar solo los movimientos del comercio y los que coinciden con
+        # sus reglas anteriores o nuevas.
+        cambios = reclasificar_comercio(comercio.id, reglas_previas)
 
-        flash('Comercio actualizado', 'success')
+        flash(f'Comercio actualizado. Movimientos reclasificados: {cambios}.', 'success')
         return redirect(url_for('main.list_comercios'))
-    return render_template('comercios_edit.html', comercio=comercio, categorias=categorias, subcategorias=subcategorias)
+    return render_template('comercios_edit.html', comercio=comercio, categorias=categorias, subcategorias=subcategorias, reglas_data=_serializar_reglas(comercio), catalogos=_obtener_catalogos_reglas())
 
 
 @bp.route('/comercios/<int:comercio_id>/delete', methods=['POST'])
@@ -370,9 +691,10 @@ def edit_comercio(comercio_id):
 def delete_comercio(comercio_id):
     comercio = Comercio.query.get_or_404(comercio_id)
     logo_filename = comercio.logo_filename
+    reglas_previas = snapshot_reglas_comercio(comercio.id)
     db.session.delete(comercio)
     db.session.commit()
     _delete_logo(logo_filename)
-    reclasificar_movimientos()
+    reclasificar_comercio(comercio_id, reglas_previas)
     flash('Comercio eliminado', 'warning')
     return redirect(url_for('main.list_comercios'))
