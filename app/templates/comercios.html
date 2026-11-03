@@ -379,8 +379,9 @@
       <td>
         <div class="btn-group btn-group-sm" role="group">
           <a href="{{ url_for('main.edit_comercio', comercio_id=c.id) }}" class="btn btn-outline-secondary">✎ Editar</a>
-          <a href="{{ url_for('main.delete_comercio', comercio_id=c.id) }}" class="btn btn-outline-danger"
-             onclick="return confirm('¿Eliminar comercio {{ c.nombre }}?');">✕ Eliminar</a>
+          <form method="post" action="{{ url_for('main.delete_comercio', comercio_id=c.id) }}" style="display:inline" onsubmit="return confirm('¿Eliminar comercio {{ c.nombre }}?');">
+            <button type="submit" class="btn btn-outline-danger">✕ Eliminar</button>
+          </form>
         </div>
       </td>
     </tr>

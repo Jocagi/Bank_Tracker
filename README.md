@@ -6,56 +6,57 @@
 
 ## 📋 Características
 
-- **Carga de archivos**  
-  - Soporta Excel (`.xlsx`, `.xls`), CSV y PDF de múltiples bancos (GYT, BI, etc.)  
-  - Detecta y extrae _metadata_ (titular, número de cuenta, tipo de cuenta, moneda, saldo inicial)  
-  - Procesa tablas de movimientos en distintas posiciones y hasta la primera línea vacía  
-  - Detección de duplicados por hash de archivo  
+- **Carga de archivos**
 
-- **Modelo de datos**  
-  - **Cuenta**: banco, tipo, número, titular, moneda  
-  - **Archivo**: banco, tipo de cuenta, nombre de archivo, fecha de carga, hash  
-  - **Movimiento**: fecha, descripción, lugar, documento, monto, moneda, tipo (débito/crédito), referencia al archivo y a la cuenta  
-  - **Comercio** y **Categoría**: clasificación de movimientos  
-  - **Regla**: expresiones (comodines `*`, exactas con prefijo `=`) para asignar/comprobar exclusión o inclusión  
-  - **TipoCambio**: tipo de cambio por moneda para conversión a GTQ  
+  - Soporta Excel (`.xlsx`, `.xls`), CSV y PDF de múltiples bancos (GYT, BI, etc.)
+  - Detecta y extrae _metadata_ (titular, número de cuenta, tipo de cuenta, moneda, saldo inicial)
+  - Procesa tablas de movimientos en distintas posiciones y hasta la primera línea vacía
+  - Detección de duplicados por hash de archivo
+- **Modelo de datos**
 
-- **Clasificación automática**  
-  - Sistema de reglas con expresiones regulares seguras  
-  - Reglas de **exclusión** y **inclusión** por comercio  
-  - Posibilidad de previsualizar y reclasificar masivamente  
+  - **Cuenta**: banco, tipo, número, titular, moneda
+  - **Archivo**: banco, tipo de cuenta, nombre de archivo, fecha de carga, hash
+  - **Movimiento**: fecha, descripción, lugar, documento, monto, moneda, tipo (débito/crédito), referencia al archivo y a la cuenta
+  - **Comercio** y **Categoría**: clasificación de movimientos
+  - **Regla**: expresiones (comodines `*`, exactas con prefijo `=`) para asignar/comprobar exclusión o inclusión
+  - **TipoCambio**: tipo de cambio por moneda para conversión a GTQ
+- **Clasificación automática**
 
-- **Dashboard e informes**  
-  - Tablas de totales (gastos por comercio, gastos por categoría, ingresos por comercio)  
-  - Gráficas de pastel (`Chart.js`) y evolución mensual  
-  - Filtros por fecha, categoría, comercio y tipo de contabilización  
-  - Conversión a GTQ usando los tipos de cambio configurados  
+  - Sistema de reglas con expresiones regulares seguras
+  - Reglas de **exclusión** y **inclusión** por comercio
+  - Posibilidad de previsualizar y reclasificar masivamente
+- **Dashboard e informes**
 
-- **Administración**  
-  - Mantenimiento de comercios y categorías  
-  - Mantenimiento de reglas  
-  - Administración de archivos (eliminar carga y movimientos asociados)  
-  - Gestión de tipos de cambio  
+  - Tablas de totales (gastos por comercio, gastos por categoría, ingresos por comercio)
+  - Gráficas de pastel (`Chart.js`) y evolución mensual
+  - Filtros por fecha, categoría, comercio y tipo de contabilización
+  - Conversión a GTQ usando los tipos de cambio configurados
+- **Administración**
+
+  - Mantenimiento de comercios y categorías
+  - Mantenimiento de reglas
+  - Administración de archivos (eliminar carga y movimientos asociados)
+  - Gestión de tipos de cambio
 
 ---
 
 ## 🚀 Tecnologías
 
-- **Backend**: Python 3.9+, Flask, SQLAlchemy, Flask-Migrate  
-- **Procesamiento de archivos**: pandas, openpyxl, pdfplumber  
-- **Frontend**: Bootstrap 5, Select2, Chart.js, jQuery  
-- **Base de datos**: SQLite (local, sin servidor)  
+- **Backend**: Python 3.9+, Flask, SQLAlchemy, Flask-Migrate
+- **Procesamiento de archivos**: pandas, openpyxl, pdfplumber
+- **Frontend**: Bootstrap 5, Select2, Chart.js, jQuery
+- **Base de datos**: SQLite (local, sin servidor)
 
 ---
 
 ## ⚙️ Instalación y puesta en marcha
 
-1. **Clonar repositorio**  
+1. **Clonar repositorio**
+
    ```bash
    git clone https://github.com/tu-usuario/bank-tracker.git
    cd bank-tracker
    ```
-
 2. **Crear y activar entorno virtual**
 
    ```bash
@@ -63,14 +64,12 @@
    source venv/bin/activate    # Linux / macOS
    venv\Scripts\activate       # Windows PowerShell
    ```
-
 3. **Instalar dependencias**
 
    ```bash
    pip install --upgrade pip
    pip install -r requirements.txt
    ```
-
 4. **Variables de entorno**
    Crear archivo `.env` (o exportar variables) con, al menos:
 
@@ -95,7 +94,6 @@
    El enlace para ver más resultados siempre abre Google Images directamente, independientemente del proveedor usado para las tres sugerencias.
 
    `DATABASE_BACKUP_PATH` puede apuntar a un archivo o a una carpeta. Si apuntas a una carpeta, el sistema crea un archivo con fecha y hora dentro de ese directorio.
-
 5. **Inicializar base de datos**
 
    ```bash
@@ -103,7 +101,6 @@
    flask db migrate -m "Primer esquema"
    flask db upgrade
    ```
-
 6. **Ejecutar la aplicación**
 
    ```bash
@@ -137,7 +134,6 @@ También puedes ejecutarlo manualmente desde la pantalla **Datos** como administ
 flask backup-database
 ```
 
-
 ## �📝 Uso básico
 
 1. **Cargar archivo**
@@ -145,22 +141,18 @@ flask backup-database
    * Ir a **Cargar Archivo**
    * Seleccionar tipo de archivo (por banco / formato)
    * Subir el archivo Excel/CSV/PDF
-
 2. **Revisar movimientos**
 
    * Panel principal muestra últimos movimientos
    * Filtros por cuenta, fecha, descripción, comercio, categoría, tipo
-
 3. **Clasificar comercios**
 
    * Definir reglas en **Comercios → Agregar/Editar**
    * Revisar movimientos “sin clasificar” y asignar manual o automáticamente
-
 4. **Ver Dashboard**
 
    * Filtrar rangos de fecha y categoría
    * Consultar tablas de totales y ver gráficas interactivas
-
 5. **Administrar tipos de cambio**
 
    * Ir a **Tipos de Cambio**

@@ -451,9 +451,11 @@ def dashboard():
     else:
         commerce_labels = commerce_values = []
 
-    commerce_table = [
-        (lbl, abs(total) if total is not None else 0) for lbl, total in commerce_data
-    ]
+    commerce_table = sorted(
+        [(lbl, abs(total) if total is not None else 0) for lbl, total in commerce_data],
+        key=lambda x: x[1],
+        reverse=True,
+    )
 
     # ————————————————————————————————————————
     # 4) Gastos por Categoría (GTQ) - Incluye movimientos sin clasificar
@@ -523,9 +525,11 @@ def dashboard():
     else:
         cat_labels = cat_values = []
 
-    category_table = [
-        (lbl, abs(total) if total is not None else 0) for lbl, total in cat_data
-    ]
+    category_table = sorted(
+        [(lbl, abs(total) if total is not None else 0) for lbl, total in cat_data],
+        key=lambda x: x[1],
+        reverse=True,
+    )
 
     # ————————————————————————————————————————
     # 4.b) Gastos por Subcategoría (GTQ) - Incluye comercio sin subcategoría
@@ -826,9 +830,11 @@ def dashboard():
     if income_unclassified_data and income_unclassified_data[0][1] != 0:
         income_data.extend(income_unclassified_data)
 
-    income_table = [
-        (lbl, abs(total) if total is not None else 0) for lbl, total in income_data
-    ]
+    income_table = sorted(
+        [(lbl, abs(total) if total is not None else 0) for lbl, total in income_data],
+        key=lambda x: x[1],
+        reverse=True,
+    )
 
     comercio_logo_urls = {
         comercio.nombre: url_for('main.comercio_logo', filename=comercio.logo_filename)

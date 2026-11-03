@@ -692,6 +692,8 @@ def delete_comercio(comercio_id):
     comercio = Comercio.query.get_or_404(comercio_id)
     logo_filename = comercio.logo_filename
     reglas_previas = snapshot_reglas_comercio(comercio.id)
+    for regla in comercio.reglas:
+        db.session.delete(regla)
     db.session.delete(comercio)
     db.session.commit()
     _delete_logo(logo_filename)
