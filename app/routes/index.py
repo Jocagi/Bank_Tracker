@@ -2,11 +2,12 @@ import os
 import hashlib
 from datetime import datetime, timedelta
 from flask import render_template, request, flash
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, aliased
 from sqlalchemy import func, or_
 from .. import db
 from ..models import Movimiento, Cuenta, Comercio, Categoria, Subcategoria, TipoCambio, User, Archivo, Factura, Pais
 from ..models import Movimiento as MovimientoModel
+from ..utils.sorting import SORT_DESC, resolver_orden, aplicar_orden, construir_enlaces_orden
 from . import bp
 from flask import redirect, url_for
 from flask_login import login_required, current_user
@@ -110,8 +111,43 @@ def index():
     sum_debito = query.filter(Movimiento.tipo == 'debito').with_entities(func.coalesce(func.sum(Movimiento.monto), 0)).scalar() or 0
     sum_credito = query.filter(Movimiento.tipo == 'credito').with_entities(func.coalesce(func.sum(Movimiento.monto), 0)).scalar() or 0
 
+    # Orden server-side: aplica a todas las páginas, no solo a la visible.
+    # Las tablas se alias-an para no interferir con los filtros .has() (EXISTS).
+    cuenta_a = aliased(Cuenta)
+    comercio_a = aliased(Comercio)
+    categoria_a = aliased(Categoria)
+    subcategoria_a = aliased(Subcategoria)
+    pais_a = aliased(Pais)
+    usuario_a = aliased(User)
+    columnas_orden = {
+        'fecha': Movimiento.fecha,
+        'descripcion': func.lower(Movimiento.descripcion),
+        'lugar': func.lower(func.coalesce(Movimiento.lugar, '')),
+        'documento': func.lower(func.coalesce(Movimiento.numero_documento, '')),
+        'monto': Movimiento.monto,
+        'moneda': func.lower(Movimiento.moneda),
+        'cuenta': func.lower(func.coalesce(cuenta_a.numero_cuenta, '')),
+        'comercio': func.lower(func.coalesce(comercio_a.nombre, '')),
+        'pais': func.lower(func.coalesce(pais_a.nombre, '')),
+        'subcategoria': func.lower(func.coalesce(subcategoria_a.nombre, '')),
+        'categoria': func.lower(func.coalesce(categoria_a.nombre, '')),
+    }
+    if hasattr(current_user, 'is_admin') and current_user.is_admin():
+        columnas_orden['usuario'] = func.lower(func.coalesce(usuario_a.username, ''))
+    sort_key, sort_dir = resolver_orden(columnas_orden, 'fecha', SORT_DESC)
+    query_ordenable = (
+        query
+        .outerjoin(cuenta_a, Movimiento.cuenta_id == cuenta_a.id)
+        .outerjoin(comercio_a, Movimiento.comercio_id == comercio_a.id)
+        .outerjoin(categoria_a, comercio_a.categoria_id == categoria_a.id)
+        .outerjoin(subcategoria_a, comercio_a.subcategoria_id == subcategoria_a.id)
+        .outerjoin(pais_a, Movimiento.pais_id == pais_a.id)
+        .outerjoin(usuario_a, Movimiento.user_id == usuario_a.id)
+    )
+    sort_links = construir_enlaces_orden('main.index', columnas_orden, sort_key, sort_dir)
+
     # Obtener los movimientos paginados
-    pagination = query.order_by(Movimiento.fecha.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    pagination = aplicar_orden(query_ordenable, columnas_orden, sort_key, sort_dir, Movimiento.id).paginate(page=page, per_page=per_page, error_out=False)
     movimientos = pagination.items
 
     # Totales
@@ -154,6 +190,9 @@ def index():
         selected_tipo_cont=selected_tipo_cont,
         selected_pais=selected_pais,
         per_page=per_page,
+        sort_key=sort_key,
+        sort_dir=sort_dir,
+        sort_links=sort_links,
         # listas para los selects
         cuentas=cuentas,
         comercios=comercios,

@@ -2,10 +2,11 @@ from datetime import datetime
 from urllib.parse import urlencode
 from flask import render_template, request, flash, redirect, url_for
 from flask_login import login_required, current_user
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 
 from . import bp
 from ..models import Factura, User
+from ..utils.sorting import SORT_DESC, resolver_orden, aplicar_orden, construir_enlaces_orden
 
 
 @bp.route('/facturas', methods=['GET'])
@@ -66,7 +67,20 @@ def list_facturas():
     if uuid_q:
         query = query.filter(Factura.uuid.ilike(f'%{uuid_q}%'))
 
-    pagination = query.order_by(Factura.fecha_emision.desc()).paginate(
+    columnas_orden = {
+        'fecha': Factura.fecha_emision,
+        'tipo': func.lower(func.coalesce(Factura.tipo_documento, '')),
+        'uuid': func.lower(func.coalesce(Factura.uuid, '')),
+        'emisor': func.lower(func.coalesce(Factura.emisor_nombre_comercial, Factura.emisor_nombre, '')),
+        'receptor': func.lower(func.coalesce(Factura.receptor_nombre, '')),
+        'moneda': func.lower(func.coalesce(Factura.moneda, '')),
+        'total': func.coalesce(Factura.gran_total, 0),
+    }
+    sort_key, sort_dir = resolver_orden(columnas_orden, 'fecha', SORT_DESC)
+    sort_links = construir_enlaces_orden('main.list_facturas', columnas_orden, sort_key, sort_dir)
+
+    # Orden server-side: aplica a todas las páginas
+    pagination = aplicar_orden(query, columnas_orden, sort_key, sort_dir, Factura.id).paginate(
         page=page,
         per_page=per_page,
         error_out=False,
@@ -95,6 +109,8 @@ def list_facturas():
     if selected_owner:
         query_params['owner_id'] = selected_owner
     query_params['per_page'] = per_page
+    query_params['sort'] = sort_key
+    query_params['dir'] = sort_dir
 
     query_string = urlencode(query_params)
 
@@ -104,6 +120,9 @@ def list_facturas():
         pagination=pagination,
         per_page=per_page,
         query_string=query_string,
+        sort_key=sort_key,
+        sort_dir=sort_dir,
+        sort_links=sort_links,
         tipos_documento=tipos_documento,
         type_selected=tipo,
         start_date=start,

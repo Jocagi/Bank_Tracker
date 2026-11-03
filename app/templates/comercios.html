@@ -196,6 +196,8 @@
 </div>
 <div class="mb-4">
   <form method="get" action="{{ url_for('main.list_comercios') }}" class="filters-card">
+    <input type="hidden" name="sort" value="{{ filters.sort }}">
+    <input type="hidden" name="dir" value="{{ filters.dir }}">
     <div class="row g-2 align-items-center">
       <div class="col-12 col-md-3">
           <input type="text" name="q_name" class="form-control" placeholder="Nombre o descripción" value="{{ filters.q_name }}">
@@ -242,19 +244,19 @@
   <nav aria-label="Paginación superior de comercios" class="mb-0">
     <ul class="pagination pagination-sm flex-wrap mb-0">
       <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-        <a class="page-link" href="{{ url_for('main.list_comercios', q_name=filters.q_name, categoria_id=filters.categoria_id, subcategoria_id=filters.subcategoria_id, tipo=filters.tipo, regla=filters.regla, owner_id=filters.owner_id, per_page=filters.per_page, page=pagination.prev_num) }}">Anterior</a>
+        <a class="page-link" href="{{ url_for('main.list_comercios', q_name=filters.q_name, categoria_id=filters.categoria_id, subcategoria_id=filters.subcategoria_id, tipo=filters.tipo, regla=filters.regla, owner_id=filters.owner_id, per_page=filters.per_page, sort=filters.sort, dir=filters.dir, page=pagination.prev_num) }}">Anterior</a>
       </li>
       {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
         {% if p %}
         <li class="page-item {% if p == pagination.page %}active{% endif %}">
-          <a class="page-link" href="{{ url_for('main.list_comercios', q_name=filters.q_name, categoria_id=filters.categoria_id, subcategoria_id=filters.subcategoria_id, tipo=filters.tipo, regla=filters.regla, owner_id=filters.owner_id, per_page=filters.per_page, page=p) }}">{{ p }}</a>
+          <a class="page-link" href="{{ url_for('main.list_comercios', q_name=filters.q_name, categoria_id=filters.categoria_id, subcategoria_id=filters.subcategoria_id, tipo=filters.tipo, regla=filters.regla, owner_id=filters.owner_id, per_page=filters.per_page, sort=filters.sort, dir=filters.dir, page=p) }}">{{ p }}</a>
         </li>
         {% else %}
         <li class="page-item disabled"><span class="page-link">…</span></li>
         {% endif %}
       {% endfor %}
       <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-        <a class="page-link" href="{{ url_for('main.list_comercios', q_name=filters.q_name, categoria_id=filters.categoria_id, subcategoria_id=filters.subcategoria_id, tipo=filters.tipo, regla=filters.regla, owner_id=filters.owner_id, per_page=filters.per_page, page=pagination.next_num) }}">Siguiente</a>
+        <a class="page-link" href="{{ url_for('main.list_comercios', q_name=filters.q_name, categoria_id=filters.categoria_id, subcategoria_id=filters.subcategoria_id, tipo=filters.tipo, regla=filters.regla, owner_id=filters.owner_id, per_page=filters.per_page, sort=filters.sort, dir=filters.dir, page=pagination.next_num) }}">Siguiente</a>
       </li>
     </ul>
   </nav>
@@ -283,26 +285,11 @@
     <table class="table table-hover mb-0">
   <thead>
     <tr>
-      <th data-column="nombre">
-        Nombre 
-        <span class="sort-indicator" data-column="nombre"></span>
-      </th>
-      <th data-column="categoria">
-        Categoría 
-        <span class="sort-indicator" data-column="categoria"></span>
-      </th>
-      <th data-column="subcategoria">
-        Subcategoría 
-        <span class="sort-indicator" data-column="subcategoria"></span>
-      </th>
-      <th data-column="tipo">
-        Tipo 
-        <span class="sort-indicator" data-column="tipo"></span>
-      </th>
-      <th data-column="movimientos">
-        Movs 
-        <span class="sort-indicator" data-column="movimientos"></span>
-      </th>
+      <th><a class="sort-link" href="{{ sort_links.nombre.href }}">Nombre<span class="sort-indicator">{{ sort_links.nombre.indicator }}</span></a></th>
+      <th><a class="sort-link" href="{{ sort_links.categoria.href }}">Categoría<span class="sort-indicator">{{ sort_links.categoria.indicator }}</span></a></th>
+      <th><a class="sort-link" href="{{ sort_links.subcategoria.href }}">Subcategoría<span class="sort-indicator">{{ sort_links.subcategoria.indicator }}</span></a></th>
+      <th><a class="sort-link" href="{{ sort_links.tipo.href }}">Tipo<span class="sort-indicator">{{ sort_links.tipo.indicator }}</span></a></th>
+      <th><a class="sort-link" href="{{ sort_links.movimientos.href }}">Movs<span class="sort-indicator">{{ sort_links.movimientos.indicator }}</span></a></th>
       <th>Reglas</th>
       <th>Acciones</th>
     </tr>
@@ -359,19 +346,19 @@
   <div class="pagination-bar">
     <ul class="pagination pagination-sm flex-wrap mb-0">
       <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-        <a class="page-link" href="{{ url_for('main.list_comercios', q_name=filters.q_name, categoria_id=filters.categoria_id, subcategoria_id=filters.subcategoria_id, tipo=filters.tipo, regla=filters.regla, owner_id=filters.owner_id, per_page=filters.per_page, page=pagination.prev_num) }}">Anterior</a>
+        <a class="page-link" href="{{ url_for('main.list_comercios', q_name=filters.q_name, categoria_id=filters.categoria_id, subcategoria_id=filters.subcategoria_id, tipo=filters.tipo, regla=filters.regla, owner_id=filters.owner_id, per_page=filters.per_page, sort=filters.sort, dir=filters.dir, page=pagination.prev_num) }}">Anterior</a>
       </li>
       {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
         {% if p %}
         <li class="page-item {% if p == pagination.page %}active{% endif %}">
-          <a class="page-link" href="{{ url_for('main.list_comercios', q_name=filters.q_name, categoria_id=filters.categoria_id, subcategoria_id=filters.subcategoria_id, tipo=filters.tipo, regla=filters.regla, owner_id=filters.owner_id, per_page=filters.per_page, page=p) }}">{{ p }}</a>
+          <a class="page-link" href="{{ url_for('main.list_comercios', q_name=filters.q_name, categoria_id=filters.categoria_id, subcategoria_id=filters.subcategoria_id, tipo=filters.tipo, regla=filters.regla, owner_id=filters.owner_id, per_page=filters.per_page, sort=filters.sort, dir=filters.dir, page=p) }}">{{ p }}</a>
         </li>
         {% else %}
         <li class="page-item disabled"><span class="page-link">…</span></li>
         {% endif %}
       {% endfor %}
       <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-        <a class="page-link" href="{{ url_for('main.list_comercios', q_name=filters.q_name, categoria_id=filters.categoria_id, subcategoria_id=filters.subcategoria_id, tipo=filters.tipo, regla=filters.regla, owner_id=filters.owner_id, per_page=filters.per_page, page=pagination.next_num) }}">Siguiente</a>
+        <a class="page-link" href="{{ url_for('main.list_comercios', q_name=filters.q_name, categoria_id=filters.categoria_id, subcategoria_id=filters.subcategoria_id, tipo=filters.tipo, regla=filters.regla, owner_id=filters.owner_id, per_page=filters.per_page, sort=filters.sort, dir=filters.dir, page=pagination.next_num) }}">Siguiente</a>
       </li>
     </ul>
     <div class="pagination-controls">

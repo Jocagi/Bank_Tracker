@@ -139,6 +139,8 @@
 </div>
 
 <form method="get" class="row g-3 filters-card">
+  <input type="hidden" name="sort" value="{{ sort_key }}">
+  <input type="hidden" name="dir" value="{{ sort_dir }}">
   <div class="col-md-2">
     <label class="form-label">Tipo</label>
     <select class="form-select select-buscable" name="tipo_documento">
@@ -230,13 +232,13 @@
     <table class="table table-hover mb-0" id="facturas-table">
       <thead>
         <tr>
-          <th data-column="fecha">Fecha <span class="sort-indicator" data-column="fecha"></span></th>
-          <th data-column="tipo">Tipo <span class="sort-indicator" data-column="tipo"></span></th>
-          <th data-column="uuid">UUID <span class="sort-indicator" data-column="uuid"></span></th>
-          <th data-column="emisor">Emisor <span class="sort-indicator" data-column="emisor"></span></th>
-          <th data-column="receptor">Receptor <span class="sort-indicator" data-column="receptor"></span></th>
-          <th data-column="moneda">Moneda <span class="sort-indicator" data-column="moneda"></span></th>
-          <th data-column="total">Total <span class="sort-indicator" data-column="total"></span></th>
+          <th><a class="sort-link" href="{{ sort_links.fecha.href }}">Fecha<span class="sort-indicator">{{ sort_links.fecha.indicator }}</span></a></th>
+          <th><a class="sort-link" href="{{ sort_links.tipo.href }}">Tipo<span class="sort-indicator">{{ sort_links.tipo.indicator }}</span></a></th>
+          <th><a class="sort-link" href="{{ sort_links.uuid.href }}">UUID<span class="sort-indicator">{{ sort_links.uuid.indicator }}</span></a></th>
+          <th><a class="sort-link" href="{{ sort_links.emisor.href }}">Emisor<span class="sort-indicator">{{ sort_links.emisor.indicator }}</span></a></th>
+          <th><a class="sort-link" href="{{ sort_links.receptor.href }}">Receptor<span class="sort-indicator">{{ sort_links.receptor.indicator }}</span></a></th>
+          <th><a class="sort-link" href="{{ sort_links.moneda.href }}">Moneda<span class="sort-indicator">{{ sort_links.moneda.indicator }}</span></a></th>
+          <th><a class="sort-link" href="{{ sort_links.total.href }}">Total<span class="sort-indicator">{{ sort_links.total.indicator }}</span></a></th>
           <th>Acciones</th>
         </tr>
       </thead>

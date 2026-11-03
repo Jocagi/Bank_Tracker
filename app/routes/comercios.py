@@ -16,7 +16,9 @@ from ..models import Comercio, Regla, ReglaCondicion, Categoria, Subcategoria, M
 from flask_login import current_user
 from ..utils.classifier import reclasificar_comercio, snapshot_reglas_comercio, CAMPOS_VALIDOS, operadores_validos_para_campo, describir_regla
 from ..utils.image_search import build_image_search_url, search_image_suggestions
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import joinedload, selectinload, aliased
+from sqlalchemy import func
+from ..utils.sorting import SORT_ASC, resolver_orden, aplicar_orden, construir_enlaces_orden
 from flask_login import login_required
 
 
@@ -476,8 +478,32 @@ def list_comercios():
             (ReglaCondicion.valor2.ilike(f"%{regla_q}%"))
         ).distinct()
 
+    # Orden server-side (aplica a todas las páginas). El conteo de movimientos
+    # usa el mismo owner que la columna mostrada.
+    owner_conteo = owner_id if (hasattr(current_user, 'is_admin') and current_user.is_admin() and owner_id) else current_user.id
+    categoria_a = aliased(Categoria)
+    subcategoria_a = aliased(Subcategoria)
+    movimientos_count_expr = db.session.query(func.count(Movimiento.id)).filter(
+        Movimiento.comercio_id == Comercio.id,
+        Movimiento.user_id == owner_conteo
+    ).correlate(Comercio).scalar_subquery()
+    columnas_orden = {
+        'nombre': func.lower(Comercio.nombre),
+        'categoria': func.lower(func.coalesce(categoria_a.nombre, '')),
+        'subcategoria': func.lower(func.coalesce(subcategoria_a.nombre, '')),
+        'tipo': func.lower(Comercio.tipo_contabilizacion),
+        'movimientos': movimientos_count_expr,
+    }
+    sort_key, sort_dir = resolver_orden(columnas_orden, 'nombre', SORT_ASC)
+    sort_links = construir_enlaces_orden('main.list_comercios', columnas_orden, sort_key, sort_dir)
+    query_ordenable = (
+        query
+        .outerjoin(categoria_a, Comercio.categoria_id == categoria_a.id)
+        .outerjoin(subcategoria_a, Comercio.subcategoria_id == subcategoria_a.id)
+    )
+
     # Eager-load reglas y categoria para evitar N+1 y paginar en DB
-    pagination = query.order_by(Comercio.nombre.asc()).options(
+    pagination = aplicar_orden(query_ordenable, columnas_orden, sort_key, sort_dir, Comercio.id).options(
         selectinload(Comercio.reglas).selectinload(Regla.condiciones),
         joinedload(Comercio.categoria),
         joinedload(Comercio.subcategoria)
@@ -516,7 +542,9 @@ def list_comercios():
         'tipo': tipo,
         'regla': regla_q,
         'owner_id': owner_id or '',
-        'per_page': per_page
+        'per_page': per_page,
+        'sort': sort_key,
+        'dir': sort_dir,
     }
     return render_template(
         'comercios.html',
@@ -524,6 +552,7 @@ def list_comercios():
         categorias=categorias,
         subcategorias=subcategorias,
         filters=filters,
+        sort_links=sort_links,
         pagination=pagination,
         total_comercios=total_comercios,
         range_start=range_start,

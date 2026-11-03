@@ -309,6 +309,8 @@
 </div>
 
 <form method="get" class="filters-card">
+  <input type="hidden" name="sort" value="{{ sort_key }}">
+  <input type="hidden" name="dir" value="{{ sort_dir }}">
   <!-- Fila 1: Fechas y descripción -->
   <div class="row g-3 mb-3">
     <div class="col-md-3">
@@ -420,19 +422,19 @@
   <nav aria-label="Paginación superior de movimientos" class="mb-0">
     <ul class="pagination pagination-sm flex-wrap mb-0">
       <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-        <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, pais_id=selected_pais, owner_id=selected_owner, per_page=per_page, page=pagination.prev_num) }}">Anterior</a>
+        <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, pais_id=selected_pais, owner_id=selected_owner, per_page=per_page, sort=sort_key, dir=sort_dir, page=pagination.prev_num) }}">Anterior</a>
       </li>
       {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
         {% if p %}
         <li class="page-item {% if p == pagination.page %}active{% endif %}">
-          <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, pais_id=selected_pais, owner_id=selected_owner, per_page=per_page, page=p) }}">{{ p }}</a>
+          <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, pais_id=selected_pais, owner_id=selected_owner, per_page=per_page, sort=sort_key, dir=sort_dir, page=p) }}">{{ p }}</a>
         </li>
         {% else %}
         <li class="page-item disabled"><span class="page-link">…</span></li>
         {% endif %}
       {% endfor %}
       <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-        <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, pais_id=selected_pais, owner_id=selected_owner, per_page=per_page, page=pagination.next_num) }}">Siguiente</a>
+        <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, pais_id=selected_pais, owner_id=selected_owner, per_page=per_page, sort=sort_key, dir=sort_dir, page=pagination.next_num) }}">Siguiente</a>
       </li>
     </ul>
   </nav>
@@ -462,20 +464,20 @@
     <table class="table table-hover mb-0" id="movimientos-table">
   <thead>
     <tr>
-  <th data-column="fecha">Fecha <span class="sort-indicator" data-column="fecha"></span></th>
+  <th><a class="sort-link" href="{{ sort_links.fecha.href }}">Fecha<span class="sort-indicator">{{ sort_links.fecha.indicator }}</span></a></th>
   {% if current_user.is_authenticated and current_user.is_admin() %}
-  <th data-column="usuario">Usuario <span class="sort-indicator" data-column="usuario"></span></th>
+  <th><a class="sort-link" href="{{ sort_links.usuario.href }}">Usuario<span class="sort-indicator">{{ sort_links.usuario.indicator }}</span></a></th>
   {% endif %}
-      <th data-column="descripcion">Descripción <span class="sort-indicator" data-column="descripcion"></span></th>
-      <th data-column="lugar">Lugar <span class="sort-indicator" data-column="lugar"></span></th>
-      <th data-column="documento">Documento <span class="sort-indicator" data-column="documento"></span></th>
-      <th data-column="monto">Monto <span class="sort-indicator" data-column="monto"></span></th>
-      <th data-column="moneda">Moneda <span class="sort-indicator" data-column="moneda"></span></th>
-      <th data-column="cuenta">Cuenta <span class="sort-indicator" data-column="cuenta"></span></th>
-      <th data-column="comercio">Comercio <span class="sort-indicator" data-column="comercio"></span></th>
-        <th data-column="pais">País <span class="sort-indicator" data-column="pais"></span></th>
-          <th data-column="subcategoria">Subcategoría <span class="sort-indicator" data-column="subcategoria"></span></th>
-      <th data-column="categoria">Categoría <span class="sort-indicator" data-column="categoria"></span></th>
+      <th><a class="sort-link" href="{{ sort_links.descripcion.href }}">Descripción<span class="sort-indicator">{{ sort_links.descripcion.indicator }}</span></a></th>
+      <th><a class="sort-link" href="{{ sort_links.lugar.href }}">Lugar<span class="sort-indicator">{{ sort_links.lugar.indicator }}</span></a></th>
+      <th><a class="sort-link" href="{{ sort_links.documento.href }}">Documento<span class="sort-indicator">{{ sort_links.documento.indicator }}</span></a></th>
+      <th><a class="sort-link" href="{{ sort_links.monto.href }}">Monto<span class="sort-indicator">{{ sort_links.monto.indicator }}</span></a></th>
+      <th><a class="sort-link" href="{{ sort_links.moneda.href }}">Moneda<span class="sort-indicator">{{ sort_links.moneda.indicator }}</span></a></th>
+      <th><a class="sort-link" href="{{ sort_links.cuenta.href }}">Cuenta<span class="sort-indicator">{{ sort_links.cuenta.indicator }}</span></a></th>
+      <th><a class="sort-link" href="{{ sort_links.comercio.href }}">Comercio<span class="sort-indicator">{{ sort_links.comercio.indicator }}</span></a></th>
+        <th><a class="sort-link" href="{{ sort_links.pais.href }}">País<span class="sort-indicator">{{ sort_links.pais.indicator }}</span></a></th>
+          <th><a class="sort-link" href="{{ sort_links.subcategoria.href }}">Subcategoría<span class="sort-indicator">{{ sort_links.subcategoria.indicator }}</span></a></th>
+      <th><a class="sort-link" href="{{ sort_links.categoria.href }}">Categoría<span class="sort-indicator">{{ sort_links.categoria.indicator }}</span></a></th>
       <th class="actions-col">Acciones</th>
     </tr>
   </thead>
@@ -539,19 +541,19 @@
   <div class="pagination-bar">
     <ul class="pagination pagination-sm flex-wrap mb-0">
       <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-        <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, pais_id=selected_pais, owner_id=selected_owner, per_page=per_page, page=pagination.prev_num) }}">Anterior</a>
+        <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, pais_id=selected_pais, owner_id=selected_owner, per_page=per_page, sort=sort_key, dir=sort_dir, page=pagination.prev_num) }}">Anterior</a>
       </li>
       {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
         {% if p %}
         <li class="page-item {% if p == pagination.page %}active{% endif %}">
-          <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, pais_id=selected_pais, owner_id=selected_owner, per_page=per_page, page=p) }}">{{ p }}</a>
+          <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, pais_id=selected_pais, owner_id=selected_owner, per_page=per_page, sort=sort_key, dir=sort_dir, page=p) }}">{{ p }}</a>
         </li>
         {% else %}
         <li class="page-item disabled"><span class="page-link">…</span></li>
         {% endif %}
       {% endfor %}
       <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-        <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, pais_id=selected_pais, owner_id=selected_owner, per_page=per_page, page=pagination.next_num) }}">Siguiente</a>
+        <a class="page-link" href="{{ url_for('main.index', start_date=start_date, end_date=end_date, desc=desc_query, cuenta_id=selected_cuenta, comercio_id=selected_comercio, categoria_id=selected_categoria, subcategoria_id=selected_subcategoria, tipo_contabilizacion=selected_tipo_cont, pais_id=selected_pais, owner_id=selected_owner, per_page=per_page, sort=sort_key, dir=sort_dir, page=pagination.next_num) }}">Siguiente</a>
       </li>
     </ul>
     <div class="pagination-controls">
