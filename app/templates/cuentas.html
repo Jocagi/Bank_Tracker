@@ -10,7 +10,7 @@
   {% if current_user.is_authenticated and current_user.is_admin() %}
   <div class="col-md-4">
     <label class="form-label">Usuario</label>
-    <select name="owner_id" class="form-select">
+    <select name="owner_id" class="form-select select-buscable">
       <option value="">-- Todos --</option>
       {% for u in users %}
       <option value="{{ u.id }}" {% if u.id|string == selected_owner %}selected{% endif %}>{{ u.username }}</option>

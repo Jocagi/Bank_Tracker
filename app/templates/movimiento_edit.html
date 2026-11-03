@@ -39,7 +39,7 @@
     </div>
     <div class="col-md-3">
       <label for="tipo" class="form-label">Tipo</label>
-      <select id="tipo" name="tipo" class="form-select">
+      <select id="tipo" name="tipo" class="form-select select-buscable">
         <option value="debito" {% if mov.tipo=='debito' %}selected{% endif %}>Débito</option>
         <option value="credito" {% if mov.tipo=='credito' %}selected{% endif %}>Crédito</option>
       </select>
@@ -47,7 +47,7 @@
 
     <div class="col-md-6">
       <label for="cuenta_id" class="form-label">Cuenta</label>
-      <select id="cuenta_id" name="cuenta_id" class="form-select">
+      <select id="cuenta_id" name="cuenta_id" class="form-select select-buscable">
         {% for c in cuentas %}
           <option value="{{ c.id }}" {% if c.id==mov.cuenta_id %}selected{% endif %}>{{ c.alias or c.numero_cuenta }}</option>
         {% endfor %}
@@ -66,7 +66,7 @@
 
     <div class="col-md-6">
       <label for="pais_id" class="form-label">País</label>
-      <select id="pais_id" name="pais_id" class="form-select">
+      <select id="pais_id" name="pais_id" class="form-select select-buscable">
         <option value="">-- Sin país --</option>
         {% for pais in paises %}
           <option value="{{ pais.id }}" {% if mov.pais_id == pais.id %}selected{% endif %}>{{ pais.nombre }} ({{ pais.codigo_iso }})</option>

@@ -337,7 +337,7 @@
   <div class="row g-3 mb-4">
     <div class="col-md-3">
       <label for="cuenta_id" class="form-label">Cuenta</label>
-      <select id="cuenta_id" name="cuenta_id" class="form-select">
+      <select id="cuenta_id" name="cuenta_id" class="form-select select-buscable">
         <option value="">-- Todas --</option>
         {% for cta in cuentas if cta.user_id == current_user.id %}
           <option value="{{ cta.id }}" {% if cta.id|string == selected_cuenta %}selected{% endif %}>{{ cta.alias or cta.numero_cuenta }}</option>
@@ -346,7 +346,7 @@
     </div>
     <div class="col-md-3">
       <label for="comercio_id" class="form-label">Comercio</label>
-      <select id="comercio_id" name="comercio_id" class="form-select">
+      <select id="comercio_id" name="comercio_id" class="form-select select-buscable">
         <option value="">-- Todos --</option>
         {% for c in comercios %}
           <option value="{{ c.id }}"
@@ -358,7 +358,7 @@
     </div>
     <div class="col-md-3">
       <label for="categoria_id" class="form-label">Categoría</label>
-      <select id="categoria_id" name="categoria_id" class="form-select">
+      <select id="categoria_id" name="categoria_id" class="form-select select-buscable">
         <option value="">-- Todas --</option>
         {% for cat in categorias %}
           <option value="{{ cat.id }}"
@@ -370,7 +370,7 @@
     </div>
     <div class="col-md-3">
       <label for="subcategoria_id" class="form-label">Subcategoría</label>
-      <select id="subcategoria_id" name="subcategoria_id" class="form-select">
+      <select id="subcategoria_id" name="subcategoria_id" class="form-select select-buscable">
         <option value="">-- Todas --</option>
         <option value="0">Sin subcategoría</option>
         {% for sub in all_subcategorias %}
@@ -380,7 +380,7 @@
     </div>
     <div class="col-md-3">
       <label for="tipo_contabilizacion" class="form-label">Tipo</label>
-      <select id="tipo_contabilizacion" name="tipo_contabilizacion" class="form-select">
+      <select id="tipo_contabilizacion" name="tipo_contabilizacion" class="form-select select-buscable">
         <option value="">-- Todos --</option>
         {% for t in tipos_contabilizacion %}
           <option value="{{ t }}"
@@ -392,7 +392,7 @@
     </div>
     <div class="col-md-3">
       <label for="pais_id" class="form-label">País</label>
-      <select id="pais_id" name="pais_id" class="form-select">
+      <select id="pais_id" name="pais_id" class="form-select select-buscable">
         <option value="">-- Todos --</option>
         <option value="sin_pais" {% if selected_pais == 'sin_pais' %}selected{% endif %}>Sin país</option>
         {% for pais in paises %}
@@ -404,7 +404,7 @@
     {% if current_user.is_authenticated and current_user.is_admin() %}
     <div class="col-md-3">
       <label for="owner_id" class="form-label">Usuario</label>
-      <select id="owner_id" name="owner_id" class="form-select">
+      <select id="owner_id" name="owner_id" class="form-select select-buscable">
         <option value="">-- Todos --</option>
         {% for u in users %}
           <option value="{{ u.id }}" {% if u.id|string == selected_owner %}selected{% endif %}>{{ u.username }}</option>
@@ -577,39 +577,7 @@
 {% block scripts %}
   <script>
     // Filtrado dinámico de subcategorías
-    (function(){
-      const categorySelect = document.getElementById('categoria_id');
-      const subcategorySelect = document.getElementById('subcategoria_id');
-      if (!categorySelect || !subcategorySelect) return;
-
-      function updateSubcategories() {
-        const selectedCatId = categorySelect.value;
-        const currentSubcatValue = subcategorySelect.value;
-        
-        Array.from(subcategorySelect.options).forEach(option => {
-          if (option.value === '' || option.value === '0') {
-            option.style.display = 'block';
-          } else {
-            const optCatId = option.getAttribute('data-categoria-id');
-            if (selectedCatId === '') {
-              option.style.display = 'block';
-            } else {
-              option.style.display = optCatId === selectedCatId ? 'block' : 'none';
-            }
-          }
-        });
-
-        const isCurrentSubcatVisible = Array.from(subcategorySelect.options).some(
-          opt => opt.value === currentSubcatValue && opt.style.display !== 'none'
-        );
-        if (!isCurrentSubcatVisible && currentSubcatValue !== '') {
-          subcategorySelect.value = '';
-        }
-      }
-      
-      categorySelect.addEventListener('change', updateSubcategories);
-      updateSubcategories();
-    })();
+    vincularSubcategorias(document.getElementById('categoria_id'), document.getElementById('subcategoria_id'));
   </script>
   <script>
     (function(){

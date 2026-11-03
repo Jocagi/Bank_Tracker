@@ -141,7 +141,7 @@
 <form method="get" class="row g-3 filters-card">
   <div class="col-md-2">
     <label class="form-label">Tipo</label>
-    <select class="form-select" name="tipo_documento">
+    <select class="form-select select-buscable" name="tipo_documento">
       <option value="">-- Todos --</option>
       {% for t in tipos_documento %}
       <option value="{{ t }}" {% if t == type_selected %}selected{% endif %}>{{ t }}</option>
@@ -172,7 +172,7 @@
   {% if current_user.is_authenticated and current_user.is_admin() %}
   <div class="col-md-3">
     <label class="form-label">Usuario</label>
-    <select name="owner_id" class="form-select">
+    <select name="owner_id" class="form-select select-buscable">
       <option value="">-- Todos --</option>
       {% for u in users %}
       <option value="{{ u.id }}" {% if u.id|string == selected_owner %}selected{% endif %}>{{ u.username }}</option>

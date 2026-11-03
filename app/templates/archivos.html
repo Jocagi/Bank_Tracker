@@ -6,7 +6,7 @@
 <form method="get" class="row g-3 mb-4">
   <div class="col-md-3">
     <label class="form-label">Tipo de Archivo</label>
-    <select class="form-select" name="tipo_archivo">
+    <select class="form-select select-buscable" name="tipo_archivo">
       <option value="">-- Todos --</option>
       {% for t in tipos %}
       <option value="{{ t }}" {% if t == type_selected %}selected{% endif %}>
@@ -48,7 +48,7 @@
 <form method="get" class="mb-3 row g-3">
   <div class="col-md-4">
     <label class="form-label">Usuario</label>
-    <select name="owner_id" class="form-select">
+    <select name="owner_id" class="form-select select-buscable">
       <option value="">-- Todos --</option>
       {% for u in users %}
       <option value="{{ u.id }}" {% if u.id|string == selected_owner %}selected{% endif %}>{{ u.username }}</option>

@@ -104,15 +104,24 @@ def _pais_por_descripcion(descripcion, codigos):
     return codigo_pais.pais if codigo_pais else None
 
 
-def _pais_por_moneda(moneda, paises):
-    codigo_por_moneda = {
-        'GTQ': 'GT',
-        'USD': 'US',
-    }
-    codigo_iso = codigo_por_moneda.get((moneda or '').strip().upper())
-    if not codigo_iso:
-        return None
+def _pais_por_iso(codigo_iso, paises):
     return next((pais for pais in paises if pais.codigo_iso == codigo_iso), None)
+
+
+def _resolver_pais_gasto(descripcion, moneda, paises, codigos):
+    """Resolve the country of an expense, starting from the spending currency.
+
+    GTQ always means Guatemala. USD uses the country code in the description
+    and falls back to United States. Other currencies only use the code.
+    """
+    moneda_normalizada = (moneda or '').strip().upper()
+    if moneda_normalizada == 'GTQ':
+        return _pais_por_iso('GT', paises)
+
+    pais = _pais_por_descripcion(descripcion, codigos)
+    if pais is None and moneda_normalizada == 'USD':
+        pais = _pais_por_iso('US', paises)
+    return pais
 
 
 def _actualizar_pais(mov, paises, codigos=None):
@@ -123,9 +132,7 @@ def _actualizar_pais(mov, paises, codigos=None):
     if codigos is None:
         codigos = CodigoPais.query.all()
     if comercio and (comercio.tipo_contabilizacion or '').lower() == 'gastos':
-        pais = _pais_por_descripcion(mov.descripcion, codigos)
-        if pais is None:
-            pais = _pais_por_moneda(mov.moneda, paises)
+        pais = _resolver_pais_gasto(mov.descripcion, mov.moneda, paises, codigos)
         mov.pais_id = pais.id if pais else None
     else:
         mov.pais_id = None
